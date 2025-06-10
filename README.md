@@ -18,6 +18,9 @@ A browser-based Inventory Template Editor for Unreal Engine projects — manage 
 
 ## Features
 
+- **Native Unreal import/Export**
+  Fully supports Unreal engine using [Mountea Inventory & Equipment](https://github.com/Mountea-Framework/MounteaInventoryEquipment) system.
+
 - **Create & Edit Templates**  
   Define item name, display name, GUID, descriptions, and more.  
 
