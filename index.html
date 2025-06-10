@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mountea Inventory Manager</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Mountea Inventory Manager - Manage your inventory item templates online from any device. Simple, fast, and accessible.">
+    <meta name="keywords" content="Inventory, Inventory Manager, Mountea, Inventory Tool, Item Templates, Online Inventory, Template Manager, Stock Manager, Inventory Control">
+    <meta name="author" content="Mountea Framework">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style/master.css">
+
+    <!-- Scripts -->
+    <script defer src="script/master.js"></script>
+</head>
+<body>
+    <div class="container">
+  <header>
+    <h1>Mountea Inventory Template Editor</h1>
+    <ul class="header-controls">
+      <li id="helpParent">
+        <button id="help" class="btn btn-secondary">Help</button>
+      </li>
+      <li id="settingsParent">
+        <button id="settings" class="btn btn-secondary">Settings</button>
+      </li>
+      <li id="newTemplateParent">
+        <button id="newTemplate" class="btn btn-primary">New Template</button>
+      </li>
+      <li id="duplicateTemplateParent" class="hidden selection">
+        <button type="button" id="duplicateTemplate" class="btn btn-secondary">
+          Duplicate
+        </button>
+      </li>
+      <li id="importTemplateParent">
+        <button id="importTemplate" class="btn btn-secondary">
+          Import JSON
+        </button>
+      </li>
+      <li id="exportTemplateParent">
+        <button id="exportTemplate" class="btn btn-secondary">
+          Export JSON
+        </button>
+      </li>
+      <li id="exportSingleParent" class="hidden selection">
+        <button id="exportSingle" class="btn btn-secondary">
+          <abbr title="Exports active Template to Unreal .mnteaitem file">
+            Export Item
+          </abbr>
+        </button>
+      </li>
+      <li id="exportMultipleParent">
+        <button id="exportMultiple" class="btn btn-secondary">
+          <abbr title="Exports selected Templates to Unreal .mnteaitems file" id="exportMultipleTitle">
+            Export Items
+          </abbr>
+        </button>
+      </li>
+      <li id="showPreviewParent" class="hidden selection">
+        <button id="showPreview" class="btn btn-secondary">
+          <abbr title="Shows/hides preview panel which renders JSON content of selected Template">
+            Show/Hide Preview
+          </abbr>
+        </button>
+      </li>
+      <input type="file" id="fileInput" accept=".json" style="display: none" />
+    </ul>
+  </header>
+
+  <div class="main-content">
+    <div class="sidebar">
+      <div class="templates-list">
+        <div class="selection-controls">
+          <h3>
+            Templates
+            <span class="selection-count" id="selectionCount">0 selected</span>
+          </h3>
+          <button type="button" id="selectAllTemplates" class="btn btn-small btn-secondary">
+            <abbr title="Selects all templates in list">
+                Select All
+            </abbr>
+          </button>
+          <button type="button" id="deselectAll" class="btn btn-small btn-secondary">
+            <abbr title="Deselects all selected templates">
+                Deselect
+            </abbr>
+          </button>
+          <button type="button" id="deleteSelected" class="btn btn-small btn-danger" title="Delete selected templates">
+            <abbr title="Delete all selected templates">
+                Delete
+            </abbr>
+          </button>
+        </div>
+        <br />
+        <div id="templatesList"></div>
+      </div>
+    </div>
+
+    <div class="editor-panel">
+      <form id="templateForm">
+        <!-- Basic Information -->
+        <section class="form-section first-section">
+          <h2>Basic Information</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="itemName">Item Name</label>
+              <input type="text" id="itemName" name="itemName" required maxlength="32"/>
+            </div>
+            <div class="form-group">
+              <label for="displayName">Display Name</label>
+              <input type="text" id="displayName" name="displayName" required />
+            </div>
+            <div class="form-group">
+              <label for="itemID">Item ID</label>
+              <input type="text" id="itemID" name="itemID" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+            </div>
+            <div class="form-group">
+              <label for="short-description">Thumbnail Description</label>
+              <textarea id="short-description" name="short-description" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea id="description" name="description" rows="3"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- Item Properties -->
+        <section class="form-section">
+          <h2>Item Properties</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="itemType">Item Type</label>
+              <select id="itemType" name="itemType">
+                <option value="Weapon">Weapon</option>
+                <option value="Armor">Armor</option>
+                <option value="Consumable">Consumable</option>
+                <option value="Material">Material</option>
+                <option value="Quest">Quest</option>
+                <option value="Misc">Miscellaneous</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rarity">Rarity</label>
+              <select id="rarity" name="rarity">
+                <option value="Common">Common</option>
+                <option value="Uncommon">Uncommon</option>
+                <option value="Rare">Rare</option>
+                <option value="Epic">Epic</option>
+                <option value="Legendary">Legendary</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="maxStackSize">Max Stack Size</label>
+              <input type="number" id="maxStackSize" name="maxStackSize" min="1" value="1" />
+            </div>
+            <div class="form-group">
+              <label for="weight">Weight</label>
+              <input type="number" id="weight" name="weight" step="0.1" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label for="value">Value</label>
+              <input type="number" id="value" name="value" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label for="durability">Max Durability</label>
+              <input type="number" id="durability" name="durability" min="0" max="100" value="100" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Flags -->
+        <section class="form-section">
+          <h2>Item Flags</h2>
+          <div class="form-grid">
+            <div class="form-group checkbox-group">
+              <label><input type="checkbox" id="isStackable" name="isStackable" />
+                Stackable</label>
+              <label><input type="checkbox" id="isDroppable" name="isDroppable" checked />
+                Droppable</label>
+              <label><input type="checkbox" id="isUsable" name="isUsable" />
+                Usable</label>
+              <label><input type="checkbox" id="isEquippable" name="isEquippable" />
+                Equippable</label>
+              <label><input type="checkbox" id="isTradeable" name="isTradeable" checked />
+                Tradeable</label>
+              <label><input type="checkbox" id="isQuestItem" name="isQuestItem" />
+                Quest Item</label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Equipment Specific -->
+        <section class="form-section" id="equipmentSection" style="display: none">
+          <h2>Equipment Properties</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="equipSlot">Equipment Slot</label>
+              <select id="equipSlot" name="equipSlot">
+                <option value="None">None</option>
+                <option value="Helmet">Helmet</option>
+                <option value="Chest">Chest</option>
+                <option value="Legs">Legs</option>
+                <option value="Boots">Boots</option>
+                <option value="Gloves">Gloves</option>
+                <option value="MainHand">Main Hand</option>
+                <option value="OffHand">Off Hand</option>
+                <option value="Ring">Ring</option>
+                <option value="Necklace">Necklace</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Visual Assets -->
+        <section class="form-section">
+          <h2>Visual Assets</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="iconPath">Icon</label>
+              <input type="file" id="iconPath" name="iconPath" accept=".jpg,.jpeg,.png,.bmp,image/jpeg,image/png,image/bmp" />
+              <small class="file-info">Accepted formats: JPG, PNG, BMP</small>
+            </div>
+            <div class="form-group">
+              <label for="meshPath">Mesh</label>
+              <input type="file" id="meshPath" name="meshPath" accept=".fbx,.obj" />
+              <small class="file-info">Accepted formats: FBX, OBJ</small>
+            </div>
+            <div class="form-group">
+              <label for="materialPath">Material Path</label>
+              <input type="text" id="materialPath" name="materialPath" placeholder="/Game/Materials/..." />
+            </div>
+          </div>
+        </section>
+
+        <!-- Custom Properties -->
+        <section class="form-section">
+          <h2>Custom Properties</h2>
+          <div class="custom-properties">
+            <div class="custom-props-header">
+              <button type="button" id="addCustomProp" class="btn btn-small">
+                +
+              </button>
+            </div>
+            <div id="customPropsContainer"></div>
+          </div>
+        </section>
+      </form>
+    </div>
+  </div>
+
+  <div class="floating">
+    <button type="button" id="mobileClose" class="btn btn-floating selection hidden">
+      ✕
+    </button>
+
+    <button type="button" id="mobileSave" class="btn btn-floating">
+      ✓
+    </button>
+  </div>
+
+</div>
+
+<!-- Preview Panel -->
+<div class="preview-panel" id="previewPanel">
+  <div class="preview-header">
+    <h3>Template Preview</h3>
+    <button id="closePreview" class="btn btn-small">×</button>
+  </div>
+  <pre id="previewContent"></pre>
+</div>
+
+<!-- Settings Panel -->
+<div class="settings-modal" id="settingsModal">
+  <div class="settings-content">
+    <div class="settings-header">
+      <h3>Settings</h3>
+      <button id="closeSettings" class="btn btn-small close">×</button>
+    </div>
+    <div class="modal-body">
+      <section class="modal-section">
+        <h4>Categories</h4>
+        <div class="settings-controls">
+          <button type="button" id="addCategory" class="btn btn-small btn-primary">Add Category</button>
+        </div>
+        <div id="categoriesContainer" class="settings-container"></div>
+      </section>
+
+      <section class="modal-section">
+        <h4>Rarities</h4>
+        <div class="settings-controls">
+          <button type="button" id="addRarity" class="btn btn-small btn-primary">Add Rarity</button>
+        </div>
+        <div id="raritiesContainer" class="settings-container"></div>
+      </section>
+
+      <section class="modal-section">
+        <h4>Equipment Slots</h4>
+        <div class="settings-controls">
+          <button type="button" id="addEquipmentSlot" class="btn btn-small btn-primary">Add Equipment Slot</button>
+        </div>
+        <div id="equipmentSlotsContainer" class="settings-container"></div>
+      </section>
+    </div>
+    <div class="settings-footer">
+      <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help Panel -->
+<div class="help-modal" id="helpModal">
+  <div class="help-content">
+    <div class="settings-header">
+      <h3>Help</h3>
+      <button id="closeHelp" class="btn btn-small close">×</button>
+    </div>
+    <div class="modal-body">
+      <section class="modal-section">
+        <h4>🚀 Getting Started</h4>
+        <div class="field-group">
+          <p>The Mountea Inventory Template Editor helps you create and manage item templates for Unreal Engine inventory systems. Here's how to get started:</p>
+          <ul>
+            <li><strong>Create New Template:</strong> Click "New Template" to start creating an item</li>
+            <li><strong>Fill Required Fields:</strong> Item Name, Display Name, and Item ID are required</li>
+            <li><strong>Add Assets:</strong> Upload icon images and 3D mesh files for your items</li>
+            <li><strong>Export:</strong> Export single items (.mnteaitem) or multiple items (.mnteaitems)</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>📝 Field Explanations</h4>
+        <div class="field-explanations">
+          <div class="field-group">
+            <h5>Basic Information</h5>
+            <p><strong>Item Name:</strong> Internal identifier (max 24 chars, no spaces, letters/underscores only)</p>
+            <p><strong>Display Name:</strong> User-friendly name shown in the game</p>
+            <p><strong>Item ID:</strong> Unique GUID identifier for the item</p>
+            <p><strong>Tooltip Descriptions:</strong> Text shown to players in tooltips and inventory</p>
+            <p><strong>Descriptions:</strong> Text shown to players in inventory</p>
+          </div>
+
+          <div class="field-group">
+            <h5>Properties</h5>
+            <p><strong>Item Type:</strong> Category for organization and filtering</p>
+            <p><strong>Rarity:</strong> Determines item color and perceived value</p>
+            <p><strong>Stack Size:</strong> Maximum items that can stack together</p>
+            <p><strong>Weight:</strong> Affects inventory capacity calculations</p>
+            <p><strong>Value:</strong> Base monetary worth of the item</p>
+            <p><strong>Durability:</strong> Maximum condition before item breaks</p>
+          </div>
+
+          <div class="field-group">
+            <h5>Item Flags</h5>
+            <p><strong>Stackable:</strong> Can multiple items occupy one slot?</p>
+            <p><strong>Droppable:</strong> Can players drop this item?</p>
+            <p><strong>Usable:</strong> Can players use/consume this item?</p>
+            <p><strong>Equippable:</strong> Can this item be equipped?</p>
+            <p><strong>Tradeable:</strong> Can players trade this item?</p>
+            <p><strong>Quest Item:</strong> Is this tied to quest progression?</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>🎨 Visual Assets</h4>
+        <div class="field-group">
+          <p><strong>Icon:</strong> Small image shown in inventory (PNG, JPG, BMP - max 5MB)</p>
+          <p><strong>Mesh:</strong> 3D model file for the item (FBX, OBJ - max 50MB)</p>
+          <p><strong>Material Path:</strong> Unreal Engine path to material assets</p>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>⚙️ Equipment System</h4>
+        <div class="field-group">
+          <p>When "Equippable" is checked, you can specify which equipment slot the item uses:</p>
+          <ul>
+            <li>Helmet, Chest, Legs, Boots, Gloves</li>
+            <li>Main Hand, Off Hand (weapons, shields)</li>
+            <li>Ring, Necklace (accessories)</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>🔧 Custom Properties</h4>
+        <div class="field-group">
+          <p>Add custom key-value pairs for special item behaviors:</p>
+          <ul>
+            <li>Damage values for weapons</li>
+            <li>Armor ratings for protective gear</li>
+            <li>Spell effects for magical items</li>
+            <li>Any game-specific data you need</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>⌨️ Keyboard Shortcuts</h4>
+        <div class="shortcuts-grid">
+          <div class="shortcut-row">
+            <span class="shortcut-key">Ctrl + S</span>
+            <span class="shortcut-desc">Save current template</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-key">Ctrl + N</span>
+            <span class="shortcut-desc">Create new template</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-key">Ctrl + D</span>
+            <span class="shortcut-desc">Duplicate current template</span>
+          </div>
+          <div class="shortcut-row">
+            <span class="shortcut-key">Escape</span>
+            <span class="shortcut-desc">Close preview panel or current template or help panel</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>📤 Export Options</h4>
+        <div class="field-group">
+          <ul>
+            <li><strong>Export JSON:</strong> Save all templates as JSON for backup/sharing</li>
+            <li><strong>Export Item (.mnteaitem):</strong> Export current template with assets for Unreal Engine</li>
+            <li><strong>Export Items (.mnteaitems):</strong> Export multiple templates with assets</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>💡 Tips & Best Practices</h4>
+        <div class="field-group">
+          <ul>
+            <li>Use descriptive Item Names for better organization</li>
+            <li>Keep icon images small (256x256 or 512x512 recommended)</li>
+            <li>Use consistent naming conventions across your project</li>
+            <li>Preview templates before exporting to catch errors</li>
+            <li>Backup your templates regularly using JSON export</li>
+            <li>Use selection tools to manage multiple templates efficiently</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="modal-section">
+        <h4>🆘 Troubleshooting</h4>
+        <div class="field-group">
+          <p><strong>File Upload Issues:</strong> Ensure files meet size and format requirements</p>
+          <p><strong>Validation Errors:</strong> Check that all required fields are filled correctly</p>
+          <p><strong>Export Problems:</strong> Make sure JSZip library loads properly for file exports</p>
+          <p><strong>Performance:</strong> Large numbers of templates may slow down the interface</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>
