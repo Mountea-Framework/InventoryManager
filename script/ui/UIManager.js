@@ -1,0 +1,390 @@
+export class UIManager {
+    constructor(editor) {
+        this.editor = editor;
+    }
+
+    renderTemplatesList() {
+        const list = document.getElementById('templatesList');
+        list.innerHTML = '';
+
+        this.editor.templates.forEach(template => {
+            const container = document.createElement('div');
+            container.className = 'template-item-container';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'template-checkbox';
+            checkbox.checked = this.editor.selectedTemplates.has(template.id);
+            checkbox.addEventListener('click', e => e.stopPropagation());
+            checkbox.addEventListener('change', e => {
+                e.stopPropagation();
+                this.toggleTemplateSelection(template.id, e.target.checked);
+                container.classList.toggle('selected', e.target.checked);
+            });
+
+            const button = document.createElement('button');
+            const name = template.itemName || 'Unnamed Template';
+            const abbr = document.createElement('abbr');
+            abbr.title = name;
+            abbr.textContent = name.length > 18 ? name.slice(0, 15) + '...' : name;
+
+            button.className = 'template-item';
+            button.dataset.templateId = template.id;
+            button.addEventListener('click', () => this.selectTemplate(template.id));
+
+            if (this.editor.selectedTemplates.has(template.id)) {
+                container.classList.add('selected');
+            }
+
+            button.appendChild(abbr);
+            button.appendChild(checkbox);
+            container.appendChild(button);
+            list.appendChild(container);
+        });
+
+        this.updateSelectionUI();
+    }
+
+    selectTemplate(templateId) {
+        const template = this.editor.templates.find(t => t.id === templateId);
+        if (template) {
+            if (this.editor.currentTemplate?.id === templateId) {
+                this.closeCurrentTemplate();
+                return;
+            }
+            this.editor.currentTemplate = template;
+            this.loadTemplateToForm(template);
+            this.selectTemplateInList(templateId);
+            this.toggleSelectionBaseButtons(true);
+        } else {
+            this.toggleSelectionBaseButtons(false);
+        }
+    }
+
+    selectTemplateInList(templateId) {
+        const buttons = document.querySelectorAll('.template-item');
+        buttons.forEach(btn => btn.classList.remove('active'));
+
+        const activeButton = document.querySelector(`[data-template-id="${templateId}"]`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+        
+        this.toggleSelectionBaseButtons(true);
+    }
+
+    closeCurrentTemplate() {
+        if (!this.editor.currentTemplate) return;
+
+        this.clearForm();
+        this.editor.currentTemplate = null;
+        this.clearTemplateSelection();
+        this.updatePreview();
+    }
+
+    clearTemplateSelection() {
+        const buttons = document.querySelectorAll('.template-item');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        this.toggleSelectionBaseButtons(false);
+    }
+
+    toggleSelectionBaseButtons(isVisible) {
+        const buttons = document.querySelectorAll('.selection');
+        buttons.forEach(btn => btn.classList.toggle('hidden', !isVisible));
+    }
+
+    toggleTemplateSelection(templateId, isSelected) {
+        if (isSelected) {
+            this.editor.selectedTemplates.add(templateId);
+        } else {
+            this.editor.selectedTemplates.delete(templateId);
+        }
+        this.updateSelectionUI();
+    }
+
+    selectAllTemplates() {
+        this.editor.selectedTemplates.clear();
+        this.editor.templates.forEach(template => {
+            this.editor.selectedTemplates.add(template.id);
+        });
+        this.updateSelectionUI();
+        this.renderTemplatesList();
+    }
+
+    deselectAllTemplates() {
+        this.editor.selectedTemplates.clear();
+        this.updateSelectionUI();
+        this.renderTemplatesList();
+    }
+
+    updateSelectionUI() {
+        const count = this.editor.selectedTemplates.size;
+        const total = this.editor.templates.length;
+
+        const selectionCount = document.getElementById('selectionCount');
+        selectionCount.textContent = `${count} of ${total} selected`;
+
+        const selectAllCheckbox = document.getElementById('selectAllTemplates');
+        if (count === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (count === total) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+
+        const exportButton = document.getElementById('exportMultiple');
+        const exportTitle = document.getElementById('exportMultipleTitle');
+        if (count === 0) {
+            exportTitle.textContent = 'Export All Items';
+            exportButton.title = 'Exports all Templates to Unreal .mnteaitems file';
+        } else {
+            exportTitle.textContent = `Export Items (${count})`;
+            exportButton.title = `Exports ${count} selected Templates to Unreal .mnteaitems file`;
+        }
+    }
+
+    async loadTemplateToForm(template) {
+        this.clearAllFormErrors();
+
+        document.getElementById('itemName').value = template.itemName || '';
+        document.getElementById('itemID').value = template.itemID || '';
+        document.getElementById('displayName').value = template.displayName || '';
+        document.getElementById('short-description').value = template.thumbnailDescription || '';
+        document.getElementById('description').value = template.description || '';
+        document.getElementById('itemType').value = template.itemType || 'Misc';
+        document.getElementById('rarity').value = template.rarity || 'Common';
+        document.getElementById('maxStackSize').value = template.maxStackSize || 1;
+        document.getElementById('weight').value = template.weight || 0;
+        document.getElementById('value').value = template.value || 0;
+        document.getElementById('durability').value = template.durability || 100;
+
+        document.getElementById('isStackable').checked = template.isStackable || false;
+        document.getElementById('isDroppable').checked = template.isDroppable || false;
+        document.getElementById('isUsable').checked = template.isUsable || false;
+        document.getElementById('isEquippable').checked = template.isEquippable || false;
+        document.getElementById('isTradeable').checked = template.isTradeable || false;
+        document.getElementById('isQuestItem').checked = template.isQuestItem || false;
+
+        document.getElementById('iconPath').value = '';
+        document.getElementById('meshPath').value = '';
+
+        this.clearFileInfoDisplays();
+        await this.showFileInfo(template, 'icon');
+        await this.showFileInfo(template, 'mesh');
+
+        document.getElementById('materialPath').value = template.materialPath || '';
+        document.getElementById('equipSlot').value = template.equipSlot || 'None';
+
+        this.loadCustomProperties(template.customProperties || []);
+
+        const equipmentSection = document.getElementById('equipmentSection');
+        equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
+
+        this.updatePreview();
+    }
+
+    clearForm() {
+        document.getElementById('templateForm').reset();
+        document.getElementById('customPropsContainer').innerHTML = '';
+        document.getElementById('equipmentSection').style.display = 'none';
+
+        this.clearFileInfoDisplays();
+        this.editor.customPropCounter = 0;
+        this.closePreview();
+    }
+
+    clearFileInfoDisplays() {
+        const iconGroup = document.getElementById('iconPath').closest('.form-group');
+        const iconInfo = iconGroup.querySelector('.file-info-display');
+        if (iconInfo) iconInfo.remove();
+
+        const meshGroup = document.getElementById('meshPath').closest('.form-group');
+        const meshInfo = meshGroup.querySelector('.file-info-display');
+        if (meshInfo) meshInfo.remove();
+    }
+
+    async showFileInfo(template, fileType) {
+        const fileId = fileType === 'icon' ? template.iconFileId : template.meshFileId;
+        if (!fileId) return;
+
+        const fileData = await this.editor.fileRepo.get(fileId);
+        if (!fileData) return;
+
+        const inputId = fileType === 'icon' ? 'iconPath' : 'meshPath';
+        const fileGroup = document.getElementById(inputId).closest('.form-group');
+
+        const existingInfo = fileGroup.querySelector('.file-info-display');
+        if (existingInfo) existingInfo.remove();
+
+        const fileInfoDiv = document.createElement('div');
+        fileInfoDiv.className = 'file-info-display';
+
+        const statusColor = 'var(--success-color)';
+        const statusIcon = fileType === 'icon' ? '🖼️' : '🎨';
+
+        fileInfoDiv.style.cssText = `
+            margin-top: var(--spacing-xs);
+            padding: var(--spacing-sm);
+            background: var(--bg-light);
+            border-radius: var(--border-radius-sm);
+            border-left: 3px solid ${statusColor};
+            font-size: var(--font-size-sm);
+            position: relative;
+        `;
+
+        let infoText = `${statusIcon} Stored ${fileType}: ${fileData.fileName}`;
+        infoText += `\n📊 Size: ${(fileData.size / 1024).toFixed(1)} KB`;
+        infoText += `\n✨ Ready for export!`;
+
+        if (fileType === 'icon' && fileData.fileType.startsWith('image/')) {
+            const preview = document.createElement('img');
+            const previewUrl = await this.editor.fileRepo.getPreviewUrl(fileId);
+            if (previewUrl) {
+                preview.src = previewUrl;
+                preview.style.cssText = `
+                    width: 32px;
+                    height: 32px;
+                    object-fit: cover;
+                    border-radius: var(--border-radius-sm);
+                    float: right;
+                    margin-left: var(--spacing-sm);
+                `;
+                fileInfoDiv.appendChild(preview);
+            }
+        }
+
+        fileInfoDiv.appendChild(document.createTextNode(infoText));
+        fileInfoDiv.style.whiteSpace = 'pre-line';
+        fileGroup.appendChild(fileInfoDiv);
+    }
+
+    loadCustomProperties(properties) {
+        const container = document.getElementById('customPropsContainer');
+        container.innerHTML = '';
+        this.editor.customPropCounter = 0;
+
+        properties.forEach(prop => {
+            this.addCustomProperty(prop.name, prop.value);
+        });
+    }
+
+    addCustomProperty(name = '', value = '') {
+        const container = document.getElementById('customPropsContainer');
+        const propId = this.editor.customPropCounter++;
+
+        const propRow = document.createElement('div');
+        propRow.className = 'custom-prop-row';
+        propRow.innerHTML = `
+            <div class="properties">
+                <div class="form-group property">
+                    <label>Property Name</label>
+                    <input type="text" class="prop-name" value="${name}" placeholder="Property name">
+                </div>
+                <div class="form-group property">
+                    <label>Value</label>
+                    <input type="text" class="prop-value" value="${value}" placeholder="Property value">
+                </div> 
+            </div>
+            <button type="button" class="btn btn-danger btn-small remove-prop close-small">✖</button>           
+        `;
+
+        propRow.querySelector('.remove-prop').addEventListener('click', () => {
+            propRow.remove();
+            this.updatePreview();
+        });
+
+        propRow.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => this.updatePreview());
+        });
+
+        container.appendChild(propRow);
+        this.updatePreview();
+    }
+
+    updatePreview() {
+        if (!this.editor.currentTemplate) {
+            document.getElementById('previewContent').textContent = 
+                'Preview is empty. Select Template to update the Preview.';
+            return;
+        }
+
+        const previewData = this.getFormData();
+        const jsonString = JSON.stringify(previewData, null, 2);
+        document.getElementById('previewContent').textContent = jsonString;
+    }
+
+    getFormData() {
+        const customProps = [];
+        const customPropsContainer = document.getElementById('customPropsContainer');
+        const propRows = customPropsContainer.querySelectorAll('.custom-prop-row');
+
+        propRows.forEach(row => {
+            const name = row.querySelector('.prop-name').value;
+            const value = row.querySelector('.prop-value').value;
+            if (name && value) {
+                customProps.push({ name, value });
+            }
+        });
+
+        return {
+            itemName: document.getElementById('itemName').value,
+            itemID: document.getElementById('itemID').value,
+            displayName: document.getElementById('displayName').value,
+            thumbnailDescription: document.getElementById('short-description').value,
+            description: document.getElementById('description').value,
+            itemType: document.getElementById('itemType').value,
+            rarity: document.getElementById('rarity').value,
+            maxStackSize: parseInt(document.getElementById('maxStackSize').value),
+            weight: parseFloat(document.getElementById('weight').value),
+            value: parseInt(document.getElementById('value').value),
+            durability: parseInt(document.getElementById('durability').value),
+            isStackable: document.getElementById('isStackable').checked,
+            isDroppable: document.getElementById('isDroppable').checked,
+            isUsable: document.getElementById('isUsable').checked,
+            isEquippable: document.getElementById('isEquippable').checked,
+            isTradeable: document.getElementById('isTradeable').checked,
+            isQuestItem: document.getElementById('isQuestItem').checked,
+            iconFileId: this.editor.currentTemplate?.iconFileId || null,
+            meshFileId: this.editor.currentTemplate?.meshFileId || null,
+            meshPath: document.getElementById('meshPath').value,
+            materialPath: document.getElementById('materialPath').value,
+            equipSlot: document.getElementById('equipSlot').value,
+            customProperties: customProps
+        };
+    }
+
+    showPreview() {
+        if (!document.getElementById('previewPanel').classList.contains('show')) {
+            document.getElementById('previewPanel').classList.add('show');
+        }
+    }
+
+    closePreview() {
+        document.getElementById('previewPanel').classList.remove('show');
+    }
+
+    showHelp() {
+        document.getElementById('helpModal').classList.add('show');
+    }
+
+    closeHelp() {
+        document.getElementById('helpModal').classList.remove('show');
+    }
+
+    clearAllFormErrors() {
+        const form = document.getElementById('templateForm');
+        const allFormGroups = form.querySelectorAll('.form-group');
+
+        allFormGroups.forEach(group => {
+            group.classList.remove('error');
+            const errorDiv = group.querySelector('.field-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+        });
+    }
+}
