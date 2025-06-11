@@ -252,4 +252,9 @@
     .first-section {
         margin-top: 1.5rem;
     }
+
+    .modal-body,
+    .help-body {
+        padding: var(--spacing-sm);
+    }
 }
