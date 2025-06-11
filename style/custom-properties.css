@@ -1,12 +1,16 @@
 /* Custom Properties */
 .custom-properties {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 1rem;
+    background: var(--bg-light);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-lg);
 }
 
 .custom-props-header {
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.custom-props-header h3 {
+    margin-bottom: var(--spacing-sm);
 }
 
 .properties {
@@ -21,8 +25,8 @@
 .custom-prop-row {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
     align-items: end;
 }
 

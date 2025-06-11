@@ -21,6 +21,9 @@
     --bg-light: #f8f9fa;
     --bg-border: #e9ecef;
     --bg-border-dark: #dee2e6;
+    --bg-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --accent-color: #4a90e2;
 
     /* Spacing */
     --spacing-xs: 0.3rem;
@@ -59,4 +62,40 @@
     --font-size-lg: 1.2rem;
     --font-size-xl: 1.3rem;
     --font-size-xxl: 1.8rem;
+}
+
+/* Dark Theme Variables */
+:root[data-theme="dark"] {
+    /* Colors */
+    --primary-color: #1b2b3b;
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --background-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --secondary-color: #64748b;
+    --danger-color: #ef4444;
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+    --info-color: #06b6d4;
+
+    /* Text Colors */
+    --text-primary: #868686;
+    --text-secondary: #868686;
+    --text-muted: #94a3b8;
+
+    /* Background Colors */
+    --bg-white: rgb(16 16 16 / 95%);
+    --bg-white-solid: #1e1e1e;
+    --bg-light: #252525;
+    --bg-border: #383838;
+    --bg-border-dark: #2b2b2b;
+    --bg-secondary: #475569;
+    --border-color: #414141;
+    --accent-color: #60a5fa;
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-error-sm: 0 2px 10px rgba(239, 68, 68, 0.3);
+    --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --shadow-error-md: 0 2px 10px rgba(239, 68, 68, 0.3);
+    --shadow-lg: 0 4px 12px rgba(96, 165, 250, 0.4);
+    --shadow-error-lg: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
