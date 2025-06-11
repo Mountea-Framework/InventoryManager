@@ -10,7 +10,3 @@
     z-index: 1000;
     position: fixed;
 }
-
-.first-section {
-    margin-top: var(--padding-md);
-}

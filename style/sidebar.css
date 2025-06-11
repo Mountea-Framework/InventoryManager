@@ -18,8 +18,7 @@
 
 #templatesList h3 {
     margin-bottom: var(--spacing-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
 }
 
 #templatesList ul {

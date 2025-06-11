@@ -28,7 +28,7 @@
 
 .form-group:has(input[required]) > label::after {
     content: "*";
-    color: red;
+    color: var(--danger-color);
     margin-left: 0.25em;
 }
 
@@ -49,6 +49,7 @@
     width: 100%;
     max-width: 100%;
     min-width: 0;
+    background: var(--bg-white-solid);
 }
 
 .form-group input[type="file"] {
@@ -62,7 +63,7 @@
 .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 
 .form-group input:hover,
@@ -70,7 +71,7 @@
 .form-group textarea:hover {
     outline: none;
     border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }
 
 .form-group textarea {
@@ -84,7 +85,7 @@ input[type="checkbox"] {
     height: 20px;
     aspect-ratio: 1 / 1 !important;
     appearance: none;
-    border: 2px solid #ccc;
+    border: 2px solid var(--bg-border);
     border-radius: 50% !important;
     background-color: transparent;
     cursor: pointer;
@@ -93,7 +94,7 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-    background-color: var(--primary-color);
+    background-color: var(--accent-color);
     border-color: transparent;
 }
 
@@ -121,6 +122,7 @@ input[type="checkbox"]:checked::after {
     font-weight: 400;
     cursor: pointer;
     margin-bottom: 0;
+    color: var(--text-secondary);
 }
 
 .checkbox-group input[type="checkbox"] {
@@ -134,9 +136,9 @@ input[type="checkbox"]:checked::after {
     display: flex;
     gap: 1rem;
     padding: var(--spacing-md);
-    background: white;
+    background: var(--bg-white-solid);
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
     margin-top: var(--spacing-sm);
     justify-content: left;
     flex-wrap: wrap;
@@ -155,4 +157,17 @@ input[type="checkbox"]:checked::after {
     color: var(--danger-color);
     font-size: var(--font-size-sm);
     margin-top: var(--spacing-xs);
+}
+
+/* Dark theme specific adjustments */
+:root[data-theme="dark"] .form-group input:focus,
+:root[data-theme="dark"] .form-group select:focus,
+:root[data-theme="dark"] .form-group textarea:focus {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+:root[data-theme="dark"] .form-group input:hover,
+:root[data-theme="dark"] .form-group select:hover,
+:root[data-theme="dark"] .form-group textarea:hover {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
 }

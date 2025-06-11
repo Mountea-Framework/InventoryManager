@@ -113,7 +113,6 @@
     }
 
     header h1 {
-        color: var(--text-primary);
         font-size: var(--font-size-base);
         font-weight: 800;
         text-align: start;
@@ -236,7 +235,8 @@
         font-size: var(--font-size-sm);
         width: max-content;
         min-width: 3rem;
-        border: none;        
+        border: none;
+        background-color: transparent;        
     }
 
     .btn-secondary {
@@ -246,5 +246,9 @@
     .selection-controls .btn-small {
         border-radius: var(--border-radius-sm) !important;
         min-width: 6rem !important;
+    }
+    
+    .first-section {
+        margin-top: 1.5rem;
     }
 }

@@ -7,6 +7,7 @@ import { ValidationManager } from '../forms/ValidationManager.js';
 import { FileHandler } from '../features/FileHandler.js';
 import { ImportExport } from '../features/ImportExport.js';
 import { SettingsManager } from '../features/SettingsManager.js';
+import { ThemeManager } from '../features/ThemeManager.js';
 import { NotificationSystem } from '../utils/NotificationSystem.js';
 import { Helpers } from '../utils/Helpers.js';
 
@@ -53,6 +54,7 @@ export class InventoryEditor {
             this.fileHandler = new FileHandler(this);
             this.importExport = new ImportExport(this);
             this.settingsManager = new SettingsManager(this);
+            this.themeManager = new ThemeManager(this);
 
             await this.loadSettings();
             await this.loadTemplates();
@@ -169,6 +171,10 @@ export class InventoryEditor {
                         e.preventDefault();
                         this.duplicateCurrentTemplate();
                         break;
+                    case 't':
+                        e.preventDefault();
+                        this.themeManager.toggleTheme();
+                        break;
                 }
             }
 
@@ -195,7 +201,7 @@ export class InventoryEditor {
         const itemIdGroup = document.getElementById('itemID').closest('.form-group');
         const generateBtn = document.createElement('button');
         generateBtn.type = 'button';
-        generateBtn.className = 'btn btn btn-secondary generate-guid-btn';
+        generateBtn.className = 'btn btn-secondary generate-guid-btn';
         generateBtn.textContent = 'Generate New GUID';
         generateBtn.style.marginTop = 'var(--spacing-xs)';
         generateBtn.style.alignSelf = 'flex-start';

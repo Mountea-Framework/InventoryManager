@@ -10,6 +10,10 @@ title {
     user-select: none;
 }
 
+* { 
+    color: var(--text-primary);
+}
+
 small {
     max-width: 75%;
 }
