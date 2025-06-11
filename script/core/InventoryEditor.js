@@ -1,18 +1,12 @@
 import { DatabaseManager } from '../database/DatabaseManager.js';
 import { TemplateRepository } from '../database/TemplateRepository.js';
 import { FileRepository } from '../database/FileRepository.js';
-import { UIManager } from '../ui/UIManager.js';
-import { FormManager } from '../forms/FormManager.js';
-import { ValidationManager } from '../forms/ValidationManager.js';
 
 export class InventoryEditor {
     constructor() {
         this.currentTemplate = null;
         this.customPropCounter = 0;
         this.selectedTemplates = new Set();
-        this.ui = new UIManager(this);
-        this.form = new FormManager(this);  
-        this.validation = new ValidationManager(this);
         
         this.settings = {
             categories: [
@@ -72,11 +66,11 @@ export class InventoryEditor {
     async saveSettings() {
         try {
             await this.dbManager.saveSettings(this.settings);
-            this.populateDropdowns();
-            this.showNotification('Settings saved successfully', 'success');
+            this.settingsManager.populateDropdowns();
+            this.notifications.show('Settings saved successfully', 'success');
         } catch (error) {
             console.error('Failed to save settings:', error);
-            this.showNotification('Failed to save settings', 'error');
+            this.notifications.show('Failed to save settings', 'error');
         }
     }
 
@@ -92,28 +86,28 @@ export class InventoryEditor {
     initializeEventListeners() {
         // Header controls
         document.getElementById('newTemplate').addEventListener('click', () => this.createNewTemplate());
-        document.getElementById('showPreview').addEventListener('click', (e) => this.showPreview(e));
-        document.getElementById('importTemplate').addEventListener('click', () => this.importTemplate());
-        document.getElementById('exportTemplate').addEventListener('click', () => this.exportTemplates());
-        document.getElementById('exportSingle').addEventListener('click', () => this.exportSingleTemplate());
-        document.getElementById('exportMultiple').addEventListener('click', () => this.exportMultipleTemplates());
-        document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileImport(e));
-        document.getElementById('help').addEventListener('click', () => this.showHelp());
-        document.getElementById('closeHelp').addEventListener('click', () => this.closeHelp());
-        document.getElementById('settings').addEventListener('click', () => this.showSettings());
-        document.getElementById('mobileClose').addEventListener('click', () => this.closeCurrentTemplate());
+        document.getElementById('showPreview').addEventListener('click', (e) => this.ui.showPreview(e));
+        document.getElementById('importTemplate').addEventListener('click', () => this.importExport.importTemplate());
+        document.getElementById('exportTemplate').addEventListener('click', () => this.importExport.exportTemplates());
+        document.getElementById('exportSingle').addEventListener('click', () => this.importExport.exportSingleTemplate());
+        document.getElementById('exportMultiple').addEventListener('click', () => this.importExport.exportMultipleTemplates());
+        document.getElementById('fileInput').addEventListener('change', (e) => this.importExport.handleFileImport(e));
+        document.getElementById('help').addEventListener('click', () => this.ui.showHelp());
+        document.getElementById('closeHelp').addEventListener('click', () => this.ui.closeHelp());
+        document.getElementById('settings').addEventListener('click', () => this.settingsManager.showSettings());
+        document.getElementById('mobileClose').addEventListener('click', () => this.ui.closeCurrentTemplate());
 
         // Form controls
         document.getElementById('mobileSave').addEventListener('click', () => this.saveCurrentTemplate());
         document.getElementById('duplicateTemplate').addEventListener('click', () => this.duplicateCurrentTemplate());
 
         // Selection controls
-        document.getElementById('selectAllTemplates').addEventListener('click', () => this.selectAllTemplates());
-        document.getElementById('deselectAll').addEventListener('click', () => this.deselectAllTemplates());
+        document.getElementById('selectAllTemplates').addEventListener('click', () => this.ui.selectAllTemplates());
+        document.getElementById('deselectAll').addEventListener('click', () => this.ui.deselectAllTemplates());
         document.getElementById('deleteSelected').addEventListener('click', () => this.deleteSelectedTemplates());
 
         // Custom properties
-        document.getElementById('addCustomProp').addEventListener('click', () => this.addCustomProperty());
+        document.getElementById('addCustomProp').addEventListener('click', () => this.ui.addCustomProperty());
 
         // Equipment section toggle
         document.getElementById('isEquippable').addEventListener('change', (e) => {
@@ -133,17 +127,17 @@ export class InventoryEditor {
         });
 
         // Preview and settings panels
-        document.getElementById('closePreview').addEventListener('click', () => this.closePreview());
-        document.getElementById('closeSettings').addEventListener('click', () => this.closeSettings());
-        document.getElementById('saveSettings').addEventListener('click', () => this.saveSettingsData());
-        document.getElementById('addCategory').addEventListener('click', () => this.addCategory());
-        document.getElementById('addRarity').addEventListener('click', () => this.addRarity());
-        document.getElementById('addEquipmentSlot').addEventListener('click', () => this.addEquipmentSlot());
+        document.getElementById('closePreview').addEventListener('click', () => this.ui.closePreview());
+        document.getElementById('closeSettings').addEventListener('click', () => this.settingsManager.closeSettings());
+        document.getElementById('saveSettings').addEventListener('click', () => this.settingsManager.saveSettingsData());
+        document.getElementById('addCategory').addEventListener('click', () => this.settingsManager.addCategory());
+        document.getElementById('addRarity').addEventListener('click', () => this.settingsManager.addRarity());
+        document.getElementById('addEquipmentSlot').addEventListener('click', () => this.settingsManager.addEquipmentSlot());
 
         // Auto-save on form changes
         document.getElementById('templateForm').addEventListener('input', () => {
             if (this.currentTemplate) {
-                this.updatePreview();
+                this.ui.updatePreview();
             }
         });
 
@@ -219,4 +213,6 @@ export class InventoryEditor {
 
         itemIdGroup.appendChild(generateBtn);
     }
+
+
 }
