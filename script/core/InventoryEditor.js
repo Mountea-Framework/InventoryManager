@@ -230,6 +230,12 @@ export class InventoryEditor {
     }
 
     async createNewTemplate() {
+        // Check current form validation if template exists
+        if (!this.validation.validateForm().isValid) {
+            this.notifications.show('Please fill required data first', 'error');
+            return;
+        }
+
         const template = this.templateRepo.createEmptyTemplate();
         this.templates.unshift(template);
         this.currentTemplate = template;
@@ -242,14 +248,28 @@ export class InventoryEditor {
 
     async saveCurrentTemplate() {
         if (!this.validation.validateForm().isValid) {
-            this.notifications.show('Please fix validation errors', 'error');
+            this.notifications.show('Please fill required data first', 'error');
             return;
         }
-
+        
         const formData = this.ui.getFormData();
-        Object.assign(this.currentTemplate, formData);
+        
+        if (!this.currentTemplate) {
+            // Create template using form's itemID, not a new GUID
+            this.currentTemplate = {
+                id: formData.itemID,
+                ...formData
+            };
+            this.templates.unshift(this.currentTemplate);
+        } else {
+            // Update existing template and sync both IDs
+            formData.id = formData.itemID;
+            Object.assign(this.currentTemplate, formData);
+        }
+        
         await this.templateRepo.save(this.currentTemplate);
         this.ui.renderTemplatesList();
+        this.ui.selectTemplateInList(this.currentTemplate.id);
         this.notifications.show('Template saved successfully', 'success');
     }
 

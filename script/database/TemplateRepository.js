@@ -223,10 +223,10 @@ export class TemplateRepository {
     }
 
     createEmptyTemplate() {
-        const id = this.generateId();
+        const newId = this.generateId();
         return {
-            id,
-            itemID: id,
+            id: newId,
+            itemID: newId,
             itemName: '',
             displayName: '',
             thumbnailDescription: '',
