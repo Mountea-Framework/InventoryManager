@@ -8,6 +8,7 @@ import { FileHandler } from '../features/FileHandler.js';
 import { ImportExport } from '../features/ImportExport.js';
 import { SettingsManager } from '../features/SettingsManager.js';
 import { NotificationSystem } from '../utils/NotificationSystem.js';
+import { Helpers } from '../utils/Helpers.js';
 
 export class InventoryEditor {
     constructor() {
@@ -75,17 +76,6 @@ export class InventoryEditor {
             if (settings.equipmentSlots) this.settings.equipmentSlots = settings.equipmentSlots;
         } catch (error) {
             console.error('Failed to load settings:', error);
-        }
-    }
-
-    async saveSettings() {
-        try {
-            await this.dbManager.saveSettings(this.settings);
-            this.settingsManager.populateDropdowns();
-            this.notifications.show('Settings saved successfully', 'success');
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            this.notifications.show('Failed to save settings', 'error');
         }
     }
 
@@ -201,14 +191,6 @@ export class InventoryEditor {
         });
     }
 
-    generateGUID() {
-        return 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0;
-            const v = c == 'x' ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-        });
-    }
-
     addGenerateGuidButton() {
         const itemIdGroup = document.getElementById('itemID').closest('.form-group');
         const generateBtn = document.createElement('button');
@@ -219,7 +201,7 @@ export class InventoryEditor {
         generateBtn.style.alignSelf = 'flex-start';
 
         generateBtn.addEventListener('click', () => {
-            document.getElementById('itemID').value = this.generateGUID();
+            document.getElementById('itemID').value = Helpers.generateGUID();
             this.validation.clearFieldError('itemID');
             if (this.currentTemplate) {
                 this.ui.updatePreview();

@@ -160,9 +160,10 @@ export class SettingsManager {
             }
 
             this.editor.settings = newSettings;
-            await this.editor.saveSettings();
+            await this.editor.dbManager.saveSettings(newSettings);
             this.populateDropdowns();
             this.closeSettings();
+            this.editor.notifications.show('Settings saved successfully', 'success');
         } catch (error) {
             console.error('Settings save error:', error);
             this.editor.notifications.show('Failed to save settings', 'error');
@@ -292,7 +293,7 @@ export class SettingsManager {
                     }
                     
                     this.editor.settings = importedSettings;
-                    await this.editor.saveSettings();
+                    await this.editor.dbManager.saveSettings(importedSettings);
                     this.populateDropdowns();
                     this.populateSettingsModal();
                     this.editor.notifications.show('Settings imported successfully', 'success');
