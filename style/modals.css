@@ -1,0 +1,227 @@
+/* Modals */
+.settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-modal.show {
+    display: flex;
+}
+
+.settings-content {
+    background: var(--bg-white);
+    border-radius: var(--border-radius-md);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+}
+
+.settings-header h3 {
+    margin: 0;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+}
+
+.modal-section {
+    margin-bottom: var(--spacing-lg);
+    background-color: var(--bg-border);
+    padding: var(--padding-md);
+    border-radius: var(--border-radius-md);
+}
+
+.modal-section h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-color);
+}
+
+.settings-controls {
+    margin-bottom: var(--spacing-md);
+}
+
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.settings-row {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.settings-row input[type="text"] {
+    flex: 1;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--bg-light);
+    color: var(--text-color);
+}
+
+.settings-row input[type="color"] {
+    width: 50px;
+    height: 35px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+}
+
+.settings-footer {
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.help-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-modal.show {
+    display: flex;
+}
+
+.help-content {
+    background: var(--bg-white);
+    border-radius: var(--border-radius-md);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.help-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+}
+
+.help-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.4rem;
+}
+
+.help-body {
+    padding: var(--spacing-lg);
+    line-height: 1.6;
+}
+
+.help-section {
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.help-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.help-section h4 {
+    color: var(--accent-color);
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+}
+
+.help-section h5 {
+    color: var(--text-primary);
+    margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+    font-size: 1.1rem;
+}
+
+.help-section p {
+    margin: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+}
+
+.help-section ul {
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-xl);
+}
+
+.help-section li {
+    margin: var(--spacing-xs) 0;
+    color: var(--text-secondary);
+}
+
+.field-explanations {
+    display: grid;
+    gap: var(--spacing-lg);
+}
+
+.field-group {
+    background: var(--bg-light);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    border-left: 4px solid var(--accent-color);
+}
+
+.shortcuts-grid {
+    display: grid;
+    gap: var(--spacing-sm);
+    background: var(--bg-light);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+}
+
+.shortcut-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.shortcut-key {
+    background: var(--bg-secondary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-align: left;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.shortcut-desc {
+    color: var(--text-secondary);
+}

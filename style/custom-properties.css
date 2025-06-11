@@ -1,0 +1,37 @@
+/* Custom Properties */
+.custom-properties {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.custom-props-header {
+    margin-bottom: 1rem;
+}
+
+.properties {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    width: 100%;
+}
+
+.custom-prop-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: end;
+}
+
+.custom-prop-row .form-group {
+    margin-bottom: 0;
+    width: 100%;
+}
+
+.remove-prop {
+    align-self: start;
+    justify-self: start;
+}
