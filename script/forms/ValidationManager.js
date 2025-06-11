@@ -388,4 +388,21 @@ export class ValidationManager {
             clearTimeout(field.validationTimeout);
         });
     }
+
+    validateUniqueness(items, getValueFn, itemTypeName) {
+        const values = items.map(getValueFn).filter(val => val.trim());
+        const duplicates = values.filter((val, index) => 
+            values.findIndex(v => v.toLowerCase() === val.toLowerCase()) !== index
+        );
+        
+        if (duplicates.length > 0) {
+            const uniqueDuplicates = [...new Set(duplicates)];
+            return {
+                isValid: false,
+                message: `Duplicate ${itemTypeName}${uniqueDuplicates.length > 1 ? 's' : ''}: ${uniqueDuplicates.join(', ')}`
+            };
+        }
+        
+        return { isValid: true };
+    }
 }
