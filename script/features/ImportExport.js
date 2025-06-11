@@ -1,3 +1,5 @@
+import { Helpers } from "../utils/Helpers.js";
+
 export class ImportExport {
     constructor(editor) {
         this.editor = editor;
@@ -365,7 +367,7 @@ export class ImportExport {
         }
         
         if (!template.itemID) {
-            template.itemID = this.generateGUID();
+            template.itemID = Helpers.generateGUID();
             template.id = template.itemID;
         }
         
