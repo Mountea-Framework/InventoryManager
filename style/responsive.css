@@ -45,6 +45,7 @@
 @media (max-width: 1200px) {
     .main-content {
         flex-direction: column;
+        margin-top: 1rem;
     }
 
     .sidebar {
