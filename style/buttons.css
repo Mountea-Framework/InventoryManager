@@ -25,7 +25,8 @@ button {
 }
 
 .btn-primary {
-    border-color: var(--primary-color);
+    border-color: transparent;
+    background-color: transparent;
 }
 
 .btn-primary:hover {
@@ -33,7 +34,8 @@ button {
 }
 
 .btn-secondary {
-    border-color: var(--bg-border);
+    border-color: transparent;
+    background-color: transparent;
 }
 /*
 .btn-danger {
@@ -98,6 +100,8 @@ button {
 .selection-controls .btn-small {
     border-radius: var(--border-radius-sm) !important;
     min-width: 8rem !important;
+    background-color: transparent;
+    border-color: transparent;
 }
 
 .generate-guid-btn {
