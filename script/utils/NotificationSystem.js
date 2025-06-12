@@ -15,6 +15,7 @@ export class NotificationSystem {
             z-index: 10000;
             max-width: 400px;
             pointer-events: none;
+            color: white !important;
         `;
         document.body.appendChild(this.container);
     }
@@ -59,6 +60,7 @@ export class NotificationSystem {
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            color: white !important;
         `;
 
         const content = document.createElement('div');
@@ -66,6 +68,7 @@ export class NotificationSystem {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            color: white !important;
         `;
 
         const icon = document.createElement('span');
@@ -81,7 +84,7 @@ export class NotificationSystem {
         closeBtn.style.cssText = `
             background: none;
             border: none;
-            color: white;
+            color: white !important;
             font-size: 1.5rem;
             cursor: pointer;
             padding: 0;
@@ -173,7 +176,7 @@ export class NotificationSystem {
         element.className = 'notification notification-progress';
         element.style.cssText = `
             background: var(--primary-color);
-            color: white;
+            color: white !important;
             padding: 1rem 1.5rem;
             margin-bottom: 0.5rem;
             border-radius: 6px;
@@ -195,6 +198,7 @@ export class NotificationSystem {
             height: 4px;
             border-radius: 2px;
             overflow: hidden;
+            color: var(--text-primary);
         `;
 
         const progressFill = document.createElement('div');
@@ -203,6 +207,7 @@ export class NotificationSystem {
             height: 100%;
             width: 0%;
             transition: width 0.3s ease;
+            color: var(--text-primary);
         `;
 
         progressBar.appendChild(progressFill);
@@ -259,12 +264,13 @@ export class NotificationSystem {
 
             const dialog = document.createElement('div');
             dialog.style.cssText = `
-                background: white;
+                background: var(--bg-white-solid);
                 padding: 2rem;
                 border-radius: 8px;
                 max-width: 400px;
                 width: 90%;
                 text-align: center;
+                color: var(--text-primary);
             `;
 
             dialog.innerHTML = `

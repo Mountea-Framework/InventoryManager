@@ -22,4 +22,5 @@
 /* Utilities and responsive */
 @import 'utilities.css';
 @import 'animations.css';
+@import 'notifications.css';
 @import 'responsive.css';
