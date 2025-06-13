@@ -112,14 +112,18 @@ A browser-based Inventory Template Editor for Unreal Engine projects — manage 
 ## Project Structure
 
 ```
-mountea-inventory-editor/
-├── index.html
-├── style/
-│   └── master.css
-├── script/
-│   └── master.js
-├── assets/
-└── README.md
+InventoryManager/
+├── .github/
+│   └── workflows/            # GitHub Actions workflows
+├── assets/                   # Static assets (images, icons, etc.)
+├── components/               # HTML components
+├── script/                   # App JS scripts
+├── style/                    # CSS files
+├── .gitignore                # Git ignore rules
+├── LICENSE                   # Project license
+├── README.md                 # Project readme
+├── index.html                # Main HTML file
+└── manifest.json             # Web app manifest
 ```
 
 ---
