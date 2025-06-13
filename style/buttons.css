@@ -79,8 +79,20 @@ button {
 }
 
 #mobileClose,
-#mobileSave {
+#mobileSave,
+#mobileMountea {
     background: var(--bg-white-solid);
+}
+
+#mobileMountea::after {
+    content: "";
+    display: inline-block;
+    width: 1.75rem;
+    height: 1.75rem;
+    background-image: url('../assets/Mountea_Logo.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
 }
 
 .close {
