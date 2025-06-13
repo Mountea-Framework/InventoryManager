@@ -271,8 +271,8 @@ export class InventoryEditor {
         this.templates.unshift(duplicate);
         this.currentTemplate = duplicate;
         this.ui.loadTemplateToForm(duplicate);
-        this.ui.selectTemplateInList(duplicate.id);
         this.ui.renderTemplatesList();
+        this.ui.selectTemplateInList(duplicate.id);        
         this.notifications.show('Template duplicated successfully', 'success');
     }
 
