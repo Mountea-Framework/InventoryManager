@@ -32,8 +32,8 @@
 #templatesList button {
     width: 100%;
     padding: 0.75rem;
-    background: var(--bg-light);
-    border: 1px solid var(--bg-border-dark);
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     text-align: left;
@@ -43,6 +43,7 @@
 
 #templatesList button:hover {
     box-shadow: var(--shadow-sm);
+    border-color: var(--bg-border);
 }
 
 #templatesList button.active {
