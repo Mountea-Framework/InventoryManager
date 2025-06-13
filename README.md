@@ -61,9 +61,18 @@ A browser-based Inventory Template Editor for Unreal Engine projects — manage 
 
 ---
 
+
 ## Demo
 
 [Interactive Project](https://mountea-framework.github.io/InventoryManager/)
+
+<p align="center" width="100%">
+    <img width="66%" src="https://github.com/user-attachments/assets/4cf23427-8a39-4fa2-9d37-d6466f3f1a5b">
+</p>
+
+<p align="center" width="100%">
+    <img width="66%" src="https://github.com/user-attachments/assets/6728d2bb-9baf-4281-b818-88545192c1a9">
+</p>
 
 ---
 
