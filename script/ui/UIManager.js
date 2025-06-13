@@ -5,6 +5,11 @@ export class UIManager {
 
     renderTemplatesList() {
         const list = document.getElementById('templatesList');
+        if (!list) {
+            console.warn('templatesList element not found');
+            return;
+        }
+        
         list.innerHTML = '';
 
         this.editor.templates.forEach(template => {
@@ -122,75 +127,106 @@ export class UIManager {
         const total = this.editor.templates.length;
 
         const selectionCount = document.getElementById('selectionCount');
-        selectionCount.textContent = `${count} of ${total} selected`;
+        if (selectionCount) {
+            selectionCount.textContent = `${count} of ${total} selected`;
+        }
 
         const selectAllCheckbox = document.getElementById('selectAllTemplates');
-        if (count === 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        } else if (count === total) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
+        if (selectAllCheckbox) {
+            if (count === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (count === total) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
         }
 
         const exportButton = document.getElementById('exportMultiple');
-        const exportTitle = document.getElementById('exportMultipleTitle');
-        if (count === 0) {
-            exportTitle.textContent = 'Export All Items';
-            exportButton.title = 'Exports all Templates to Unreal .mnteaitems file';
-        } else {
-            exportTitle.textContent = `Export Items (${count})`;
-            exportButton.title = `Exports ${count} selected Templates to Unreal .mnteaitems file`;
+        if (exportButton) {
+            const exportTitle = exportButton.querySelector('abbr');
+            if (exportTitle) {
+                if (count === 0) {
+                    exportTitle.textContent = 'Export All Items';
+                    exportButton.title = 'Exports all Templates to Unreal .mnteaitems file';
+                } else {
+                    exportTitle.textContent = `Export Items (${count})`;
+                    exportButton.title = `Exports ${count} selected Templates to Unreal .mnteaitems file`;
+                }
+            }
         }
     }
 
     async loadTemplateToForm(template) {
         this.clearAllFormErrors();
 
-        document.getElementById('itemName').value = template.itemName || '';
-        document.getElementById('itemID').value = template.itemID || '';
-        document.getElementById('displayName').value = template.displayName || '';
-        document.getElementById('short-description').value = template.thumbnailDescription || '';
-        document.getElementById('description').value = template.description || '';
-        document.getElementById('itemType').value = template.itemType || 'Misc';
-        document.getElementById('rarity').value = template.rarity || 'Common';
-        document.getElementById('maxStackSize').value = template.maxStackSize || 1;
-        document.getElementById('weight').value = template.weight || 0;
-        document.getElementById('value').value = template.value || 0;
-        document.getElementById('durability').value = template.durability || 100;
+        const setValue = (id, value) => {
+            const element = document.getElementById(id);
+            if (element) element.value = value || '';
+        };
 
-        document.getElementById('isStackable').checked = template.isStackable || false;
-        document.getElementById('isDroppable').checked = template.isDroppable || false;
-        document.getElementById('isUsable').checked = template.isUsable || false;
-        document.getElementById('isEquippable').checked = template.isEquippable || false;
-        document.getElementById('isTradeable').checked = template.isTradeable || false;
-        document.getElementById('isQuestItem').checked = template.isQuestItem || false;
+        const setChecked = (id, checked) => {
+            const element = document.getElementById(id);
+            if (element) element.checked = checked || false;
+        };
 
-        document.getElementById('iconPath').value = '';
-        document.getElementById('meshPath').value = '';
+        setValue('itemName', template.itemName);
+        setValue('itemID', template.itemID);
+        setValue('displayName', template.displayName);
+        setValue('short-description', template.thumbnailDescription);
+        setValue('description', template.description);
+        setValue('itemType', template.itemType || 'Misc');
+        setValue('rarity', template.rarity || 'Common');
+        setValue('maxStackSize', template.maxStackSize || 1);
+        setValue('weight', template.weight || 0);
+        setValue('value', template.value || 0);
+        setValue('durability', template.durability || 100);
+
+        setChecked('isStackable', template.isStackable);
+        setChecked('isDroppable', template.isDroppable);
+        setChecked('isUsable', template.isUsable);
+        setChecked('isEquippable', template.isEquippable);
+        setChecked('isTradeable', template.isTradeable);
+        setChecked('isQuestItem', template.isQuestItem);
+
+        setValue('iconPath', '');
+        setValue('meshPath', '');
 
         this.clearFileInfoDisplays();
         await this.showFileInfo(template, 'icon');
         await this.showFileInfo(template, 'mesh');
 
-        document.getElementById('materialPath').value = template.materialPath || '';
-        document.getElementById('equipSlot').value = template.equipSlot || 'None';
+        setValue('materialPath', template.materialPath);
+        setValue('equipSlot', template.equipSlot || 'None');
 
         this.loadCustomProperties(template.customProperties || []);
 
         const equipmentSection = document.getElementById('equipmentSection');
-        equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
+        if (equipmentSection) {
+            equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
+        }
 
         this.updatePreview();
     }
 
     clearForm() {
-        document.getElementById('templateForm').reset();
-        document.getElementById('customPropsContainer').innerHTML = '';
-        document.getElementById('equipmentSection').style.display = 'none';
+        const templateForm = document.getElementById('templateForm');
+        if (templateForm) {
+            templateForm.reset();
+        }
+
+        const customPropsContainer = document.getElementById('customPropsContainer');
+        if (customPropsContainer) {
+            customPropsContainer.innerHTML = '';
+        }
+
+        const equipmentSection = document.getElementById('equipmentSection');
+        if (equipmentSection) {
+            equipmentSection.style.display = 'none';
+        }
 
         this.clearFileInfoDisplays();
         this.editor.customPropCounter = 0;
@@ -198,13 +234,19 @@ export class UIManager {
     }
 
     clearFileInfoDisplays() {
-        const iconGroup = document.getElementById('iconPath').closest('.form-group');
-        const iconInfo = iconGroup.querySelector('.file-info-display');
-        if (iconInfo) iconInfo.remove();
+        const iconInput = document.getElementById('iconPath');
+        if (iconInput) {
+            const iconGroup = iconInput.closest('.form-group');
+            const iconInfo = iconGroup?.querySelector('.file-info-display');
+            if (iconInfo) iconInfo.remove();
+        }
 
-        const meshGroup = document.getElementById('meshPath').closest('.form-group');
-        const meshInfo = meshGroup.querySelector('.file-info-display');
-        if (meshInfo) meshInfo.remove();
+        const meshInput = document.getElementById('meshPath');
+        if (meshInput) {
+            const meshGroup = meshInput.closest('.form-group');
+            const meshInfo = meshGroup?.querySelector('.file-info-display');
+            if (meshInfo) meshInfo.remove();
+        }
     }
 
     async showFileInfo(template, fileType) {
@@ -215,7 +257,11 @@ export class UIManager {
         if (!fileData) return;
 
         const inputId = fileType === 'icon' ? 'iconPath' : 'meshPath';
-        const fileGroup = document.getElementById(inputId).closest('.form-group');
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const fileGroup = input.closest('.form-group');
+        if (!fileGroup) return;
 
         const existingInfo = fileGroup.querySelector('.file-info-display');
         if (existingInfo) existingInfo.remove();
@@ -264,6 +310,8 @@ export class UIManager {
 
     loadCustomProperties(properties) {
         const container = document.getElementById('customPropsContainer');
+        if (!container) return;
+
         container.innerHTML = '';
         this.editor.customPropCounter = 0;
 
@@ -274,6 +322,8 @@ export class UIManager {
 
     addCustomProperty(name = '', value = '') {
         const container = document.getElementById('customPropsContainer');
+        if (!container) return;
+
         const propId = this.editor.customPropCounter++;
 
         const propRow = document.createElement('div');
@@ -306,79 +356,103 @@ export class UIManager {
     }
 
     updatePreview() {
+        const previewContent = document.getElementById('previewContent');
+        if (!previewContent) return;
+
         if (!this.editor.currentTemplate) {
-            document.getElementById('previewContent').textContent = 
-                'Preview is empty. Select Template to update the Preview.';
+            previewContent.textContent = 'Preview is empty. Select Template to update the Preview.';
             return;
         }
 
         const previewData = this.getFormData();
         const jsonString = JSON.stringify(previewData, null, 2);
-        document.getElementById('previewContent').textContent = jsonString;
+        previewContent.textContent = jsonString;
     }
 
     getFormData() {
         const customProps = [];
         const customPropsContainer = document.getElementById('customPropsContainer');
-        const propRows = customPropsContainer.querySelectorAll('.custom-prop-row');
+        if (customPropsContainer) {
+            const propRows = customPropsContainer.querySelectorAll('.custom-prop-row');
+            propRows.forEach(row => {
+                const name = row.querySelector('.prop-name')?.value;
+                const value = row.querySelector('.prop-value')?.value;
+                if (name && value) {
+                    customProps.push({ name, value });
+                }
+            });
+        }
 
-        propRows.forEach(row => {
-            const name = row.querySelector('.prop-name').value;
-            const value = row.querySelector('.prop-value').value;
-            if (name && value) {
-                customProps.push({ name, value });
-            }
-        });
+        const getValue = (id) => {
+            const element = document.getElementById(id);
+            return element ? element.value : '';
+        };
+
+        const getChecked = (id) => {
+            const element = document.getElementById(id);
+            return element ? element.checked : false;
+        };
 
         return {
-            itemName: document.getElementById('itemName').value,
-            itemID: document.getElementById('itemID').value,
-            displayName: document.getElementById('displayName').value,
-            thumbnailDescription: document.getElementById('short-description').value,
-            description: document.getElementById('description').value,
-            itemType: document.getElementById('itemType').value,
-            rarity: document.getElementById('rarity').value,
-            maxStackSize: parseInt(document.getElementById('maxStackSize').value),
-            weight: parseFloat(document.getElementById('weight').value),
-            value: parseInt(document.getElementById('value').value),
-            durability: parseInt(document.getElementById('durability').value),
-            isStackable: document.getElementById('isStackable').checked,
-            isDroppable: document.getElementById('isDroppable').checked,
-            isUsable: document.getElementById('isUsable').checked,
-            isEquippable: document.getElementById('isEquippable').checked,
-            isTradeable: document.getElementById('isTradeable').checked,
-            isQuestItem: document.getElementById('isQuestItem').checked,
+            itemName: getValue('itemName'),
+            itemID: getValue('itemID'),
+            displayName: getValue('displayName'),
+            thumbnailDescription: getValue('short-description'),
+            description: getValue('description'),
+            itemType: getValue('itemType'),
+            rarity: getValue('rarity'),
+            maxStackSize: parseInt(getValue('maxStackSize')) || 1,
+            weight: parseFloat(getValue('weight')) || 0,
+            value: parseInt(getValue('value')) || 0,
+            durability: parseInt(getValue('durability')) || 100,
+            isStackable: getChecked('isStackable'),
+            isDroppable: getChecked('isDroppable'),
+            isUsable: getChecked('isUsable'),
+            isEquippable: getChecked('isEquippable'),
+            isTradeable: getChecked('isTradeable'),
+            isQuestItem: getChecked('isQuestItem'),
             iconFileId: this.editor.currentTemplate?.iconFileId || null,
             meshFileId: this.editor.currentTemplate?.meshFileId || null,
-            meshPath: document.getElementById('meshPath').value,
-            materialPath: document.getElementById('materialPath').value,
-            equipSlot: document.getElementById('equipSlot').value,
+            meshPath: getValue('meshPath'),
+            materialPath: getValue('materialPath'),
+            equipSlot: getValue('equipSlot'),
             customProperties: customProps
         };
     }
 
     showPreview() {
-        if (!document.getElementById('previewPanel').classList.contains('show')) {
-            document.getElementById('previewPanel').classList.add('show');
+        const previewPanel = document.getElementById('previewPanel');
+        if (previewPanel && !previewPanel.classList.contains('show')) {
+            previewPanel.classList.add('show');
         }
     }
 
     closePreview() {
-        document.getElementById('previewPanel').classList.remove('show');
+        const previewPanel = document.getElementById('previewPanel');
+        if (previewPanel) {
+            previewPanel.classList.remove('show');
+        }
     }
 
     showHelp() {
-        document.getElementById('helpModal').classList.add('show');
+        const helpModal = document.getElementById('helpModal');
+        if (helpModal) {
+            helpModal.classList.add('show');
+        }
     }
 
     closeHelp() {
-        document.getElementById('helpModal').classList.remove('show');
+        const helpModal = document.getElementById('helpModal');
+        if (helpModal) {
+            helpModal.classList.remove('show');
+        }
     }
 
     clearAllFormErrors() {
         const form = document.getElementById('templateForm');
-        const allFormGroups = form.querySelectorAll('.form-group');
+        if (!form) return;
 
+        const allFormGroups = form.querySelectorAll('.form-group');
         allFormGroups.forEach(group => {
             group.classList.remove('error');
             const errorDiv = group.querySelector('.field-error');

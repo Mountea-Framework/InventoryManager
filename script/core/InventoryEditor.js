@@ -50,6 +50,9 @@ export class InventoryEditor {
             await this.loadComponents();
             this.componentsLoaded = true;
             
+            // Wait for DOM to be ready
+            await this.waitForDOM();
+            
             // Initialize managers that depend on DOM elements
             this.ui = new UIManager(this);
             this.form = new FormManager(this);  
@@ -72,6 +75,11 @@ export class InventoryEditor {
 
             // Initialize event listeners AFTER components are loaded
             this.initializeEventListeners();
+            
+            // Wait a bit more to ensure all DOM elements are ready
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Now safely call UI methods
             this.ui.renderTemplatesList();
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
@@ -95,9 +103,34 @@ export class InventoryEditor {
         ];
 
         await this.componentLoader.loadComponents(components);
+    }
+
+    async waitForDOM() {
+        // Wait for critical elements to exist
+        const checkElements = [
+            '#selectionCount',
+            '#selectAllTemplates', 
+            '#exportMultiple',
+            '#templatesList'
+        ];
         
-        // Wait a bit for DOM to be ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max
+        
+        while (attempts < maxAttempts) {
+            const allExist = checkElements.every(selector => 
+                document.querySelector(selector) !== null
+            );
+            
+            if (allExist) {
+                return;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        console.warn('Some DOM elements not found after waiting');
     }
 
     async loadSettings() {
