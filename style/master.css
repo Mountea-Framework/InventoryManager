@@ -9,6 +9,7 @@
 @import 'layout.css';
 @import 'header.css';
 @import 'sidebar.css';
+@import 'loading.css';
 
 /* Form and button components */
 @import 'buttons.css';

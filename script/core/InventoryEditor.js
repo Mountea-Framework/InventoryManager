@@ -10,6 +10,7 @@ import { ImportExport } from '../features/ImportExport.js';
 import { SettingsManager } from '../features/SettingsManager.js';
 import { ThemeManager } from '../features/ThemeManager.js';
 import { NotificationSystem } from '../utils/NotificationSystem.js';
+import { LoadingManager } from '../utils/LoadingManager.js';
 import { Helpers } from '../utils/Helpers.js';
 
 export class InventoryEditor {
@@ -21,6 +22,7 @@ export class InventoryEditor {
         this.componentsLoaded = false;
         
         this.notifications = new NotificationSystem();
+        this.loadingManager = new LoadingManager();
 
         this.settings = {
             categories: [
@@ -46,6 +48,9 @@ export class InventoryEditor {
 
     async init() {
         try {
+            // Show loading screen
+            await this.loadingManager.show();
+            
             // Load all components first
             await this.loadComponents();
             this.componentsLoaded = true;
@@ -54,11 +59,13 @@ export class InventoryEditor {
             await this.waitForDOM();
             
             // Initialize managers that depend on DOM elements
+            this.loadingManager.trackUIInit();
             this.ui = new UIManager(this);
             this.form = new FormManager(this);  
             this.validation = new ValidationManager(this);
             
             // Initialize database and repositories
+            this.loadingManager.trackDatabaseInit();
             this.dbManager = new DatabaseManager();
             await this.dbManager.initialize();
 
@@ -70,24 +77,33 @@ export class InventoryEditor {
             this.settingsManager = new SettingsManager(this);
             this.themeManager = new ThemeManager(this);
 
+            this.loadingManager.trackSettingsLoad();
             await this.loadSettings();
+            
+            this.loadingManager.trackTemplatesLoad();
             await this.loadTemplates();
 
             // Initialize event listeners AFTER components are loaded
+            this.loadingManager.trackEventListeners();
             this.initializeEventListeners();
             
             // Wait a bit more to ensure all DOM elements are ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
             // Now safely call UI methods
+            this.loadingManager.trackFinalizing();
             this.ui.renderTemplatesList();
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
             this.settingsManager.populateDropdowns();
             
+            // Complete loading
+            await this.loadingManager.complete();
+            
         } catch (error) {
             console.error('Failed to initialize editor:', error);
             this.notifications.show('Failed to initialize application', 'error');
+            await this.loadingManager.complete();
         }
     }
 
@@ -102,7 +118,10 @@ export class InventoryEditor {
             { path: 'modals/help.html', target: '#help-container' }
         ];
 
-        await this.componentLoader.loadComponents(components);
+        for (let i = 0; i < components.length; i++) {
+            this.loadingManager.trackComponentLoading(i + 1, components.length);
+            await this.componentLoader.loadComponent(components[i].path, components[i].target);
+        }
     }
 
     async waitForDOM() {
