@@ -2,7 +2,7 @@
 :root {
     /* Colors */
     --primary-color: #4a90e2;
-    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --primary-gradient: linear-gradient(135deg, #cbe5ff 0%, #430000 100%);
     --background-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     --secondary-color: #6c757d;
     --danger-color: #dc3545;
@@ -68,8 +68,7 @@
 :root[data-theme="dark"] {
     /* Colors */
     --primary-color: #1b2b3b;
-    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --background-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --primary-gradient: linear-gradient(183deg, #00082f 0%, #230000 100%);
     --secondary-color: #64748b;
     --danger-color: #ef4444;
     --success-color: #22c55e;

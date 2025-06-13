@@ -8,7 +8,7 @@
 
 body {
     font-family: var(--font-family);
-    background: var(--background-gradient);
+    background: var(--bg-white-solid);
     color: #333;
     min-height: 100vh;
     -ms-overflow-style: none;

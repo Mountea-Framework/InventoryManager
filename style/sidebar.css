@@ -38,10 +38,15 @@
     cursor: pointer;
     text-align: left;
     transition: all var(--transition-fast);
+    font-weight: 600;
+}
+
+#templatesList button:hover {
+    box-shadow: var(--shadow-sm);
 }
 
 #templatesList button.active {
-    background: var(--bg-white);
+    background: var(--primary-gradient);
     border-color: var(--primary-color);
     border: 1px solid var(--primary-color);
 }
