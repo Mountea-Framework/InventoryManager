@@ -251,7 +251,7 @@
     }
     
     .first-section {
-        margin-top: 1.5rem;
+        margin-top: 1rem;
     }
 
     .modal-body,
@@ -262,6 +262,6 @@
     #themeToggle {
         padding: var(--spacing-sm);
         min-width: 1rem;
-        font-size: 1rem;
+        font-size: 0.8rem;
     }
 }
