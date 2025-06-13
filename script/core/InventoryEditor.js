@@ -1,3 +1,4 @@
+import { ComponentLoader } from '../utils/ComponentLoader.js';
 import { DatabaseManager } from '../database/DatabaseManager.js';
 import { TemplateRepository } from '../database/TemplateRepository.js';
 import { FileRepository } from '../database/FileRepository.js';
@@ -13,14 +14,13 @@ import { Helpers } from '../utils/Helpers.js';
 
 export class InventoryEditor {
     constructor() {
+        this.componentLoader = new ComponentLoader();
         this.currentTemplate = null;
         this.customPropCounter = 0;
         this.selectedTemplates = new Set();
+        this.componentsLoaded = false;
         
         this.notifications = new NotificationSystem();
-        this.ui = new UIManager(this);
-        this.form = new FormManager(this);  
-        this.validation = new ValidationManager(this);
 
         this.settings = {
             categories: [
@@ -40,11 +40,22 @@ export class InventoryEditor {
             ]
         };
 
-        this.init();
+        // Create a promise that resolves when initialization is complete
+        this.initPromise = this.init();
     }
 
     async init() {
         try {
+            // Load all components first
+            await this.loadComponents();
+            this.componentsLoaded = true;
+            
+            // Initialize managers that depend on DOM elements
+            this.ui = new UIManager(this);
+            this.form = new FormManager(this);  
+            this.validation = new ValidationManager(this);
+            
+            // Initialize database and repositories
             this.dbManager = new DatabaseManager();
             await this.dbManager.initialize();
 
@@ -59,15 +70,34 @@ export class InventoryEditor {
             await this.loadSettings();
             await this.loadTemplates();
 
+            // Initialize event listeners AFTER components are loaded
             this.initializeEventListeners();
             this.ui.renderTemplatesList();
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
             this.settingsManager.populateDropdowns();
+            
         } catch (error) {
             console.error('Failed to initialize editor:', error);
             this.notifications.show('Failed to initialize application', 'error');
         }
+    }
+
+    async loadComponents() {
+        const components = [
+            { path: 'header.html', target: '#header-container' },
+            { path: 'sidebar.html', target: '#sidebar-container' },
+            { path: 'editor-form.html', target: '#editor-container' },
+            { path: 'floating-buttons.html', target: '#floating-buttons-container' },
+            { path: 'modals/preview.html', target: '#preview-container' },
+            { path: 'modals/settings.html', target: '#settings-container' },
+            { path: 'modals/help.html', target: '#help-container' }
+        ];
+
+        await this.componentLoader.loadComponents(components);
+        
+        // Wait a bit for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     async loadSettings() {
@@ -91,62 +121,79 @@ export class InventoryEditor {
     }
 
     initializeEventListeners() {
+        // Check if elements exist before adding listeners
+        const addListener = (id, event, handler) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener(event, handler);
+            } else {
+                console.warn(`Element ${id} not found when adding event listener`);
+            }
+        };
+
         // Header controls
-        document.getElementById('newTemplate').addEventListener('click', () => this.createNewTemplate());
-        document.getElementById('showPreview').addEventListener('click', (e) => this.ui.showPreview(e));
-        document.getElementById('importTemplate').addEventListener('click', () => this.importExport.importTemplate());
-        document.getElementById('exportTemplate').addEventListener('click', () => this.importExport.exportTemplates());
-        document.getElementById('exportSingle').addEventListener('click', () => this.importExport.exportSingleTemplate());
-        document.getElementById('exportMultiple').addEventListener('click', () => this.importExport.exportMultipleTemplates());
-        document.getElementById('fileInput').addEventListener('change', (e) => this.importExport.handleFileImport(e));
-        document.getElementById('help').addEventListener('click', () => this.ui.showHelp());
-        document.getElementById('closeHelp').addEventListener('click', () => this.ui.closeHelp());
-        document.getElementById('settings').addEventListener('click', () => this.settingsManager.showSettings());
-        document.getElementById('mobileClose').addEventListener('click', () => this.ui.closeCurrentTemplate());
+        addListener('newTemplate', 'click', () => this.createNewTemplate());
+        addListener('showPreview', 'click', (e) => this.ui.showPreview(e));
+        addListener('importTemplate', 'click', () => this.importExport.importTemplate());
+        addListener('exportTemplate', 'click', () => this.importExport.exportTemplates());
+        addListener('exportSingle', 'click', () => this.importExport.exportSingleTemplate());
+        addListener('exportMultiple', 'click', () => this.importExport.exportMultipleTemplates());
+        addListener('fileInput', 'change', (e) => this.importExport.handleFileImport(e));
+        addListener('help', 'click', () => this.ui.showHelp());
+        addListener('closeHelp', 'click', () => this.ui.closeHelp());
+        addListener('settings', 'click', () => this.settingsManager.showSettings());
+        addListener('mobileClose', 'click', () => this.ui.closeCurrentTemplate());
 
         // Form controls
-        document.getElementById('mobileSave').addEventListener('click', () => this.saveCurrentTemplate());
-        document.getElementById('duplicateTemplate').addEventListener('click', () => this.duplicateCurrentTemplate());
+        addListener('mobileSave', 'click', () => this.saveCurrentTemplate());
+        addListener('duplicateTemplate', 'click', () => this.duplicateCurrentTemplate());
 
         // Selection controls
-        document.getElementById('selectAllTemplates').addEventListener('click', () => this.ui.selectAllTemplates());
-        document.getElementById('deselectAll').addEventListener('click', () => this.ui.deselectAllTemplates());
-        document.getElementById('deleteSelected').addEventListener('click', () => this.deleteSelectedTemplates());
+        addListener('selectAllTemplates', 'click', () => this.ui.selectAllTemplates());
+        addListener('deselectAll', 'click', () => this.ui.deselectAllTemplates());
+        addListener('deleteSelected', 'click', () => this.deleteSelectedTemplates());
 
         // Custom properties
-        document.getElementById('addCustomProp').addEventListener('click', () => this.ui.addCustomProperty());
+        addListener('addCustomProp', 'click', () => this.ui.addCustomProperty());
 
         // Equipment section toggle
-        document.getElementById('isEquippable').addEventListener('change', (e) => {
+        addListener('isEquippable', 'change', (e) => {
             const equipmentSection = document.getElementById('equipmentSection');
-            equipmentSection.style.display = e.target.checked ? 'block' : 'none';
+            if (equipmentSection) {
+                equipmentSection.style.display = e.target.checked ? 'block' : 'none';
+            }
         });
 
         // Stackable toggle
-        document.getElementById('isStackable').addEventListener('change', (e) => {
+        addListener('isStackable', 'change', (e) => {
             const maxStackSize = document.getElementById('maxStackSize');
-            if (e.target.checked) {
-                maxStackSize.min = '1';
-                maxStackSize.value = Math.max(1, maxStackSize.value);
-            } else {
-                maxStackSize.value = '1';
+            if (maxStackSize) {
+                if (e.target.checked) {
+                    maxStackSize.min = '1';
+                    maxStackSize.value = Math.max(1, maxStackSize.value);
+                } else {
+                    maxStackSize.value = '1';
+                }
             }
         });
 
         // Preview and settings panels
-        document.getElementById('closePreview').addEventListener('click', () => this.ui.closePreview());
-        document.getElementById('closeSettings').addEventListener('click', () => this.settingsManager.closeSettings());
-        document.getElementById('saveSettings').addEventListener('click', () => this.settingsManager.saveSettingsData());
-        document.getElementById('addCategory').addEventListener('click', () => this.settingsManager.addCategory());
-        document.getElementById('addRarity').addEventListener('click', () => this.settingsManager.addRarity());
-        document.getElementById('addEquipmentSlot').addEventListener('click', () => this.settingsManager.addEquipmentSlot());
+        addListener('closePreview', 'click', () => this.ui.closePreview());
+        addListener('closeSettings', 'click', () => this.settingsManager.closeSettings());
+        addListener('saveSettings', 'click', () => this.settingsManager.saveSettingsData());
+        addListener('addCategory', 'click', () => this.settingsManager.addCategory());
+        addListener('addRarity', 'click', () => this.settingsManager.addRarity());
+        addListener('addEquipmentSlot', 'click', () => this.settingsManager.addEquipmentSlot());
 
         // Auto-save on form changes
-        document.getElementById('templateForm').addEventListener('input', () => {
-            if (this.currentTemplate) {
-                this.ui.updatePreview();
-            }
-        });
+        const templateForm = document.getElementById('templateForm');
+        if (templateForm) {
+            templateForm.addEventListener('input', () => {
+                if (this.currentTemplate) {
+                    this.ui.updatePreview();
+                }
+            });
+        }
 
         // Generate new GUID button
         this.addGenerateGuidButton();
@@ -173,19 +220,25 @@ export class InventoryEditor {
                         break;
                     case 't':
                         e.preventDefault();
-                        this.themeManager.toggleTheme();
+                        if (this.themeManager) {
+                            this.themeManager.toggleTheme();
+                        }
                         break;
                 }
             }
 
             if (e.key === 'Escape') {
-                if (document.getElementById('previewPanel').classList.contains('show')) {
+                const previewPanel = document.getElementById('previewPanel');
+                const helpModal = document.getElementById('helpModal');
+                const settingsModal = document.getElementById('settingsModal');
+                
+                if (previewPanel && previewPanel.classList.contains('show')) {
                     this.ui.closePreview();
                 } else if (this.currentTemplate) {
                     this.ui.closeCurrentTemplate();
-                } else if (document.getElementById('helpModal').classList.contains('show')) {
+                } else if (helpModal && helpModal.classList.contains('show')) {
                     this.ui.closeHelp();
-                } else if (document.getElementById('settingsModal').classList.contains('show')) {
+                } else if (settingsModal && settingsModal.classList.contains('show')) {
                     this.settingsManager.closeSettings();
                 }
             }
@@ -198,7 +251,12 @@ export class InventoryEditor {
     }
 
     addGenerateGuidButton() {
-        const itemIdGroup = document.getElementById('itemID').closest('.form-group');
+        const itemIdInput = document.getElementById('itemID');
+        if (!itemIdInput) return;
+        
+        const itemIdGroup = itemIdInput.closest('.form-group');
+        if (!itemIdGroup) return;
+        
         const generateBtn = document.createElement('button');
         generateBtn.type = 'button';
         generateBtn.className = 'btn btn-secondary generate-guid-btn';
@@ -207,7 +265,7 @@ export class InventoryEditor {
         generateBtn.style.alignSelf = 'flex-start';
 
         generateBtn.addEventListener('click', () => {
-            document.getElementById('itemID').value = Helpers.generateGUID();
+            itemIdInput.value = Helpers.generateGUID();
             this.validation.clearFieldError('itemID');
             if (this.currentTemplate) {
                 this.ui.updatePreview();
@@ -271,8 +329,8 @@ export class InventoryEditor {
         this.templates.unshift(duplicate);
         this.currentTemplate = duplicate;
         this.ui.loadTemplateToForm(duplicate);
+        this.ui.selectTemplateInList(duplicate.id);
         this.ui.renderTemplatesList();
-        this.ui.selectTemplateInList(duplicate.id);        
         this.notifications.show('Template duplicated successfully', 'success');
     }
 

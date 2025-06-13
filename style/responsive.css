@@ -20,9 +20,10 @@
         overflow: hidden;
     }
 
-    .editor-panel {
+    #editor-container {
         transform: translateX(20rem);
         margin-right: 20rem;
+        width: 100%;
     }
 
     #templatesList {
@@ -138,7 +139,7 @@
         scrollbar-width: none;
     }
 
-    .editor-panel {
+    #editor-container {
         transform: none;
         margin: 0;
         position: absolute;
