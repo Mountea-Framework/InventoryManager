@@ -46,7 +46,7 @@
 @media (max-width: 1200px) {
     .main-content {
         flex-direction: column;
-        margin-top: 1rem;
+        /*margin-top: 1rem;*/
     }
 
     .sidebar {
@@ -257,5 +257,11 @@
     .modal-body,
     .help-body {
         padding: var(--spacing-sm);
+    }
+
+    #themeToggle {
+        padding: var(--spacing-sm);
+        min-width: 1rem;
+        font-size: 1rem;
     }
 }

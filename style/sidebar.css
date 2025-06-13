@@ -32,16 +32,22 @@
 #templatesList button {
     width: 100%;
     padding: 0.75rem;
-    background: var(--bg-light);
-    border: 1px solid var(--bg-border-dark);
+    background: transparent;
+    border: 1px solid transparent;
     border-radius: var(--border-radius-sm);
     cursor: pointer;
     text-align: left;
     transition: all var(--transition-fast);
+    font-weight: 600;
+}
+
+#templatesList button:hover {
+    box-shadow: var(--shadow-sm);
+    border-color: var(--bg-border);
 }
 
 #templatesList button.active {
-    background: var(--bg-white);
+    background: var(--primary-gradient);
     border-color: var(--primary-color);
     border: 1px solid var(--primary-color);
 }

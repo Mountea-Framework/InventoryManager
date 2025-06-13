@@ -13,19 +13,18 @@ export class TemplateRepository {
     }
 
     async save(template) {
-        // Ensure template has required fields
         if (!template.id) {
             throw new Error('Template must have an id');
         }
         
-        // Set timestamps
         const now = new Date().toISOString();
         if (!template.createdAt) {
             template.createdAt = now;
         }
         template.updatedAt = now;
 
-        return await this.db.put(this.storeName, template);
+        await this.db.put(this.storeName, template);
+        return template;
     }
 
     async delete(id) {
