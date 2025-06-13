@@ -251,7 +251,7 @@
     }
     
     .first-section {
-        margin-top: 1rem;
+        margin-top: var(--spacing-sm);
     }
 
     .modal-body,
