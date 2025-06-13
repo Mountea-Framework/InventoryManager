@@ -87,6 +87,10 @@ export class UIManager {
         this.updatePreview();
     }
 
+    openMounteaFramework() {
+        window.open('https://github.com/Mountea-Framework', '_blank');
+    }
+    
     clearTemplateSelection() {
         const buttons = document.querySelectorAll('.template-item');
         buttons.forEach(btn => btn.classList.remove('active'));

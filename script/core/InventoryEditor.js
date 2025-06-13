@@ -195,6 +195,7 @@ export class InventoryEditor {
         addListener('closeHelp', 'click', () => this.ui.closeHelp());
         addListener('settings', 'click', () => this.settingsManager.showSettings());
         addListener('mobileClose', 'click', () => this.ui.closeCurrentTemplate());
+        addListener('mobileMountea', 'click', () => this.ui.openMounteaFramework());
 
         // Form controls
         addListener('mobileSave', 'click', () => this.saveCurrentTemplate());
