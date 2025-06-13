@@ -1,0 +1,143 @@
+<div class="editor-panel">
+  <form id="templateForm">
+    <!-- Basic Information -->
+    <section class="form-section first-section">
+      <h2>Basic Information</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="itemName">Item Name</label>
+          <input type="text" id="itemName" name="itemName" required maxlength="32" />
+        </div>
+        <div class="form-group">
+          <label for="displayName">Display Name</label>
+          <input type="text" id="displayName" name="displayName" required />
+        </div>
+        <div class="form-group">
+          <label for="itemID">Item ID</label>
+          <input type="text" id="itemID" name="itemID" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        </div>
+        <div class="form-group">
+          <label for="short-description">Thumbnail Description</label>
+          <textarea id="short-description" name="short-description" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Item Properties -->
+    <section class="form-section">
+      <h2>Item Properties</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="itemType">Item Type</label>
+          <select id="itemType" name="itemType">
+            <option value="Weapon">Weapon</option>
+            <option value="Armor">Armor</option>
+            <option value="Consumable">Consumable</option>
+            <option value="Material">Material</option>
+            <option value="Quest">Quest</option>
+            <option value="Misc">Miscellaneous</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="rarity">Rarity</label>
+          <select id="rarity" name="rarity">
+            <option value="Common">Common</option>
+            <option value="Uncommon">Uncommon</option>
+            <option value="Rare">Rare</option>
+            <option value="Epic">Epic</option>
+            <option value="Legendary">Legendary</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="maxStackSize">Max Stack Size</label>
+          <input type="number" id="maxStackSize" name="maxStackSize" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label for="weight">Weight</label>
+          <input type="number" id="weight" name="weight" step="0.1" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label for="value">Value</label>
+          <input type="number" id="value" name="value" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label for="durability">Max Durability</label>
+          <input type="number" id="durability" name="durability" min="0" max="100" value="100" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Flags -->
+    <section class="form-section">
+      <h2>Item Flags</h2>
+      <div class="form-grid">
+        <div class="form-group checkbox-group">
+          <label><input type="checkbox" id="isStackable" name="isStackable" /> Stackable</label>
+          <label><input type="checkbox" id="isDroppable" name="isDroppable" checked /> Droppable</label>
+          <label><input type="checkbox" id="isUsable" name="isUsable" /> Usable</label>
+          <label><input type="checkbox" id="isEquippable" name="isEquippable" /> Equippable</label>
+          <label><input type="checkbox" id="isTradeable" name="isTradeable" checked /> Tradeable</label>
+          <label><input type="checkbox" id="isQuestItem" name="isQuestItem" /> Quest Item</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Equipment Specific -->
+    <section class="form-section" id="equipmentSection" style="display: none">
+      <h2>Equipment Properties</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="equipSlot">Equipment Slot</label>
+          <select id="equipSlot" name="equipSlot">
+            <option value="None">None</option>
+            <option value="Helmet">Helmet</option>
+            <option value="Chest">Chest</option>
+            <option value="Legs">Legs</option>
+            <option value="Boots">Boots</option>
+            <option value="Gloves">Gloves</option>
+            <option value="MainHand">Main Hand</option>
+            <option value="OffHand">Off Hand</option>
+            <option value="Ring">Ring</option>
+            <option value="Necklace">Necklace</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Assets -->
+    <section class="form-section">
+      <h2>Visual Assets</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="iconPath">Icon</label>
+          <input type="file" id="iconPath" name="iconPath" accept=".jpg,.jpeg,.png,.bmp,image/jpeg,image/png,image/bmp" />
+          <small class="file-info">Accepted formats: JPG, PNG, BMP</small>
+        </div>
+        <div class="form-group">
+          <label for="meshPath">Mesh</label>
+          <input type="file" id="meshPath" name="meshPath" accept=".fbx,.obj" />
+          <small class="file-info">Accepted formats: FBX, OBJ</small>
+        </div>
+        <div class="form-group">
+          <label for="materialPath">Material Path</label>
+          <input type="text" id="materialPath" name="materialPath" placeholder="/Game/Materials/..." />
+        </div>
+      </div>
+    </section>
+
+    <!-- Custom Properties -->
+    <section class="form-section">
+      <h2>Custom Properties</h2>
+      <div class="custom-properties">
+        <div class="custom-props-header">
+          <button type="button" id="addCustomProp" class="btn btn-small">+</button>
+        </div>
+        <div id="customPropsContainer"></div>
+      </div>
+    </section>
+  </form>
+</div>
