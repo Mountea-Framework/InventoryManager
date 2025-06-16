@@ -1,7 +1,7 @@
 export class DatabaseManager {
     constructor() {
         this.db = null;
-        this.dbName = 'MounteaInventoryDB';
+        this.dbName = 'MounteaInventoryTemplateManagerDB';
         this.version = 3;
         this.stores = {
             templates: 'id',

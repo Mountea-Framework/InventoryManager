@@ -39,8 +39,15 @@ export class FileHandler {
                     this.editor.currentTemplate.iconFileId = fileId;
                 } else if (fileType === 'mesh') {
                     this.editor.currentTemplate.meshFileId = fileId;
+                    await this.extractMaterialsFromMesh(file);
                 }
 
+                // Refresh only materials UI without saving
+                if (fileType === 'mesh') {
+                    this.editor.form.clearMaterials();
+                    this.editor.form.setMaterials(this.editor.currentTemplate.materials);
+                }
+                
                 await this.editor.templateRepo.save(this.editor.currentTemplate);
                 await this.editor.ui.showFileInfo(this.editor.currentTemplate, fileType);
             }
@@ -188,16 +195,46 @@ export class FileHandler {
         return meshExtensions.includes(extension);
     }
 
-    async createFilePreview(file) {
-        if (!this.isImageFile(file)) {
-            return null;
+    async extractMaterialsFromMesh(file) {
+        try {
+            const fileName = file.name.toLowerCase();
+            const baseName = fileName.split('.')[0];
+            
+            // Clear existing materials
+            this.editor.currentTemplate.materials = [];
+            
+            // Auto-generate material based on mesh name
+            const materialName = this.generateMaterialName(baseName);
+            const materialPath = `/Game/Materials/${materialName}`;
+            
+            this.editor.currentTemplate.materials.push({
+                name: materialName,
+                path: materialPath
+            });
+            
+            // Update UI
+            if (this.editor.materialsManager) {
+                this.editor.materialsManager.renderMaterials();
+            }
+            
+        } catch (error) {
+            console.error('Failed to extract materials:', error);
         }
+    }
 
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(file);
-        });
+    generateMaterialName(baseName) {
+        // Convert mesh name to material name
+        // Remove common prefixes/suffixes
+        let materialName = baseName
+            .replace(/^(sm_|static_|mesh_)/i, '')
+            .replace(/(_lod\d+|_mesh|_static)$/i, '');
+        
+        // Capitalize first letter of each word
+        materialName = materialName
+            .split(/[_\s-]+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join('_');
+        
+        return `M_${materialName}` || 'M_Material';
     }
 }
