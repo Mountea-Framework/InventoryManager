@@ -223,6 +223,34 @@ input[type="checkbox"]:checked::after {
     z-index: 1000;
 }
 
+/* Summary */
+details summary {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    padding: 8px 0;
+    list-style: none;
+    user-select: none;
+}
+
+details summary::before {
+    content: '➲';
+    font-size: 1rem;
+    margin-right: 8px;
+    transform: rotate(0deg);
+    transform-origin: 0.2rem 50%;
+    transition: 0.25s transform ease;
+    display: inline-block;
+}
+
+details[open] summary::before {
+    transform: rotate(90deg);
+}
+
+details summary::-webkit-details-marker {
+    display: none;
+}
+
 /* Dark theme specific adjustments */
 :root[data-theme="dark"] .form-group input:focus:not([disabled]),
 :root[data-theme="dark"] .form-group select:focus:not([disabled]),
