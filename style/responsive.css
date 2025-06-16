@@ -265,4 +265,23 @@
         min-width: 1rem;
         font-size: 0.8rem;
     }
+
+    .toggle-section {
+        padding: var(--spacing-sm);
+        margin-top: var(--spacing-sm);
+        border-left: 2px solid var(--primary-color);
+    }
+
+    .help-text {
+        display: none;
+    }
+
+    .material-fields {
+        flex-direction: column;
+    }
+
+    .custom-properties {
+        padding: var(--padding-sm);
+        background: transparent;
+    }
 }
