@@ -231,11 +231,23 @@ export class TemplateRepository {
             thumbnailDescription: '',
             description: '',
             itemType: 'Misc',
+            itemSubCategory: '',
+            tags: [],
             rarity: 'Common',
             maxStackSize: 1,
+            bHasWeight: false,
             weight: 0,
+            bHasPrice: false,
+            basePrice: 0,
+            sellPriceCoefficient: 0.5,
             value: 0,
+            bHasDurability: false,
             durability: 100,
+            maxDurability: 100,
+            baseDurability: 100,
+            durabilityPenalization: 1.0,
+            durabilityToPriceCoefficient: 1.0,
+            maxQuantity: 1,
             isStackable: true,
             isDroppable: true,
             isUsable: false,
@@ -247,7 +259,7 @@ export class TemplateRepository {
             meshPath: '',
             materialPath: '',
             equipSlot: 'None',
-            customProperties: []
+            customProperties: [],            
         };
     }
 

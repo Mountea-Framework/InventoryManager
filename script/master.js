@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         editor = new InventoryEditor();
         await editor.initPromise;
         adjustMainContentPadding();
+        window.editor = editor;
     } catch (error) {
         console.error('Failed to initialize application:', error);
     }

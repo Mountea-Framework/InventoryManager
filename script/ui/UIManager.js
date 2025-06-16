@@ -189,6 +189,18 @@ export class UIManager {
         setValue('value', template.value || 0);
         setValue('durability', template.durability || 100);
 
+        setValue('itemSubCategory', template.itemSubCategory);
+        setValue('maxQuantity', template.maxQuantity || 0);
+        setChecked('bHasWeight', template.bHasWeight);
+        setChecked('bHasPrice', template.bHasPrice);
+        setChecked('bHasDurability', template.bHasDurability);
+        setValue('basePrice', template.basePrice || 0);
+        setValue('sellPriceCoefficient', template.sellPriceCoefficient || 0.5);
+        setValue('maxDurability', template.maxDurability || 100);
+        setValue('baseDurability', template.baseDurability || 100);
+        setValue('durabilityPenalization', template.durabilityPenalization || 1.0);
+        setValue('durabilityToPriceCoefficient', template.durabilityToPriceCoefficient || 1.0);
+
         setChecked('isStackable', template.isStackable);
         setChecked('isDroppable', template.isDroppable);
         setChecked('isUsable', template.isUsable);
@@ -208,10 +220,20 @@ export class UIManager {
 
         this.loadCustomProperties(template.customProperties || []);
 
+        this.editor.selectedTags = template.tags || [];
+        this.renderTags();
+
+        this.editor.form.updateSubcategories();
+        setValue('itemSubCategory', template.itemSubCategory);
+
         const equipmentSection = document.getElementById('equipmentSection');
         if (equipmentSection) {
             equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
         }
+
+        this.editor.form.toggleSection('weightSection', ['weight']);
+        this.editor.form.toggleSection('priceSection', ['basePrice', 'sellPriceCoefficient']);
+        this.editor.form.toggleSection('durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']);
 
         this.updatePreview();
     }
@@ -234,6 +256,8 @@ export class UIManager {
 
         this.clearFileInfoDisplays();
         this.editor.customPropCounter = 0;
+        this.editor.selectedTags = [];
+        this.renderTags();
         this.closePreview();
     }
 
@@ -359,6 +383,87 @@ export class UIManager {
         this.updatePreview();
     }
 
+    setupTagSystem() {
+        const tagInput = document.getElementById('tagInput');
+        if (!tagInput) return;
+
+        tagInput.addEventListener('input', (e) => this.handleTagInput(e));
+        tagInput.addEventListener('keydown', (e) => this.handleTagKeydown(e));
+    }
+
+    handleTagInput(e) {
+        /*
+        const value = e.target.value.toLowerCase();
+        const suggestionsDiv = document.getElementById('tagSuggestions');
+        
+        if (value.length < 1) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+
+        const matches = this.editor.settings.tagSuggestions.filter(tag => 
+            tag.toLowerCase().includes(value) && !this.editor.selectedTags.includes(tag)
+        );
+
+        if (matches.length > 0) {
+            suggestionsDiv.innerHTML = matches.slice(0, 10).map(tag => 
+                `<div class="tag-suggestion" onclick="window.editor.ui.addTag('${tag}')">${tag}</div>`
+            ).join('');
+            suggestionsDiv.classList.remove('hidden');
+        } else {
+            suggestionsDiv.classList.add('hidden');
+        }
+        */
+    }
+
+    handleTagKeydown(e) {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            const value = e.target.value.trim();
+            if (value && !this.editor.selectedTags.includes(value)) {
+                this.addTag(value);
+            }
+        }
+    }
+
+    addTag(tag) {
+        if (!this.editor.selectedTags.includes(tag)) {
+            this.editor.selectedTags.push(tag);
+            this.renderTags();
+            this.updatePreview();
+        }
+        document.getElementById('tagInput').value = '';
+        //document.getElementById('tagSuggestions').classList.add('hidden');
+    }
+
+    removeTag(tag) {
+        this.editor.selectedTags = this.editor.selectedTags.filter(t => t !== tag);
+        this.renderTags();
+        this.updatePreview();
+    }
+
+    renderTags() {
+        const container = document.getElementById('tagsContainer');
+        //const input = document.getElementById('tagInput');
+        
+        if (!container) return;
+        
+        container.innerHTML = '';
+        //container.appendChild(input); 
+        
+        this.editor.selectedTags.forEach(tag => {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'tag';
+            tagElement.innerHTML = `
+                ${tag}
+                <button type="button" class="btn btn-small" onclick="window.editor.ui.removeTag('${tag}')">×</button>
+            `;
+            container.appendChild(tagElement);
+        });
+        
+               
+    }
+
     updatePreview() {
         const previewContent = document.getElementById('previewContent');
         if (!previewContent) return;
@@ -404,11 +509,23 @@ export class UIManager {
             thumbnailDescription: getValue('short-description'),
             description: getValue('description'),
             itemType: getValue('itemType'),
+            itemSubCategory: getValue('itemSubCategory'),
             rarity: getValue('rarity'),
             maxStackSize: parseInt(getValue('maxStackSize')) || 1,
+            maxQuantity: parseInt(getValue('maxQuantity')) || 0,
             weight: parseFloat(getValue('weight')) || 0,
             value: parseInt(getValue('value')) || 0,
             durability: parseInt(getValue('durability')) || 100,
+            tags: this.editor.selectedTags,
+            bHasWeight: getChecked('bHasWeight'),
+            bHasPrice: getChecked('bHasPrice'),
+            bHasDurability: getChecked('bHasDurability'),
+            basePrice: parseFloat(getValue('basePrice')) || 0,
+            sellPriceCoefficient: parseFloat(getValue('sellPriceCoefficient')) || 0.5,
+            maxDurability: parseInt(getValue('maxDurability')) || 100,
+            baseDurability: parseInt(getValue('baseDurability')) || 100,
+            durabilityPenalization: parseFloat(getValue('durabilityPenalization')) || 1.0,
+            durabilityToPriceCoefficient: parseFloat(getValue('durabilityToPriceCoefficient')) || 1.0,
             isStackable: getChecked('isStackable'),
             isDroppable: getChecked('isDroppable'),
             isUsable: getChecked('isUsable'),

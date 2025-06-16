@@ -20,6 +20,7 @@ export class InventoryEditor {
         this.customPropCounter = 0;
         this.selectedTemplates = new Set();
         this.componentsLoaded = false;
+        this.selectedTags = [];
         
         this.notifications = new NotificationSystem();
         this.loadingManager = new LoadingManager();
@@ -28,6 +29,14 @@ export class InventoryEditor {
             categories: [
                 "Weapon", "Armor", "Consumable", "Material", "Quest", "Misc"
             ],
+            subcategories: {
+                'Weapon': ['Sword', 'Bow', 'Staff', 'Dagger', 'Axe', 'Mace', 'Spear'],
+                'Armor': ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Gloves', 'Shield'],
+                'Consumable': ['Potion', 'Food', 'Scroll', 'Elixir', 'Bandage'],
+                'Material': ['Ore', 'Gem', 'Cloth', 'Leather', 'Wood', 'Metal'],
+                'Quest': ['Key', 'Document', 'Artifact', 'Token'],
+                'Misc': ['Tool', 'Container', 'Decoration', 'Currency']
+            },
             rarities: [
                 { name: "Common", color: "#9CA3AF" },
                 { name: "Uncommon", color: "#10B981" },
@@ -39,32 +48,29 @@ export class InventoryEditor {
                 "none", "Hand.Left", "Hand.Right", "Back", "Belt", "Helmet",
                 "Chest", "Shoulder.Left", "Shoulder.Right", "Leg.Left",
                 "Leg.Right", "Boots", "Gloves", "Necklace"
+            ],
+            tagSuggestions: [
+                'Combat', 'Magic', 'Healing', 'Buff', 'Debuff', 'Craftable',
+                'Fire', 'Ice', 'Lightning', 'Earth', 'Water', 'Air',
+                'Melee', 'Ranged', 'Defense', 'Attack', 'Speed', 'Strength'
             ]
         };
 
-        // Create a promise that resolves when initialization is complete
         this.initPromise = this.init();
     }
 
     async init() {
         try {
-            // Show loading screen
             await this.loadingManager.show();
-            
-            // Load all components first
             await this.loadComponents();
             this.componentsLoaded = true;
-            
-            // Wait for DOM to be ready
             await this.waitForDOM();
             
-            // Initialize managers that depend on DOM elements
             this.loadingManager.trackUIInit();
             this.ui = new UIManager(this);
             this.form = new FormManager(this);  
             this.validation = new ValidationManager(this);
             
-            // Initialize database and repositories
             this.loadingManager.trackDatabaseInit();
             this.dbManager = new DatabaseManager();
             await this.dbManager.initialize();
@@ -83,21 +89,18 @@ export class InventoryEditor {
             this.loadingManager.trackTemplatesLoad();
             await this.loadTemplates();
 
-            // Initialize event listeners AFTER components are loaded
             this.loadingManager.trackEventListeners();
             this.initializeEventListeners();
             
-            // Wait a bit more to ensure all DOM elements are ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Now safely call UI methods
             this.loadingManager.trackFinalizing();
             this.ui.renderTemplatesList();
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
             this.settingsManager.populateDropdowns();
+            this.form.updateSubcategories();
             
-            // Complete loading
             await this.loadingManager.complete();
             
         } catch (error) {
@@ -125,7 +128,6 @@ export class InventoryEditor {
     }
 
     async waitForDOM() {
-        // Wait for critical elements to exist
         const checkElements = [
             '#selectionCount',
             '#selectAllTemplates', 
@@ -134,7 +136,7 @@ export class InventoryEditor {
         ];
         
         let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max
+        const maxAttempts = 50;
         
         while (attempts < maxAttempts) {
             const allExist = checkElements.every(selector => 
@@ -156,8 +158,10 @@ export class InventoryEditor {
         try {
             const settings = await this.dbManager.getSettings();
             if (settings.categories) this.settings.categories = settings.categories;
+            if (settings.subcategories) this.settings.subcategories = settings.subcategories;
             if (settings.rarities) this.settings.rarities = settings.rarities;
             if (settings.equipmentSlots) this.settings.equipmentSlots = settings.equipmentSlots;
+            if (settings.tagSuggestions) this.settings.tagSuggestions = settings.tagSuggestions;
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -173,7 +177,6 @@ export class InventoryEditor {
     }
 
     initializeEventListeners() {
-        // Check if elements exist before adding listeners
         const addListener = (id, event, handler) => {
             const element = document.getElementById(id);
             if (element) {
@@ -183,7 +186,6 @@ export class InventoryEditor {
             }
         };
 
-        // Header controls
         addListener('newTemplate', 'click', () => this.createNewTemplate());
         addListener('showPreview', 'click', (e) => this.ui.showPreview(e));
         addListener('importTemplate', 'click', () => this.importExport.importTemplate());
@@ -197,19 +199,15 @@ export class InventoryEditor {
         addListener('mobileClose', 'click', () => this.ui.closeCurrentTemplate());
         addListener('mobileMountea', 'click', () => this.ui.openMounteaFramework());
 
-        // Form controls
         addListener('mobileSave', 'click', () => this.saveCurrentTemplate());
         addListener('duplicateTemplate', 'click', () => this.duplicateCurrentTemplate());
 
-        // Selection controls
         addListener('selectAllTemplates', 'click', () => this.ui.selectAllTemplates());
         addListener('deselectAll', 'click', () => this.ui.deselectAllTemplates());
         addListener('deleteSelected', 'click', () => this.deleteSelectedTemplates());
 
-        // Custom properties
         addListener('addCustomProp', 'click', () => this.ui.addCustomProperty());
 
-        // Equipment section toggle
         addListener('isEquippable', 'change', (e) => {
             const equipmentSection = document.getElementById('equipmentSection');
             if (equipmentSection) {
@@ -217,7 +215,6 @@ export class InventoryEditor {
             }
         });
 
-        // Stackable toggle
         addListener('isStackable', 'change', (e) => {
             const maxStackSize = document.getElementById('maxStackSize');
             if (maxStackSize) {
@@ -230,7 +227,6 @@ export class InventoryEditor {
             }
         });
 
-        // Preview and settings panels
         addListener('closePreview', 'click', () => this.ui.closePreview());
         addListener('closeSettings', 'click', () => this.settingsManager.closeSettings());
         addListener('saveSettings', 'click', () => this.settingsManager.saveSettingsData());
@@ -238,7 +234,6 @@ export class InventoryEditor {
         addListener('addRarity', 'click', () => this.settingsManager.addRarity());
         addListener('addEquipmentSlot', 'click', () => this.settingsManager.addEquipmentSlot());
 
-        // Auto-save on form changes
         const templateForm = document.getElementById('templateForm');
         if (templateForm) {
             templateForm.addEventListener('input', () => {
@@ -248,10 +243,11 @@ export class InventoryEditor {
             });
         }
 
-        // Generate new GUID button
-        this.addGenerateGuidButton();
+        addListener('itemType', 'change', () => this.form.updateSubcategories());
 
-        // Keyboard shortcuts
+        this.form.setupConditionalFields();
+        this.ui.setupTagSystem();
+        this.addGenerateGuidButton();
         this.initializeKeyboardShortcuts();
     }
 
@@ -329,7 +325,6 @@ export class InventoryEditor {
     }
 
     async createNewTemplate() {
-        // Check current form validation if template exists
         if (!this.validation.validateForm().isValid) {
             this.notifications.show('Please fill required data first', 'error');
             return;
@@ -354,14 +349,12 @@ export class InventoryEditor {
         const formData = this.ui.getFormData();
         
         if (!this.currentTemplate) {
-            // Create template using form's itemID, not a new GUID
             this.currentTemplate = {
                 id: formData.itemID,
                 ...formData
             };
             this.templates.unshift(this.currentTemplate);
         } else {
-            // Update existing template and sync both IDs
             formData.id = formData.itemID;
             Object.assign(this.currentTemplate, formData);
         }
