@@ -176,13 +176,10 @@ input[type="checkbox"]:checked::after {
     /*background: #f5f5f5;*/
 }
 
-.full-width {
-    min-width: 30rem;
-}
-
 .tags-container {
     display: flex;
     flex-wrap: wrap;
+    flex-direction: row;
     gap: var(--spacing-xs);
     padding: var(--spacing-sm);
     border: 1px solid transparent;
@@ -192,14 +189,18 @@ input[type="checkbox"]:checked::after {
 }
 
 .tag {
-    background: var(--primary-color);
-    color: white;
+    background: var(--bg-tags);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--border-radius-sm);
     font-size: 0.875rem;
     display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
+    width: calc(max-content * 1.2);
+    min-width: 5rem;
 }
 
 .tag-input {

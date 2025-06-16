@@ -230,10 +230,6 @@
         flex-wrap: wrap;
     }
 
-    .full-width {
-        min-width: 100%;
-    }
-
     .remove-prop {
         position: absolute;
     }
