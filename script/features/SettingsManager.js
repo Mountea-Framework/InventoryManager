@@ -5,7 +5,7 @@ export class SettingsManager {
 
     populateDropdowns() {
         this.populateItemTypes();
-        this.populateSubcategoriesContainer();
+        this.populateSubcategories();
         this.populateRarities();
         this.populateEquipmentSlots();
     }
@@ -22,16 +22,21 @@ export class SettingsManager {
         });
     }
 
-    populateSubcategoriesContainer() {
+    populateSubcategories() {
         const select = document.getElementById('itemSubCategory');
-        select.innerHTML = '';
+        const category = document.getElementById('itemType').value;
         
-        this.editor.settings.subcategories.forEach(subcategory => {
-            const option = document.createElement('option');
-            option.value = subcategory;
-            option.textContent = subcategory;
-            select.appendChild(option);
-        });
+        select.innerHTML = '<option value="">None</option>';
+        
+        const subcategories = this.editor.settings.subcategories[category];
+        if (subcategories) {
+            subcategories.forEach(subcategory => {
+                const option = document.createElement('option');
+                option.value = subcategory;
+                option.textContent = subcategory;
+                select.appendChild(option);
+            });
+        }
     }
 
     populateRarities() {
