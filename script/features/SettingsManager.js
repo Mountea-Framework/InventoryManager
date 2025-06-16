@@ -57,6 +57,7 @@ export class SettingsManager {
 
     populateSettingsModal() {
         this.populateCategoriesContainer();
+        this.populateSubcategoriesContainer();
         this.populateRaritiesContainer();
         this.populateEquipmentSlotsContainer();
     }
@@ -135,6 +136,75 @@ export class SettingsManager {
         container.appendChild(row);
     }
 
+    populateSubcategoriesContainer() {
+        const container = document.getElementById('subcategoriesContainer');
+        container.innerHTML = '';
+        
+        Object.entries(this.editor.settings.subcategories).forEach(([category, subs]) => {
+            const categorySection = document.createElement('div');
+            categorySection.className = 'settings-container';
+            categorySection.innerHTML = `<h4>${category}</h4>`;
+
+            // TODO: Wrap in `settings-controls` div
+            const settingsControl = document.createElement('div');
+            settingsControl.className = 'settings-controls';
+
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-secondary';
+            addBtn.textContent = `Add ${category} Subcategory`;
+            addBtn.onclick = () => this.addSubcategory(category);
+            settingsControl.appendChild(addBtn);
+            categorySection.appendChild(settingsControl);
+            
+            container.appendChild(categorySection);
+            
+            subs.forEach(sub => {
+                const row = this.createSubcategoryRow(category, sub);
+                categorySection.appendChild(row);
+            });
+        });
+    }
+
+    createSubcategoryRow(category, subcategory) {
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        row.innerHTML = `
+            <input type="text" value="${subcategory}" class="subcategory-input" data-category="${category}">
+            <button type="button" class="btn btn-danger btn-small close-small">✖</button>
+        `;
+        
+        row.querySelector('button').addEventListener('click', () => row.remove());
+        return row;
+    }
+
+    addSubcategory(category) {
+        const container = document.getElementById('subcategoriesContainer');
+        const categorySection = [...container.children].find(section => 
+            section.querySelector('h5')?.textContent === category
+        );
+        
+        if (categorySection) {
+            const row = this.createSubcategoryRow(category, '');
+            row.querySelector('input').placeholder = `New ${category} Subcategory`;
+            categorySection.insertBefore(row, categorySection.lastElementChild);
+        }
+    }
+
+    collectSubcategories() {
+        const container = document.getElementById('subcategoriesContainer');
+        const subcategories = {};
+        
+        this.editor.settings.categories.forEach(category => {
+            const inputs = container.querySelectorAll(`input[data-category="${category}"]`);
+            subcategories[category] = Array.from(inputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+        });
+        
+        return subcategories;
+    }
+
     addRarity() {
         const container = document.getElementById('raritiesContainer');
         const row = this.createRarityRow('', '#000000');
@@ -173,6 +243,7 @@ export class SettingsManager {
     collectSettingsFromModal() {
         return {
             categories: this.collectCategories(),
+            subcategories: this.collectSubcategories(),
             rarities: this.collectRarities(),
             equipmentSlots: this.collectEquipmentSlots()
         };
