@@ -183,11 +183,21 @@ export class UIManager {
         setValue('short-description', template.thumbnailDescription);
         setValue('description', template.description);
         setValue('itemType', template.itemType || 'Misc');
+        setValue('itemSubCategory', template.itemSubCategory);
         setValue('rarity', template.rarity || 'Common');
         setValue('maxStackSize', template.maxStackSize || 1);
+        setChecked('bHasWeight', template.bHasWeight);
         setValue('weight', template.weight || 0);
+        setChecked('bHasPrice', template.bHasPrice);
         setValue('value', template.value || 0);
+        setValue('basePrice', template.basePrice || 0);
+        setValue('sellPriceCoefficient', template.sellPriceCoefficient || 0.5);
+        setChecked('bHasDurability', template.bHasDurability);
         setValue('durability', template.durability || 100);
+        setValue('maxDurability', template.maxDurability || 100);
+        setValue('baseDurability', template.baseDurability || 100);
+        setValue('durabilityPenalization', template.durabilityPenalization || 1.0);
+        setValue('durabilityToPriceCoefficient', template.durabilityToPriceCoefficient || 1.0);
 
         setChecked('isStackable', template.isStackable);
         setChecked('isDroppable', template.isDroppable);
@@ -199,6 +209,9 @@ export class UIManager {
         setValue('iconPath', '');
         setValue('meshPath', '');
 
+        
+        setValue('maxQuantity', template.maxQuantity || 0);      
+
         this.clearFileInfoDisplays();
         await this.showFileInfo(template, 'icon');
         await this.showFileInfo(template, 'mesh');
@@ -206,12 +219,19 @@ export class UIManager {
         setValue('materialPath', template.materialPath);
         setValue('equipSlot', template.equipSlot || 'None');
 
+        this.editor.selectedTags = template.tags || [];
+        this.editor.renderTags();
+
         this.loadCustomProperties(template.customProperties || []);
 
         const equipmentSection = document.getElementById('equipmentSection');
         if (equipmentSection) {
             equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
         }
+
+        this.editor.toggleWeightSystem();
+        this.editor.togglePriceSystem();
+        this.editor.toggleDurabilitySystem();
 
         this.updatePreview();
     }

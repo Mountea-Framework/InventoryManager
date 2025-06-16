@@ -50,6 +50,12 @@ export class ValidationManager {
             max: 100,
             type: 'number'
         });
+
+        this.addRule('maxQuantity', { required: true, min: 0, type: 'number' });
+        this.addRule('basePrice', { min: 0, type: 'number' });
+        this.addRule('sellPriceCoefficient', { min: 0, type: 'number' });
+        this.addRule('maxDurability', { min: 1, type: 'number' });
+        this.addRule('baseDurability', { min: 0, type: 'number' });
     }
 
     addRule(fieldId, rule) {
@@ -204,7 +210,7 @@ export class ValidationManager {
     }
 
     isValidUUID(uuid) {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         return uuidRegex.test(uuid);
     }
 
