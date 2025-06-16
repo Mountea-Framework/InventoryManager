@@ -122,6 +122,11 @@
         text-align: left;
     }
 
+    .settings-footer,
+    .settings-header {
+        padding: var(--padding-md);
+    }
+
     .settings-header h3 {
         font-size: var(--font-size-base);
         font-weight: 800;
@@ -240,6 +245,10 @@
         min-width: 3rem;
         border: none;
         background-color: transparent;        
+    }
+
+    .btn:hover:not([disabled]) {
+        box-shadow: none;
     }
 
     .btn-secondary {
