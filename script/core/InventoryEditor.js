@@ -111,6 +111,8 @@ export class InventoryEditor {
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
             this.settingsManager.populateDropdowns();
+
+            this.updateSubcategories();
             
             // Complete loading
             await this.loadingManager.complete();

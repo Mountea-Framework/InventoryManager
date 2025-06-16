@@ -252,6 +252,9 @@ export class UIManager {
             equipmentSection.style.display = 'none';
         }
 
+        this.editor.selectedTags = [];
+        this.editor.renderTags();
+
         this.clearFileInfoDisplays();
         this.editor.customPropCounter = 0;
         this.closePreview();
@@ -440,7 +443,19 @@ export class UIManager {
             meshPath: getValue('meshPath'),
             materialPath: getValue('materialPath'),
             equipSlot: getValue('equipSlot'),
-            customProperties: customProps
+            customProperties: customProps,
+            itemSubCategory: getValue('itemSubCategory'),
+            maxQuantity: parseInt(getValue('maxQuantity')) || 0,
+            tags: this.editor.selectedTags,
+            bHasWeight: getChecked('bHasWeight'),
+            bHasPrice: getChecked('bHasPrice'),
+            bHasDurability: getChecked('bHasDurability'),
+            basePrice: parseFloat(getValue('basePrice')) || 0,
+            sellPriceCoefficient: parseFloat(getValue('sellPriceCoefficient')) || 0.5,
+            maxDurability: parseInt(getValue('maxDurability')) || 100,
+            baseDurability: parseInt(getValue('baseDurability')) || 100,
+            durabilityPenalization: parseFloat(getValue('durabilityPenalization')) || 1.0,
+            durabilityToPriceCoefficient: parseFloat(getValue('durabilityToPriceCoefficient')) || 1.0
         };
     }
 

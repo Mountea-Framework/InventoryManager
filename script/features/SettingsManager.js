@@ -5,6 +5,7 @@ export class SettingsManager {
 
     populateDropdowns() {
         this.populateItemTypes();
+        this.populateSubcategoriesContainer();
         this.populateRarities();
         this.populateEquipmentSlots();
     }
@@ -17,6 +18,18 @@ export class SettingsManager {
             const option = document.createElement('option');
             option.value = category;
             option.textContent = category;
+            select.appendChild(option);
+        });
+    }
+
+    populateSubcategoriesContainer() {
+        const select = document.getElementById('itemSubCategory');
+        select.innerHTML = '';
+        
+        this.editor.settings.subcategories.forEach(subcategory => {
+            const option = document.createElement('option');
+            option.value = subcategory;
+            option.textContent = subcategory;
             select.appendChild(option);
         });
     }
