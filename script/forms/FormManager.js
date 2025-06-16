@@ -55,7 +55,6 @@ export class FormManager {
             field.value = value;
         }
 
-        // Trigger input event for validation and preview update
         field.dispatchEvent(new Event('input', { bubbles: true }));
         return true;
     }
@@ -132,7 +131,6 @@ export class FormManager {
     }
 
     setupConditionalFields() {
-        // Equipment section visibility
         const isEquippableField = document.getElementById('isEquippable');
         const equipmentSection = document.getElementById('equipmentSection');
         
@@ -141,9 +139,8 @@ export class FormManager {
         };
 
         isEquippableField.addEventListener('change', toggleEquipmentSection);
-        toggleEquipmentSection(); // Initial state
+        toggleEquipmentSection();
 
-        // Stack size handling
         const isStackableField = document.getElementById('isStackable');
         const maxStackSizeField = document.getElementById('maxStackSize');
         
@@ -159,7 +156,35 @@ export class FormManager {
         };
 
         isStackableField.addEventListener('change', handleStackable);
-        handleStackable(); // Initial state
+        handleStackable();
+
+        const bHasWeightField = document.getElementById('bHasWeight');
+        const bHasPriceField = document.getElementById('bHasPrice');
+        const bHasDurabilityField = document.getElementById('bHasDurability');
+        
+        bHasWeightField?.addEventListener('change', () => this.toggleSection('weightSection', ['weight']));
+        bHasPriceField?.addEventListener('change', () => this.toggleSection('priceSection', ['basePrice', 'sellPriceCoefficient']));
+        bHasDurabilityField?.addEventListener('change', () => this.toggleSection('durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']));
+    }
+
+    toggleSection(sectionId, fieldIds) {
+        const checkboxId = sectionId.replace('Section', '');
+        const checkbox = document.getElementById(checkboxId);
+        const section = document.getElementById(sectionId);
+        
+        const isEnabled = checkbox?.checked;
+        section?.classList.toggle('disabled', !isEnabled);
+        fieldIds.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) field.disabled = !isEnabled;
+        });
+    }
+
+    updateSubcategories() {
+        const category = this.getFormField('itemType');
+        const subcategories = this.editor.settings.subcategories[category] || [];
+        const options = [{ value: '', text: 'None' }, ...subcategories.map(sub => ({ value: sub, text: sub }))];
+        this.populateDropdown('itemSubCategory', options);
     }
 
     createFormSection(title, fields) {
@@ -267,7 +292,6 @@ export class FormManager {
             }
         }
 
-        // Handle unchecked checkboxes
         const checkboxes = form.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
             if (!values.hasOwnProperty(checkbox.name)) {

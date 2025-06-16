@@ -20,6 +20,7 @@ export class InventoryEditor {
         this.customPropCounter = 0;
         this.selectedTemplates = new Set();
         this.componentsLoaded = false;
+        this.selectedTags = [];
         
         this.notifications = new NotificationSystem();
         this.loadingManager = new LoadingManager();
@@ -55,31 +56,21 @@ export class InventoryEditor {
             ]
         };
 
-        this.selectedTags = [];
-
-        // Create a promise that resolves when initialization is complete
         this.initPromise = this.init();
     }
 
     async init() {
         try {
-            // Show loading screen
             await this.loadingManager.show();
-            
-            // Load all components first
             await this.loadComponents();
             this.componentsLoaded = true;
-            
-            // Wait for DOM to be ready
             await this.waitForDOM();
             
-            // Initialize managers that depend on DOM elements
             this.loadingManager.trackUIInit();
             this.ui = new UIManager(this);
             this.form = new FormManager(this);  
             this.validation = new ValidationManager(this);
             
-            // Initialize database and repositories
             this.loadingManager.trackDatabaseInit();
             this.dbManager = new DatabaseManager();
             await this.dbManager.initialize();
@@ -98,23 +89,18 @@ export class InventoryEditor {
             this.loadingManager.trackTemplatesLoad();
             await this.loadTemplates();
 
-            // Initialize event listeners AFTER components are loaded
             this.loadingManager.trackEventListeners();
             this.initializeEventListeners();
             
-            // Wait a bit more to ensure all DOM elements are ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Now safely call UI methods
             this.loadingManager.trackFinalizing();
             this.ui.renderTemplatesList();
             this.validation.setupFormValidation();
             this.ui.updateSelectionUI();
             this.settingsManager.populateDropdowns();
-
-            this.updateSubcategories();
+            this.form.updateSubcategories();
             
-            // Complete loading
             await this.loadingManager.complete();
             
         } catch (error) {
@@ -142,7 +128,6 @@ export class InventoryEditor {
     }
 
     async waitForDOM() {
-        // Wait for critical elements to exist
         const checkElements = [
             '#selectionCount',
             '#selectAllTemplates', 
@@ -151,7 +136,7 @@ export class InventoryEditor {
         ];
         
         let attempts = 0;
-        const maxAttempts = 50; // 5 seconds max
+        const maxAttempts = 50;
         
         while (attempts < maxAttempts) {
             const allExist = checkElements.every(selector => 
@@ -173,8 +158,10 @@ export class InventoryEditor {
         try {
             const settings = await this.dbManager.getSettings();
             if (settings.categories) this.settings.categories = settings.categories;
+            if (settings.subcategories) this.settings.subcategories = settings.subcategories;
             if (settings.rarities) this.settings.rarities = settings.rarities;
             if (settings.equipmentSlots) this.settings.equipmentSlots = settings.equipmentSlots;
+            if (settings.tagSuggestions) this.settings.tagSuggestions = settings.tagSuggestions;
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -190,7 +177,6 @@ export class InventoryEditor {
     }
 
     initializeEventListeners() {
-        // Check if elements exist before adding listeners
         const addListener = (id, event, handler) => {
             const element = document.getElementById(id);
             if (element) {
@@ -200,7 +186,6 @@ export class InventoryEditor {
             }
         };
 
-        // Header controls
         addListener('newTemplate', 'click', () => this.createNewTemplate());
         addListener('showPreview', 'click', (e) => this.ui.showPreview(e));
         addListener('importTemplate', 'click', () => this.importExport.importTemplate());
@@ -214,19 +199,15 @@ export class InventoryEditor {
         addListener('mobileClose', 'click', () => this.ui.closeCurrentTemplate());
         addListener('mobileMountea', 'click', () => this.ui.openMounteaFramework());
 
-        // Form controls
         addListener('mobileSave', 'click', () => this.saveCurrentTemplate());
         addListener('duplicateTemplate', 'click', () => this.duplicateCurrentTemplate());
 
-        // Selection controls
         addListener('selectAllTemplates', 'click', () => this.ui.selectAllTemplates());
         addListener('deselectAll', 'click', () => this.ui.deselectAllTemplates());
         addListener('deleteSelected', 'click', () => this.deleteSelectedTemplates());
 
-        // Custom properties
         addListener('addCustomProp', 'click', () => this.ui.addCustomProperty());
 
-        // Equipment section toggle
         addListener('isEquippable', 'change', (e) => {
             const equipmentSection = document.getElementById('equipmentSection');
             if (equipmentSection) {
@@ -234,7 +215,6 @@ export class InventoryEditor {
             }
         });
 
-        // Stackable toggle
         addListener('isStackable', 'change', (e) => {
             const maxStackSize = document.getElementById('maxStackSize');
             if (maxStackSize) {
@@ -247,7 +227,6 @@ export class InventoryEditor {
             }
         });
 
-        // Preview and settings panels
         addListener('closePreview', 'click', () => this.ui.closePreview());
         addListener('closeSettings', 'click', () => this.settingsManager.closeSettings());
         addListener('saveSettings', 'click', () => this.settingsManager.saveSettingsData());
@@ -255,7 +234,6 @@ export class InventoryEditor {
         addListener('addRarity', 'click', () => this.settingsManager.addRarity());
         addListener('addEquipmentSlot', 'click', () => this.settingsManager.addEquipmentSlot());
 
-        // Auto-save on form changes
         const templateForm = document.getElementById('templateForm');
         if (templateForm) {
             templateForm.addEventListener('input', () => {
@@ -265,16 +243,11 @@ export class InventoryEditor {
             });
         }
 
-        addListener('itemType', 'change', () => this.updateSubcategories());
-        addListener('bHasWeight', 'change', () => this.toggleWeightSystem());
-        addListener('bHasPrice', 'change', () => this.togglePriceSystem());
-        addListener('bHasDurability', 'change', () => this.toggleDurabilitySystem());
-        this.setupTagSystem();
+        addListener('itemType', 'change', () => this.form.updateSubcategories());
 
-        // Generate new GUID button
+        this.form.setupConditionalFields();
+        this.ui.setupTagSystem();
         this.addGenerateGuidButton();
-
-        // Keyboard shortcuts
         this.initializeKeyboardShortcuts();
     }
 
@@ -351,138 +324,7 @@ export class InventoryEditor {
         itemIdGroup.appendChild(generateBtn);
     }
 
-    updateSubcategories() {
-        const category = document.getElementById('itemType').value;
-        const subcategorySelect = document.getElementById('itemSubCategory');
-        
-        subcategorySelect.innerHTML = '<option value="">None</option>';
-        
-        if (this.settings.subcategories[category]) {
-            this.settings.subcategories[category].forEach(sub => {
-                const option = document.createElement('option');
-                option.value = sub;
-                option.textContent = sub;
-                subcategorySelect.appendChild(option);
-            });
-        }
-    }
-
-    setupTagSystem() {
-        const tagInput = document.getElementById('tagInput');
-        //const suggestionsDiv = document.getElementById('tagSuggestions');
-
-        if (!tagInput) return;
-
-        tagInput.addEventListener('input', (e) => this.handleTagInput(e));
-        tagInput.addEventListener('keydown', (e) => this.handleTagKeydown(e));
-        /*tagInput.addEventListener('blur', () => {
-            setTimeout(() => suggestionsDiv?.classList.add('hidden'), 200);
-        });*/
-    }
-
-    handleTagInput(e) {
-        /*
-        const value = e.target.value.toLowerCase();
-        const suggestionsDiv = document.getElementById('tagSuggestions');
-        
-        if (value.length < 1) {
-            suggestionsDiv.classList.add('hidden');
-            return;
-        }
-
-        const matches = this.settings.tagSuggestions.filter(tag => 
-            tag.toLowerCase().includes(value) && !this.selectedTags.includes(tag)
-        );
-
-        if (matches.length > 0) {
-            suggestionsDiv.innerHTML = matches.slice(0, 10).map(tag => 
-                `<div class="tag-suggestion" onclick="window.editor.addTag('${tag}')">${tag}</div>`
-            ).join('');
-            suggestionsDiv.classList.remove('hidden');
-        } else {
-            suggestionsDiv.classList.add('hidden');
-        }
-        */
-    }
-
-    handleTagKeydown(e) {
-        if (e.key === 'Enter' || e.key === 'Tab') {
-            e.preventDefault();
-            const value = e.target.value.trim();
-            if (value && !this.selectedTags.includes(value)) {
-                this.addTag(value);
-            }
-        }
-    }
-
-    addTag(tag) {
-        if (!this.selectedTags.includes(tag)) {
-            this.selectedTags.push(tag);
-            this.renderTags();
-            this.ui?.updatePreview();
-        }
-        document.getElementById('tagInput').value = '';
-       //document.getElementById('tagSuggestions').classList.add('hidden');
-    }
-
-    removeTag(tag) {
-        this.selectedTags = this.selectedTags.filter(t => t !== tag);
-        this.renderTags();
-        this.ui?.updatePreview();
-    }
-
-    renderTags() {
-        const container = document.getElementById('tagsContainer');
-        const input = document.getElementById('tagInput');
-        //const suggestions = document.getElementById('tagSuggestions');
-        
-        if (!container) return;
-        
-        container.innerHTML = '';   
-        
-        //container.appendChild(input);
-        //container.appendChild(suggestions);
-
-        this.selectedTags.forEach(tag => {
-            const tagElement = document.createElement('div');
-            tagElement.className = 'tag';
-            tagElement.innerHTML = `
-                ${tag}
-                <button type="button" class="btn btn-small tag-remove" onclick="window.editor.removeTag('${tag}')">×</button>
-            `;
-            container.appendChild(tagElement);
-        });
-    }
-
-    toggleWeightSystem() {
-        const hasWeight = document.getElementById('bHasWeight').checked;
-        const section = document.getElementById('weightSection');
-        const input = document.getElementById('weight');
-        
-        section?.classList.toggle('disabled', !hasWeight);
-        if (input) input.disabled = !hasWeight;
-    }
-
-    togglePriceSystem() {
-        const hasPrice = document.getElementById('bHasPrice').checked;
-        const section = document.getElementById('priceSection');
-        const inputs = section?.querySelectorAll('input[type="number"]');
-        
-        section?.classList.toggle('disabled', !hasPrice);
-        inputs?.forEach(input => input.disabled = !hasPrice);
-    }
-
-    toggleDurabilitySystem() {
-        const hasDurability = document.getElementById('bHasDurability').checked;
-        const section = document.getElementById('durabilitySection');
-        const inputs = section?.querySelectorAll('input[type="number"]');
-        
-        section?.classList.toggle('disabled', !hasDurability);
-        inputs?.forEach(input => input.disabled = !hasDurability);
-    }
-
     async createNewTemplate() {
-        // Check current form validation if template exists
         if (!this.validation.validateForm().isValid) {
             this.notifications.show('Please fill required data first', 'error');
             return;
@@ -507,14 +349,12 @@ export class InventoryEditor {
         const formData = this.ui.getFormData();
         
         if (!this.currentTemplate) {
-            // Create template using form's itemID, not a new GUID
             this.currentTemplate = {
                 id: formData.itemID,
                 ...formData
             };
             this.templates.unshift(this.currentTemplate);
         } else {
-            // Update existing template and sync both IDs
             formData.id = formData.itemID;
             Object.assign(this.currentTemplate, formData);
         }
