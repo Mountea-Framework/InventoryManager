@@ -215,10 +215,10 @@ export class UIManager {
         await this.showFileInfo(template, 'icon');
         await this.showFileInfo(template, 'mesh');
 
-        setValue('materialPath', template.materialPath);
         setValue('equipSlot', template.equipSlot || 'None');
 
         this.loadCustomProperties(template.customProperties || []);
+        this.loadMaterials(template.materials || []);
 
         this.editor.selectedTags = template.tags || [];
         this.renderTags();
@@ -249,6 +249,8 @@ export class UIManager {
             customPropsContainer.innerHTML = '';
         }
 
+        this.editor.form.clearMaterials();
+
         const equipmentSection = document.getElementById('equipmentSection');
         if (equipmentSection) {
             equipmentSection.style.display = 'none';
@@ -256,6 +258,7 @@ export class UIManager {
 
         this.clearFileInfoDisplays();
         this.editor.customPropCounter = 0;
+        this.editor.materialCounter = 0;
         this.editor.selectedTags = [];
         this.renderTags();
         this.closePreview();
@@ -348,6 +351,10 @@ export class UIManager {
         });
     }
 
+    loadMaterials(materials) {
+        this.editor.form.setMaterials(materials);
+    }
+
     addCustomProperty(name = '', value = '') {
         const container = document.getElementById('customPropsContainer');
         if (!container) return;
@@ -389,10 +396,15 @@ export class UIManager {
 
         tagInput.addEventListener('input', (e) => this.handleTagInput(e));
         tagInput.addEventListener('keydown', (e) => this.handleTagKeydown(e));
+        tagInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                const suggestionsDiv = document.getElementById('tagSuggestions');
+                suggestionsDiv?.classList.add('hidden');
+            }, 200);
+        });
     }
 
     handleTagInput(e) {
-        /*
         const value = e.target.value.toLowerCase();
         const suggestionsDiv = document.getElementById('tagSuggestions');
         
@@ -413,7 +425,6 @@ export class UIManager {
         } else {
             suggestionsDiv.classList.add('hidden');
         }
-        */
     }
 
     handleTagKeydown(e) {
@@ -433,7 +444,7 @@ export class UIManager {
             this.updatePreview();
         }
         document.getElementById('tagInput').value = '';
-        //document.getElementById('tagSuggestions').classList.add('hidden');
+        document.getElementById('tagSuggestions').classList.add('hidden');
     }
 
     removeTag(tag) {
@@ -444,24 +455,25 @@ export class UIManager {
 
     renderTags() {
         const container = document.getElementById('tagsContainer');
-        //const input = document.getElementById('tagInput');
+        const input = document.getElementById('tagInput');
+        const suggestions = document.getElementById('tagSuggestions');
         
         if (!container) return;
         
         container.innerHTML = '';
-        //container.appendChild(input); 
         
         this.editor.selectedTags.forEach(tag => {
             const tagElement = document.createElement('div');
             tagElement.className = 'tag';
             tagElement.innerHTML = `
                 ${tag}
-                <button type="button" class="btn btn-small" onclick="window.editor.ui.removeTag('${tag}')">×</button>
+                <button type="button" class="tag-remove" onclick="window.editor.ui.removeTag('${tag}')">×</button>
             `;
             container.appendChild(tagElement);
         });
         
-               
+        container.appendChild(input);
+        container.appendChild(suggestions);
     }
 
     updatePreview() {
@@ -491,6 +503,8 @@ export class UIManager {
                 }
             });
         }
+
+        const materials = this.editor.form.getMaterials();
 
         const getValue = (id) => {
             const element = document.getElementById(id);
@@ -535,7 +549,7 @@ export class UIManager {
             iconFileId: this.editor.currentTemplate?.iconFileId || null,
             meshFileId: this.editor.currentTemplate?.meshFileId || null,
             meshPath: getValue('meshPath'),
-            materialPath: getValue('materialPath'),
+            materials: materials,
             equipSlot: getValue('equipSlot'),
             customProperties: customProps
         };
