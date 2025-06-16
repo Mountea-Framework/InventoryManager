@@ -28,6 +28,14 @@ export class InventoryEditor {
             categories: [
                 "Weapon", "Armor", "Consumable", "Material", "Quest", "Misc"
             ],
+            subcategories: {
+                'Weapon': ['Sword', 'Bow', 'Staff', 'Dagger', 'Axe', 'Mace', 'Spear'],
+                'Armor': ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Gloves', 'Shield'],
+                'Consumable': ['Potion', 'Food', 'Scroll', 'Elixir', 'Bandage'],
+                'Material': ['Ore', 'Gem', 'Cloth', 'Leather', 'Wood', 'Metal'],
+                'Quest': ['Key', 'Document', 'Artifact', 'Token'],
+                'Misc': ['Tool', 'Container', 'Decoration', 'Currency']
+            },
             rarities: [
                 { name: "Common", color: "#9CA3AF" },
                 { name: "Uncommon", color: "#10B981" },
@@ -39,8 +47,15 @@ export class InventoryEditor {
                 "none", "Hand.Left", "Hand.Right", "Back", "Belt", "Helmet",
                 "Chest", "Shoulder.Left", "Shoulder.Right", "Leg.Left",
                 "Leg.Right", "Boots", "Gloves", "Necklace"
+            ],
+            tagSuggestions: [
+                'Combat', 'Magic', 'Healing', 'Buff', 'Debuff', 'Craftable',
+                'Fire', 'Ice', 'Lightning', 'Earth', 'Water', 'Air',
+                'Melee', 'Ranged', 'Defense', 'Attack', 'Speed', 'Strength'
             ]
         };
+
+        this.selectedTags = [];
 
         // Create a promise that resolves when initialization is complete
         this.initPromise = this.init();
@@ -248,6 +263,12 @@ export class InventoryEditor {
             });
         }
 
+        addListener('itemType', 'change', () => this.updateSubcategories());
+        addListener('bHasWeight', 'change', () => this.toggleWeightSystem());
+        addListener('bHasPrice', 'change', () => this.togglePriceSystem());
+        addListener('bHasDurability', 'change', () => this.toggleDurabilitySystem());
+        this.setupTagSystem();
+
         // Generate new GUID button
         this.addGenerateGuidButton();
 
@@ -326,6 +347,136 @@ export class InventoryEditor {
         });
 
         itemIdGroup.appendChild(generateBtn);
+    }
+
+    updateSubcategories() {
+        const category = document.getElementById('itemType').value;
+        const subcategorySelect = document.getElementById('itemSubCategory');
+        
+        subcategorySelect.innerHTML = '<option value="">None</option>';
+        
+        if (this.settings.subcategories[category]) {
+            this.settings.subcategories[category].forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub;
+                option.textContent = sub;
+                subcategorySelect.appendChild(option);
+            });
+        }
+    }
+
+    setupTagSystem() {
+        const tagInput = document.getElementById('tagInput');
+        //const suggestionsDiv = document.getElementById('tagSuggestions');
+
+        if (!tagInput) return;
+
+        tagInput.addEventListener('input', (e) => this.handleTagInput(e));
+        tagInput.addEventListener('keydown', (e) => this.handleTagKeydown(e));
+        /*tagInput.addEventListener('blur', () => {
+            setTimeout(() => suggestionsDiv?.classList.add('hidden'), 200);
+        });*/
+    }
+
+    handleTagInput(e) {
+        /*
+        const value = e.target.value.toLowerCase();
+        const suggestionsDiv = document.getElementById('tagSuggestions');
+        
+        if (value.length < 1) {
+            suggestionsDiv.classList.add('hidden');
+            return;
+        }
+
+        const matches = this.settings.tagSuggestions.filter(tag => 
+            tag.toLowerCase().includes(value) && !this.selectedTags.includes(tag)
+        );
+
+        if (matches.length > 0) {
+            suggestionsDiv.innerHTML = matches.slice(0, 10).map(tag => 
+                `<div class="tag-suggestion" onclick="window.editor.addTag('${tag}')">${tag}</div>`
+            ).join('');
+            suggestionsDiv.classList.remove('hidden');
+        } else {
+            suggestionsDiv.classList.add('hidden');
+        }
+        */
+    }
+
+    handleTagKeydown(e) {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            const value = e.target.value.trim();
+            if (value && !this.selectedTags.includes(value)) {
+                this.addTag(value);
+            }
+        }
+    }
+
+    addTag(tag) {
+        if (!this.selectedTags.includes(tag)) {
+            this.selectedTags.push(tag);
+            this.renderTags();
+            this.ui?.updatePreview();
+        }
+        document.getElementById('tagInput').value = '';
+       //document.getElementById('tagSuggestions').classList.add('hidden');
+    }
+
+    removeTag(tag) {
+        this.selectedTags = this.selectedTags.filter(t => t !== tag);
+        this.renderTags();
+        this.ui?.updatePreview();
+    }
+
+    renderTags() {
+        const container = document.getElementById('tagsContainer');
+        const input = document.getElementById('tagInput');
+        //const suggestions = document.getElementById('tagSuggestions');
+        
+        if (!container) return;
+        
+        container.innerHTML = '';   
+        
+        //container.appendChild(input);
+        //container.appendChild(suggestions);
+
+        this.selectedTags.forEach(tag => {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'tag';
+            tagElement.innerHTML = `
+                ${tag}
+                <button type="button" class="btn btn-small tag-remove" onclick="window.editor.removeTag('${tag}')">×</button>
+            `;
+            container.appendChild(tagElement);
+        });
+    }
+
+    toggleWeightSystem() {
+        const hasWeight = document.getElementById('bHasWeight').checked;
+        const section = document.getElementById('weightSection');
+        const input = document.getElementById('weight');
+        
+        section?.classList.toggle('disabled', !hasWeight);
+        if (input) input.disabled = !hasWeight;
+    }
+
+    togglePriceSystem() {
+        const hasPrice = document.getElementById('bHasPrice').checked;
+        const section = document.getElementById('priceSection');
+        const inputs = section?.querySelectorAll('input[type="number"]');
+        
+        section?.classList.toggle('disabled', !hasPrice);
+        inputs?.forEach(input => input.disabled = !hasPrice);
+    }
+
+    toggleDurabilitySystem() {
+        const hasDurability = document.getElementById('bHasDurability').checked;
+        const section = document.getElementById('durabilitySection');
+        const inputs = section?.querySelectorAll('input[type="number"]');
+        
+        section?.classList.toggle('disabled', !hasDurability);
+        inputs?.forEach(input => input.disabled = !hasDurability);
     }
 
     async createNewTemplate() {
