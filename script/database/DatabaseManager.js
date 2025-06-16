@@ -1,259 +1,191 @@
 export class DatabaseManager {
     constructor() {
         this.db = null;
-        this.dbName = 'InventoryTemplateDB';
-        this.version = 2;
+        this.dbName = 'MounteaInventoryDB';
+        this.version = 3;
+        this.stores = {
+            templates: 'id',
+            files: 'id',
+            settings: 'key'
+        };
     }
 
     async initialize() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.version);
 
-            request.onerror = () => {
-                console.error('Database failed to open');
-                reject(request.error);
-            };
-
+            request.onerror = () => reject(request.error);
             request.onsuccess = () => {
                 this.db = request.result;
-                console.log('Database opened successfully');
                 resolve();
             };
 
-            request.onupgradeneeded = (e) => {
-                this.db = e.target.result;
-                this.createObjectStores();
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+
+                Object.entries(this.stores).forEach(([storeName, keyPath]) => {
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        const store = db.createObjectStore(storeName, { keyPath });
+                        
+                        if (storeName === 'files') {
+                            store.createIndex('fileName', 'fileName', { unique: false });
+                            store.createIndex('fileType', 'fileType', { unique: false });
+                        }
+                        
+                        if (storeName === 'templates') {
+                            store.createIndex('itemName', 'itemName', { unique: false });
+                            store.createIndex('itemType', 'itemType', { unique: false });
+                            store.createIndex('rarity', 'rarity', { unique: false });
+                        }
+                    }
+                });
             };
         });
     }
 
-    createObjectStores() {
-        // Templates store
-        if (!this.db.objectStoreNames.contains('templates')) {
-            const templatesStore = this.db.createObjectStore('templates', {
-                keyPath: 'id'
-            });
-            templatesStore.createIndex('itemName', 'itemName', { unique: false });
-        }
-
-        // Files store
-        if (!this.db.objectStoreNames.contains('files')) {
-            const filesStore = this.db.createObjectStore('files', {
-                keyPath: 'id'
-            });
-            filesStore.createIndex('templateId', 'templateId', { unique: false });
-            filesStore.createIndex('type', 'type', { unique: false });
-        }
-
-        // Settings store
-        if (!this.db.objectStoreNames.contains('settings')) {
-            this.db.createObjectStore('settings', {
-                keyPath: 'key'
-            });
-        }
-    }
-
-    async get(storeName, key) {
-        try {
-            const transaction = this.db.transaction([storeName], 'readonly');
+    async save(storeName, data) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
-            const request = store.get(key);
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.error(`Failed to get item from ${storeName}:`, error);
-            throw error;
-        }
+            const request = store.put(data);
+            
+            request.onsuccess = () => resolve(data);
+            request.onerror = () => reject(request.error);
+        });
     }
 
     async getAll(storeName) {
-        try {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.error(`Failed to get all items from ${storeName}:`, error);
-            return [];
-        }
+            
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
     }
 
-    async put(storeName, item) {
-        try {
+    async get(storeName, id) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([storeName], 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(id);
+            
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async delete(storeName, id) {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
-            const request = store.put(item);
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                transaction.oncomplete = () => resolve(request.result);
-                transaction.onerror = () => reject(transaction.error);
-            });
-        } catch (error) {
-            console.error(`Failed to put item in ${storeName}:`, error);
-            throw error;
-        }
+            const request = store.delete(id);
+            
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+        });
     }
 
-    async delete(storeName, key) {
-        try {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.delete(key);
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve();
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = () => reject(transaction.error);
-            });
-        } catch (error) {
-            console.error(`Failed to delete item from ${storeName}:`, error);
-            throw error;
-        }
-    }
-
-    async deleteByIndex(storeName, indexName, value) {
-        try {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const index = store.index(indexName);
-            const range = IDBKeyRange.only(value);
-            const request = index.openCursor(range);
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = (event) => {
-                    const cursor = event.target.result;
-                    if (cursor) {
-                        cursor.delete();
-                        cursor.continue();
-                    }
-                };
-                
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = () => reject(transaction.error);
-            });
-        } catch (error) {
-            console.error(`Failed to delete items by index from ${storeName}:`, error);
-            throw error;
-        }
-    }
-
-    async getByIndex(storeName, indexName, value) {
-        try {
+    async query(storeName, indexName, value) {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             const index = store.index(indexName);
             const request = index.getAll(value);
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.error(`Failed to get items by index from ${storeName}:`, error);
-            return [];
-        }
+            
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
     }
 
     async count(storeName) {
-        try {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             const request = store.count();
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.error(`Failed to count items in ${storeName}:`, error);
-            return 0;
-        }
+            
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
     }
 
     async clear(storeName) {
-        try {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.clear();
-
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => resolve();
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = () => reject(transaction.error);
-            });
-        } catch (error) {
-            console.error(`Failed to clear ${storeName}:`, error);
-            throw error;
-        }
+            
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+        });
     }
 
-    // Settings-specific methods
+    async exists(storeName, id) {
+        const item = await this.get(storeName, id);
+        return !!item;
+    }
+
+    async saveSettings(settings) {
+        const promises = Object.entries(settings).map(([key, value]) => 
+            this.save('settings', { key, value })
+        );
+        await Promise.all(promises);
+    }
+
     async getSettings() {
-        try {
-            const settings = {};
-            const allSettings = await this.getAll('settings');
-            
-            allSettings.forEach(setting => {
-                settings[setting.key] = setting.value;
-            });
-            
-            return settings;
-        } catch (error) {
-            console.error('Failed to get settings:', error);
-            return {};
-        }
-    }
-
-    async saveSettings(settingsObject) {
-        try {
-            const transaction = this.db.transaction(['settings'], 'readwrite');
-            const store = transaction.objectStore('settings');
-
-            // Save each setting
-            for (const [key, value] of Object.entries(settingsObject)) {
-                await store.put({ key, value });
-            }
-
-            return new Promise((resolve, reject) => {
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = () => reject(transaction.error);
-            });
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            throw error;
-        }
+        const settingsArray = await this.getAll('settings');
+        const settings = {};
+        settingsArray.forEach(item => {
+            settings[item.key] = item.value;
+        });
+        return settings;
     }
 
     async getSetting(key) {
-        try {
-            const result = await this.get('settings', key);
-            return result ? result.value : null;
-        } catch (error) {
-            console.error(`Failed to get setting ${key}:`, error);
-            return null;
+        const item = await this.get('settings', key);
+        return item ? item.value : null;
+    }
+
+    async deleteSetting(key) {
+        return this.delete('settings', key);
+    }
+
+    async backup() {
+        const backup = {
+            version: this.version,
+            timestamp: new Date().toISOString(),
+            data: {}
+        };
+
+        for (const storeName of Object.keys(this.stores)) {
+            backup.data[storeName] = await this.getAll(storeName);
+        }
+
+        return backup;
+    }
+
+    async restore(backup) {
+        if (!backup.data) {
+            throw new Error('Invalid backup format');
+        }
+
+        for (const [storeName, items] of Object.entries(backup.data)) {
+            if (this.stores[storeName]) {
+                await this.clear(storeName);
+                for (const item of items) {
+                    await this.save(storeName, item);
+                }
+            }
         }
     }
 
-    async setSetting(key, value) {
-        try {
-            await this.put('settings', { key, value });
-        } catch (error) {
-            console.error(`Failed to set setting ${key}:`, error);
-            throw error;
+    async getStorageInfo() {
+        const info = {};
+        for (const storeName of Object.keys(this.stores)) {
+            info[storeName] = await this.count(storeName);
         }
-    }
-
-    // Utility methods
-    isOpen() {
-        return this.db !== null;
+        return info;
     }
 
     close() {
@@ -263,47 +195,12 @@ export class DatabaseManager {
         }
     }
 
-    async backup() {
-        try {
-            const backup = {
-                version: this.version,
-                timestamp: new Date().toISOString(),
-                data: {
-                    templates: await this.getAll('templates'),
-                    settings: await this.getAll('settings')
-                }
-            };
-            return backup;
-        } catch (error) {
-            console.error('Failed to create backup:', error);
-            throw error;
-        }
-    }
-
-    async restore(backupData) {
-        try {
-            // Clear existing data
-            await this.clear('templates');
-            await this.clear('settings');
-
-            // Restore templates
-            if (backupData.data.templates) {
-                for (const template of backupData.data.templates) {
-                    await this.put('templates', template);
-                }
-            }
-
-            // Restore settings
-            if (backupData.data.settings) {
-                for (const setting of backupData.data.settings) {
-                    await this.put('settings', setting);
-                }
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Failed to restore backup:', error);
-            throw error;
-        }
+    async deleteDatabase() {
+        this.close();
+        return new Promise((resolve, reject) => {
+            const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+            deleteRequest.onsuccess = () => resolve(true);
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+        });
     }
 }
