@@ -37,6 +37,19 @@ export class ImportExport {
         templateData.iconFileId = null;
         templateData.meshFileId = null;
 
+        if (templateData.materialPath && !templateData.materials) {
+            const materialName = this.extractMaterialNameFromPath(templateData.materialPath);
+            templateData.materials = [{
+                name: materialName,
+                path: templateData.materialPath
+            }];
+            delete templateData.materialPath;
+        }
+
+        if (!Array.isArray(templateData.materials)) {
+            templateData.materials = [];
+        }
+
         this.editor.templates.unshift(templateData);
         this.editor.currentTemplate = templateData;
         
@@ -202,12 +215,16 @@ export class ImportExport {
             'Name', 'ItemID', 'DisplayName', 'ThumbnailDescription', 'Description',
             'ItemType', 'Rarity', 'MaxStackSize', 'Weight', 'Value', 'Durability',
             'bIsStackable', 'bIsDroppable', 'bIsUsable', 'bIsEquippable', 
-            'bIsTradeable', 'bIsQuestItem', 'MeshPath', 'MaterialPath', 'EquipSlot'
+            'bIsTradeable', 'bIsQuestItem', 'MeshPath', 'Materials', 'EquipSlot'
         ];
 
         let csvContent = headers.join(',') + '\n';
 
         this.editor.templates.forEach(template => {
+            const materialsStr = template.materials && template.materials.length > 0 
+                ? template.materials.map(m => `${m.name}:${m.path}`).join(';')
+                : '';
+
             const row = [
                 `"${template.itemName || ''}"`,
                 `"${template.itemID || ''}"`,
@@ -227,7 +244,7 @@ export class ImportExport {
                 template.isTradeable ? 'True' : 'False',
                 template.isQuestItem ? 'True' : 'False',
                 `"${template.meshPath || ''}"`,
-                `"${template.materialPath || ''}"`,
+                `"${materialsStr}"`,
                 `"${template.equipSlot || 'None'}"`
             ];
 
@@ -358,12 +375,30 @@ export class ImportExport {
                     template.meshPath = value;
                     break;
                 case 'materialpath':
-                    template.materialPath = value;
+                    if (value) {
+                        const materialName = this.extractMaterialNameFromPath(value);
+                        template.materials = [{
+                            name: materialName,
+                            path: value
+                        }];
+                    }
+                    break;
+                case 'materials':
+                    if (value) {
+                        template.materials = value.split(';').map(material => {
+                            const [name, path] = material.split(':');
+                            return { name: name || 'Material', path: path || `/Game/Materials/${name || 'Material'}` };
+                        });
+                    }
                     break;
                 case 'equipslot':
                     template.equipSlot = value;
                     break;
             }
+        }
+
+        if (!Array.isArray(template.materials)) {
+            template.materials = [];
         }
         
         if (!template.itemID) {
@@ -372,6 +407,15 @@ export class ImportExport {
         }
         
         return template;
+    }
+
+    extractMaterialNameFromPath(path) {
+        if (!path) return 'Material';
+        
+        const parts = path.split('/');
+        const fileName = parts[parts.length - 1];
+        
+        return fileName || 'Material';
     }
 
     generateGUID() {

@@ -1,254 +1,37 @@
+import { Helpers } from '../utils/Helpers.js';
+
 export class TemplateRepository {
     constructor(dbManager) {
-        this.db = dbManager;
-        this.storeName = 'templates';
-    }
-
-    async getAll() {
-        return await this.db.getAll(this.storeName);
-    }
-
-    async getById(id) {
-        return await this.db.get(this.storeName, id);
-    }
-
-    async save(template) {
-        if (!template.id) {
-            throw new Error('Template must have an id');
-        }
-        
-        const now = new Date().toISOString();
-        if (!template.createdAt) {
-            template.createdAt = now;
-        }
-        template.updatedAt = now;
-
-        await this.db.put(this.storeName, template);
-        return template;
-    }
-
-    async delete(id) {
-        return await this.db.delete(this.storeName, id);
-    }
-
-    async deleteMultiple(ids) {
-        const promises = ids.map(id => this.delete(id));
-        return await Promise.all(promises);
-    }
-
-    async exists(id) {
-        const template = await this.getById(id);
-        return template !== undefined;
-    }
-
-    async count() {
-        return await this.db.count(this.storeName);
-    }
-
-    async findByName(itemName) {
-        const templates = await this.getAll();
-        return templates.filter(t => t.itemName === itemName);
-    }
-
-    async findByType(itemType) {
-        const templates = await this.getAll();
-        return templates.filter(t => t.itemType === itemType);
-    }
-
-    async findByRarity(rarity) {
-        const templates = await this.getAll();
-        return templates.filter(t => t.rarity === rarity);
-    }
-
-    async search(query) {
-        const templates = await this.getAll();
-        const lowercaseQuery = query.toLowerCase();
-        
-        return templates.filter(template => {
-            return (template.itemName && template.itemName.toLowerCase().includes(lowercaseQuery)) ||
-                   (template.displayName && template.displayName.toLowerCase().includes(lowercaseQuery)) ||
-                   (template.description && template.description.toLowerCase().includes(lowercaseQuery)) ||
-                   (template.itemType && template.itemType.toLowerCase().includes(lowercaseQuery));
-        });
-    }
-
-    async duplicate(id, newName = null) {
-        const original = await this.getById(id);
-        if (!original) {
-            throw new Error('Template not found');
-        }
-
-        const duplicate = {
-            ...JSON.parse(JSON.stringify(original)),
-            id: this.generateId(),
-            itemID: this.generateId(),
-            itemName: newName || `${original.itemName}_Copy`,
-            createdAt: undefined,
-            updatedAt: undefined,
-            iconFileId: original.iconFileId,
-            meshFileId: original.meshFileId
-        };
-
-        return await this.save(duplicate);
-    }
-
-    async getTemplatesWithFiles() {
-        const templates = await this.getAll();
-        return templates.filter(t => t.iconFileId || t.meshFileId);
-    }
-
-    async getTemplatesWithoutFiles() {
-        const templates = await this.getAll();
-        return templates.filter(t => !t.iconFileId && !t.meshFileId);
-    }
-
-    async updateMultiple(updates) {
-        const promises = updates.map(update => {
-            if (!update.id) {
-                throw new Error('Update must include template id');
-            }
-            return this.save(update);
-        });
-        return await Promise.all(promises);
-    }
-
-    async clear() {
-        return await this.db.clear(this.storeName);
-    }
-
-    async export(templateIds = null) {
-        let templates;
-        
-        if (templateIds && templateIds.length > 0) {
-            const promises = templateIds.map(id => this.getById(id));
-            templates = await Promise.all(promises);
-            templates = templates.filter(t => t !== undefined);
-        } else {
-            templates = await this.getAll();
-        }
-
-        // Remove file references for export
-        return templates.map(template => {
-            const { iconFileId, meshFileId, createdAt, updatedAt, ...exportTemplate } = template;
-            return exportTemplate;
-        });
-    }
-
-    async import(templatesData) {
-        const imported = [];
-        
-        for (const templateData of templatesData) {
-            // Ensure required fields
-            if (!templateData.itemID) {
-                templateData.itemID = this.generateId();
-            }
-            
-            templateData.id = templateData.itemID;
-            templateData.iconFileId = null;
-            templateData.meshFileId = null;
-            
-            try {
-                await this.save(templateData);
-                imported.push(templateData);
-            } catch (error) {
-                console.error('Failed to import template:', templateData.itemName, error);
-            }
-        }
-        
-        return imported;
-    }
-
-    validateTemplate(template) {
-        const errors = [];
-        
-        if (!template.itemName || template.itemName.trim() === '') {
-            errors.push('Item Name is required');
-        }
-        
-        if (!template.displayName || template.displayName.trim() === '') {
-            errors.push('Display Name is required');
-        }
-        
-        if (!template.itemID || template.itemID.trim() === '') {
-            errors.push('Item ID is required');
-        }
-        
-        if (template.itemName && template.itemName.length > 24) {
-            errors.push('Item Name must be 24 characters or less');
-        }
-        
-        if (template.itemName && /\s/.test(template.itemName)) {
-            errors.push('Item Name cannot contain whitespace');
-        }
-        
-        if (template.itemName && /[^a-zA-Z_]/.test(template.itemName)) {
-            errors.push('Item Name can only contain letters and underscores');
-        }
-        
-        if (template.itemID && !this.isValidUUID(template.itemID)) {
-            errors.push('Item ID must be a valid UUID format');
-        }
-        
-        if (template.maxStackSize && template.maxStackSize <= 0) {
-            errors.push('Max Stack Size must be greater than 0');
-        }
-        
-        if (template.weight && template.weight < 0) {
-            errors.push('Weight cannot be negative');
-        }
-        
-        if (template.value && template.value < 0) {
-            errors.push('Value cannot be negative');
-        }
-        
-        if (template.durability && (template.durability < 0 || template.durability > 100)) {
-            errors.push('Durability must be between 0 and 100');
-        }
-        
-        return errors;
-    }
-
-    isValidUUID(uuid) {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(uuid);
-    }
-
-    generateId() {
-        return 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c == 'x' ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-        });
+        this.dbManager = dbManager;
     }
 
     createEmptyTemplate() {
-        const newId = this.generateId();
         return {
-            id: newId,
-            itemID: newId,
+            id: Helpers.generateGUID(),
             itemName: '',
+            itemID: Helpers.generateGUID(),
             displayName: '',
             thumbnailDescription: '',
             description: '',
             itemType: 'Misc',
             itemSubCategory: '',
-            tags: [],
             rarity: 'Common',
             maxStackSize: 1,
-            bHasWeight: false,
+            maxQuantity: 0,
             weight: 0,
+            value: 0,
+            durability: 100,
+            tags: [],
+            bHasWeight: false,
             bHasPrice: false,
+            bHasDurability: false,
             basePrice: 0,
             sellPriceCoefficient: 0.5,
-            value: 0,
-            bHasDurability: false,
-            durability: 100,
             maxDurability: 100,
             baseDurability: 100,
             durabilityPenalization: 1.0,
             durabilityToPriceCoefficient: 1.0,
-            maxQuantity: 1,
-            isStackable: true,
+            isStackable: false,
             isDroppable: true,
             isUsable: false,
             isEquippable: false,
@@ -257,52 +40,373 @@ export class TemplateRepository {
             iconFileId: null,
             meshFileId: null,
             meshPath: '',
-            materialPath: '',
-            equipSlot: 'None',
-            customProperties: [],            
+            materials: [],
+            equipSlot: 'none',
+            customProperties: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
     }
 
-    async getStatistics() {
-        const templates = await this.getAll();
-        
-        const stats = {
-            total: templates.length,
-            byType: {},
-            byRarity: {},
-            withFiles: 0,
-            withoutFiles: 0,
-            averageWeight: 0,
-            averageValue: 0
-        };
-        
-        let totalWeight = 0;
-        let totalValue = 0;
-        
-        templates.forEach(template => {
-            // Count by type
-            stats.byType[template.itemType] = (stats.byType[template.itemType] || 0) + 1;
-            
-            // Count by rarity
-            stats.byRarity[template.rarity] = (stats.byRarity[template.rarity] || 0) + 1;
-            
-            // Files
-            if (template.iconFileId || template.meshFileId) {
-                stats.withFiles++;
-            } else {
-                stats.withoutFiles++;
+    async getAll() {
+        try {
+            const templates = await this.dbManager.getAll('templates');
+            return templates.map(template => this.migrateTemplate(template));
+        } catch (error) {
+            console.error('Error loading templates:', error);
+            return [];
+        }
+    }
+
+    async get(id) {
+        try {
+            const template = await this.dbManager.get('templates', id);
+            return template ? this.migrateTemplate(template) : null;
+        } catch (error) {
+            console.error('Error loading template:', error);
+            return null;
+        }
+    }
+
+    async save(template) {
+        try {
+            template.updatedAt = new Date().toISOString();
+            if (!template.createdAt) {
+                template.createdAt = template.updatedAt;
             }
-            
-            // Averages
-            totalWeight += template.weight || 0;
-            totalValue += template.value || 0;
-        });
+
+            template = this.validateTemplate(template);
+            await this.dbManager.save('templates', template);
+            return template;
+        } catch (error) {
+            console.error('Error saving template:', error);
+            throw error;
+        }
+    }
+
+    async delete(id) {
+        try {
+            await this.dbManager.delete('templates', id);
+            return true;
+        } catch (error) {
+            console.error('Error deleting template:', error);
+            return false;
+        }
+    }
+
+    async deleteMultiple(ids) {
+        try {
+            const promises = ids.map(id => this.dbManager.deleteTemplate(id));
+            await Promise.all(promises);
+            return true;
+        } catch (error) {
+            console.error('Error deleting multiple templates:', error);
+            return false;
+        }
+    }
+
+    async duplicate(id) {
+        try {
+            const original = await this.get(id);
+            if (!original) {
+                throw new Error('Template not found');
+            }
+
+            const duplicate = { ...original };
+            duplicate.id = Helpers.generateGUID();
+            duplicate.itemID = Helpers.generateGUID();
+            duplicate.itemName = `${original.itemName} (Copy)`;
+            duplicate.displayName = `${original.displayName} (Copy)`;
+            duplicate.createdAt = new Date().toISOString();
+            duplicate.updatedAt = duplicate.createdAt;
+
+            if (duplicate.materials) {
+                duplicate.materials = duplicate.materials.map(material => ({ ...material }));
+            }
+
+            if (duplicate.customProperties) {
+                duplicate.customProperties = duplicate.customProperties.map(prop => ({ ...prop }));
+            }
+
+            if (duplicate.tags) {
+                duplicate.tags = [...duplicate.tags];
+            }
+
+            await this.save(duplicate);
+            return duplicate;
+        } catch (error) {
+            console.error('Error duplicating template:', error);
+            throw error;
+        }
+    }
+
+    validateTemplate(template) {
+        const validated = { ...template };
+
+        if (!validated.itemName || validated.itemName.trim() === '') {
+            validated.itemName = 'Unnamed Template';
+        }
+
+        if (!validated.itemID || validated.itemID.trim() === '') {
+            validated.itemID = Helpers.generateGUID();
+        }
+
+        if (!validated.displayName || validated.displayName.trim() === '') {
+            validated.displayName = validated.itemName;
+        }
+
+        if (!validated.itemType) {
+            validated.itemType = 'Misc';
+        }
+
+        if (!validated.rarity) {
+            validated.rarity = 'Common';
+        }
+
+        if (!validated.equipSlot) {
+            validated.equipSlot = 'none';
+        }
+
+        if (!Array.isArray(validated.tags)) {
+            validated.tags = [];
+        }
+
+        if (!Array.isArray(validated.materials)) {
+            validated.materials = [];
+        }
+
+        if (!Array.isArray(validated.customProperties)) {
+            validated.customProperties = [];
+        }
+
+        validated.materials = validated.materials.filter(material => 
+            material && material.name && material.path
+        );
+
+        validated.customProperties = validated.customProperties.filter(prop => 
+            prop && prop.name && prop.value
+        );
+
+        validated.maxStackSize = Math.max(1, parseInt(validated.maxStackSize) || 1);
+        validated.maxQuantity = Math.max(0, parseInt(validated.maxQuantity) || 0);
+        validated.weight = Math.max(0, parseFloat(validated.weight) || 0);
+        validated.value = Math.max(0, parseInt(validated.value) || 0);
+        validated.durability = Math.max(0, parseInt(validated.durability) || 100);
+        validated.basePrice = Math.max(0, parseFloat(validated.basePrice) || 0);
+        validated.sellPriceCoefficient = Math.max(0, parseFloat(validated.sellPriceCoefficient) || 0.5);
+        validated.maxDurability = Math.max(1, parseInt(validated.maxDurability) || 100);
+        validated.baseDurability = Math.max(0, parseInt(validated.baseDurability) || 100);
+        validated.durabilityPenalization = Math.max(0, parseFloat(validated.durabilityPenalization) || 1.0);
+        validated.durabilityToPriceCoefficient = Math.max(0, parseFloat(validated.durabilityToPriceCoefficient) || 1.0);
+
+        validated.bHasWeight = Boolean(validated.bHasWeight);
+        validated.bHasPrice = Boolean(validated.bHasPrice);
+        validated.bHasDurability = Boolean(validated.bHasDurability);
+        validated.isStackable = Boolean(validated.isStackable);
+        validated.isDroppable = Boolean(validated.isDroppable);
+        validated.isUsable = Boolean(validated.isUsable);
+        validated.isEquippable = Boolean(validated.isEquippable);
+        validated.isTradeable = Boolean(validated.isTradeable);
+        validated.isQuestItem = Boolean(validated.isQuestItem);
+
+        return validated;
+    }
+
+    migrateTemplate(template) {
+        const migrated = { ...template };
+
+        if (migrated.materialPath && !migrated.materials) {
+            const materialName = this.extractMaterialNameFromPath(migrated.materialPath);
+            migrated.materials = [{
+                name: materialName,
+                path: migrated.materialPath
+            }];
+            delete migrated.materialPath;
+        }
+
+        if (!Array.isArray(migrated.materials)) {
+            migrated.materials = [];
+        }
+
+        if (!Array.isArray(migrated.tags)) {
+            migrated.tags = [];
+        }
+
+        if (!Array.isArray(migrated.customProperties)) {
+            migrated.customProperties = [];
+        }
+
+        if (migrated.thumbnailDescription === undefined && migrated['short-description']) {
+            migrated.thumbnailDescription = migrated['short-description'];
+            delete migrated['short-description'];
+        }
+
+        if (!migrated.equipSlot) {
+            migrated.equipSlot = 'none';
+        }
+
+        if (!migrated.itemSubCategory) {
+            migrated.itemSubCategory = '';
+        }
+
+        if (migrated.bHasWeight === undefined) {
+            migrated.bHasWeight = false;
+        }
+
+        if (migrated.bHasPrice === undefined) {
+            migrated.bHasPrice = false;
+        }
+
+        if (migrated.bHasDurability === undefined) {
+            migrated.bHasDurability = false;
+        }
+
+        if (!migrated.createdAt) {
+            migrated.createdAt = new Date().toISOString();
+        }
+
+        if (!migrated.updatedAt) {
+            migrated.updatedAt = migrated.createdAt;
+        }
+
+        return migrated;
+    }
+
+    extractMaterialNameFromPath(path) {
+        if (!path) return 'Material';
         
-        if (templates.length > 0) {
-            stats.averageWeight = totalWeight / templates.length;
-            stats.averageValue = totalValue / templates.length;
+        const parts = path.split('/');
+        const fileName = parts[parts.length - 1];
+        
+        return fileName || 'Material';
+    }
+
+    async exportTemplates(templateIds = null) {
+        try {
+            let templates;
+            if (templateIds && templateIds.length > 0) {
+                templates = await Promise.all(
+                    templateIds.map(id => this.get(id))
+                );
+                templates = templates.filter(t => t !== null);
+            } else {
+                templates = await this.getAll();
+            }
+
+            return {
+                version: '1.1.0',
+                exportDate: new Date().toISOString(),
+                templates: templates.map(template => this.prepareForExport(template))
+            };
+        } catch (error) {
+            console.error('Error exporting templates:', error);
+            throw error;
+        }
+    }
+
+    prepareForExport(template) {
+        const exported = { ...template };
+        
+        delete exported.createdAt;
+        delete exported.updatedAt;
+        
+        if (exported.iconFileId) {
+            exported.hasIcon = true;
+            delete exported.iconFileId;
         }
         
-        return stats;
+        if (exported.meshFileId) {
+            exported.hasMesh = true;
+            delete exported.meshFileId;
+        }
+        
+        return exported;
+    }
+
+    async importTemplates(data) {
+        try {
+            if (!data.templates || !Array.isArray(data.templates)) {
+                throw new Error('Invalid import data format');
+            }
+
+            const importedTemplates = [];
+            const errors = [];
+
+            for (const templateData of data.templates) {
+                try {
+                    const template = this.prepareForImport(templateData);
+                    const savedTemplate = await this.save(template);
+                    importedTemplates.push(savedTemplate);
+                } catch (error) {
+                    errors.push({
+                        template: templateData.itemName || 'Unknown',
+                        error: error.message
+                    });
+                }
+            }
+
+            return {
+                imported: importedTemplates,
+                errors: errors,
+                total: data.templates.length
+            };
+        } catch (error) {
+            console.error('Error importing templates:', error);
+            throw error;
+        }
+    }
+
+    prepareForImport(templateData) {
+        const template = this.migrateTemplate(templateData);
+        
+        template.id = Helpers.generateGUID();
+        template.itemID = Helpers.generateGUID();
+        template.createdAt = new Date().toISOString();
+        template.updatedAt = template.createdAt;
+        
+        delete template.iconFileId;
+        delete template.meshFileId;
+        delete template.hasIcon;
+        delete template.hasMesh;
+        
+        return this.validateTemplate(template);
+    }
+
+    async search(query) {
+        try {
+            const templates = await this.getAll();
+            const searchTerm = query.toLowerCase();
+            
+            return templates.filter(template => 
+                template.itemName.toLowerCase().includes(searchTerm) ||
+                template.displayName.toLowerCase().includes(searchTerm) ||
+                template.description.toLowerCase().includes(searchTerm) ||
+                template.itemType.toLowerCase().includes(searchTerm) ||
+                template.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+            );
+        } catch (error) {
+            console.error('Error searching templates:', error);
+            return [];
+        }
+    }
+
+    async getByType(itemType) {
+        try {
+            const templates = await this.getAll();
+            return templates.filter(template => template.itemType === itemType);
+        } catch (error) {
+            console.error('Error filtering templates by type:', error);
+            return [];
+        }
+    }
+
+    async getByRarity(rarity) {
+        try {
+            const templates = await this.getAll();
+            return templates.filter(template => template.rarity === rarity);
+        } catch (error) {
+            console.error('Error filtering templates by rarity:', error);
+            return [];
+        }
     }
 }

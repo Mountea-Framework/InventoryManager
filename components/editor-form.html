@@ -69,6 +69,7 @@
         <div class="form-group full-width">
           <label for="tags">Tags</label>
           <input type="text" class="tag-input" id="tagInput" placeholder="Type to add tags...">
+          <div id="tagSuggestions" class="tag-suggestions hidden"></div>
           <div class="tags-container" id="tagsContainer">
           </div>
           <small class="help-text">Use tags for categorization, filtering, and gameplay logic</small>
@@ -209,9 +210,26 @@
           <input type="file" id="meshPath" name="meshPath" accept=".fbx,.obj" />
           <small class="file-info">Accepted formats: FBX, OBJ</small>
         </div>
-        <div class="form-group">
-          <label for="materialPath">Material Path</label>
-          <input type="text" id="materialPath" name="materialPath" placeholder="/Game/Materials/..." />
+      </div>
+    </section>
+
+    <!-- Materials -->
+    <section class="form-section">
+      <h2>Materials</h2>
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>Materials</label>
+          <div class="materials-header">
+            <button type="button" id="addMaterial" class="btn btn-secondary">
+              Add Material
+            </button>
+            <small class="help-text">
+              Define materials used by this item. Paths will auto-generate as "/Game/Materials/{MaterialName}"
+            </small>
+          </div>
+          <div id="materialsContainer" class="materials-container">
+            <!-- Material rows will be dynamically added here -->
+          </div>
         </div>
       </div>
     </section>

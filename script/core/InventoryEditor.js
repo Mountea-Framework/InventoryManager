@@ -18,6 +18,7 @@ export class InventoryEditor {
         this.componentLoader = new ComponentLoader();
         this.currentTemplate = null;
         this.customPropCounter = 0;
+        this.materialCounter = 0;
         this.selectedTemplates = new Set();
         this.componentsLoaded = false;
         this.selectedTags = [];
@@ -53,6 +54,10 @@ export class InventoryEditor {
                 'Combat', 'Magic', 'Healing', 'Buff', 'Debuff', 'Craftable',
                 'Fire', 'Ice', 'Lightning', 'Earth', 'Water', 'Air',
                 'Melee', 'Ranged', 'Defense', 'Attack', 'Speed', 'Strength'
+            ],
+            materialPresets: [
+                'BaseMaterial', 'MetallicMaterial', 'EmissiveMaterial', 
+                'GlassMaterial', 'FabricMaterial', 'WoodMaterial'
             ]
         };
 
@@ -162,6 +167,7 @@ export class InventoryEditor {
             if (settings.rarities) this.settings.rarities = settings.rarities;
             if (settings.equipmentSlots) this.settings.equipmentSlots = settings.equipmentSlots;
             if (settings.tagSuggestions) this.settings.tagSuggestions = settings.tagSuggestions;
+            if (settings.materialPresets) this.settings.materialPresets = settings.materialPresets;
         } catch (error) {
             console.error('Failed to load settings:', error);
         }
@@ -207,6 +213,7 @@ export class InventoryEditor {
         addListener('deleteSelected', 'click', () => this.deleteSelectedTemplates());
 
         addListener('addCustomProp', 'click', () => this.ui.addCustomProperty());
+        addListener('addMaterial', 'click', () => this.form.addMaterialRow());
 
         addListener('isEquippable', 'change', (e) => {
             const equipmentSection = document.getElementById('equipmentSection');
