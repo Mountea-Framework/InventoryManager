@@ -231,9 +231,13 @@ export class UIManager {
             equipmentSection.style.display = template.isEquippable ? 'block' : 'none';
         }
 
-        this.editor.form.toggleSection('weightSection', ['weight']);
-        this.editor.form.toggleSection('priceSection', ['basePrice', 'sellPriceCoefficient']);
-        this.editor.form.toggleSection('durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']);
+        const bHasWeightField = document.getElementById('bHasWeight');
+        const bHasPriceField = document.getElementById('bHasPrice');
+        const bHasDurabilityField = document.getElementById('bHasDurability');
+
+        this.editor.form.toggleSection(bHasWeightField, 'weightSection', ['weight']);
+        this.editor.form.toggleSection(bHasPriceField, 'priceSection', ['basePrice', 'sellPriceCoefficient']);
+        this.editor.form.toggleSection(bHasDurabilityField, 'durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']);
 
         this.updatePreview();
     }

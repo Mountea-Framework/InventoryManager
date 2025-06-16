@@ -166,17 +166,14 @@ export class FormManager {
         const bHasPriceField = document.getElementById('bHasPrice');
         const bHasDurabilityField = document.getElementById('bHasDurability');
         
-        bHasWeightField?.addEventListener('change', () => this.toggleSection('weightSection', ['weight']));
-        bHasPriceField?.addEventListener('change', () => this.toggleSection('priceSection', ['basePrice', 'sellPriceCoefficient']));
-        bHasDurabilityField?.addEventListener('change', () => this.toggleSection('durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']));
+        bHasWeightField?.addEventListener('change', () => this.toggleSection(bHasWeightField, 'weightSection', ['weight']));
+        bHasPriceField?.addEventListener('change', () => this.toggleSection(bHasPriceField, 'priceSection', ['basePrice', 'sellPriceCoefficient']));
+        bHasDurabilityField?.addEventListener('change', () => this.toggleSection(bHasDurabilityField, 'durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']));
     }
 
-    toggleSection(sectionId, fieldIds) {
-        const checkboxId = sectionId.replace('Section', '');
-        const checkbox = document.getElementById(checkboxId);
+    toggleSection(checkbox, sectionId, fieldIds) {
         const section = document.getElementById(sectionId);
-        
-        const isEnabled = checkbox?.checked;
+        const isEnabled = checkbox.checked;
         section?.classList.toggle('disabled', !isEnabled);
         fieldIds.forEach(fieldId => {
             const field = document.getElementById(fieldId);
