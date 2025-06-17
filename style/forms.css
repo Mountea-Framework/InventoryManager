@@ -211,9 +211,10 @@ input[type="checkbox"]:checked::after {
     display: flex;
     flex-wrap: wrap;
     flex-direction: row;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-sm);
-    border: 1px solid transparent;
+    gap: var(--spacing-xs);    
+    border: none;
+    padding-top: var(--padding-sm);
+    padding-bottom: var(--padding-sm);
     border-radius: var(--border-radius-sm);
     min-height: 40px;
     position: relative;

@@ -459,7 +459,6 @@ export class UIManager {
 
     renderTags() {
         const container = document.getElementById('tagsContainer');
-        const input = document.getElementById('tagInput');
         const suggestions = document.getElementById('tagSuggestions');
         
         if (!container) return;
@@ -471,12 +470,10 @@ export class UIManager {
             tagElement.className = 'tag';
             tagElement.innerHTML = `
                 ${tag}
-                <button type="button" class="tag-remove" onclick="window.editor.ui.removeTag('${tag}')">×</button>
+                <button type="button" class="btn btn-small" onclick="window.editor.ui.removeTag('${tag}')">×</button>
             `;
             container.appendChild(tagElement);
         });
-        
-        container.appendChild(input);
         container.appendChild(suggestions);
     }
 
