@@ -51,18 +51,41 @@ export class UIManager {
     }
 
     selectTemplate(templateId) {
-        const template = this.editor.templates.find(t => t.id === templateId);
-        if (template) {
-            if (this.editor.currentTemplate?.id === templateId) {
-                this.closeCurrentTemplate();
-                return;
-            }
-            this.editor.currentTemplate = template;
-            this.loadTemplateToForm(template);
-            this.selectTemplateInList(templateId);
-            this.toggleSelectionBaseButtons(true);
+        if (this.editor.dirtyStateManager) {
+            this.editor.dirtyStateManager.checkDirtyBeforeAction('select', () => {
+                const template = this.editor.templates.find(t => t.id === templateId);
+                if (template) {
+                    if (this.editor.currentTemplate?.id === templateId) {
+                        this.closeCurrentTemplate();
+                        return;
+                    }
+                    this.editor.currentTemplate = template;
+                    this.loadTemplateToForm(template);
+                    this.selectTemplateInList(templateId);
+                    this.toggleSelectionBaseButtons(true);
+                } else {
+                    this.toggleSelectionBaseButtons(false);
+                }
+            });
         } else {
-            this.toggleSelectionBaseButtons(false);
+            const template = this.editor.templates.find(t => t.id === templateId);
+            if (template) {
+                if (this.editor.currentTemplate?.id === templateId) {
+                    this.closeCurrentTemplate();
+                    return;
+                }
+                this.editor.currentTemplate = template;
+                this.loadTemplateToForm(template);
+                this.selectTemplateInList(templateId);
+                this.toggleSelectionBaseButtons(true);
+            } else {
+                this.toggleSelectionBaseButtons(false);
+            }
+        }
+
+        if (this.editor.dirtyStateManager) {
+            this.editor.dirtyStateManager.isDirty = false;
+            this.editor.dirtyStateManager.updateDirtyIndicators();
         }
     }
 
@@ -240,6 +263,10 @@ export class UIManager {
         this.editor.form.toggleSection(bHasDurabilityField, 'durabilitySection', ['maxDurability', 'baseDurability', 'durabilityPenalization', 'durabilityToPriceCoefficient']);
 
         this.updatePreview();
+
+        if (this.editor.dirtyStateManager) {
+            this.editor.dirtyStateManager.setOriginalData(template);
+        }
     }
 
     clearForm() {
