@@ -293,4 +293,10 @@
         padding: var(--padding-sm);
         background: transparent;
     }
+
+    .template-item.dirty::before {
+        left: auto;
+        transform: translateY(0%) translateX(-135%);
+        font-size: 1rem;
+    }
 }

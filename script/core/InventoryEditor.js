@@ -11,6 +11,7 @@ import { SettingsManager } from '../features/SettingsManager.js';
 import { ThemeManager } from '../features/ThemeManager.js';
 import { NotificationSystem } from '../utils/NotificationSystem.js';
 import { LoadingManager } from '../utils/LoadingManager.js';
+import { DirtyStateManager } from '../forms/DirtyStateManager.js';
 import { Helpers } from '../utils/Helpers.js';
 
 export class InventoryEditor {
@@ -22,6 +23,7 @@ export class InventoryEditor {
         this.selectedTemplates = new Set();
         this.componentsLoaded = false;
         this.selectedTags = [];
+        this.dirtyStateManager = null;
         
         this.notifications = new NotificationSystem();
         this.loadingManager = new LoadingManager();
@@ -96,6 +98,9 @@ export class InventoryEditor {
 
             this.loadingManager.trackEventListeners();
             this.initializeEventListeners();
+
+            this.dirtyStateManager = new DirtyStateManager(this);
+            this.dirtyStateManager.init();
             
             await new Promise(resolve => setTimeout(resolve, 100));
             
@@ -337,14 +342,27 @@ export class InventoryEditor {
             return;
         }
 
-        const template = this.templateRepo.createEmptyTemplate();
-        this.templates.unshift(template);
-        this.currentTemplate = template;
-        await this.templateRepo.save(template);
-        this.ui.loadTemplateToForm(template);
-        this.ui.selectTemplateInList(template.id);
-        this.ui.renderTemplatesList();
-        this.notifications.show('New template created', 'success');
+        if (this.dirtyStateManager) {
+            this.dirtyStateManager.checkDirtyBeforeAction('create', async () => {
+                const template = this.templateRepo.createEmptyTemplate();
+                this.templates.unshift(template);
+                this.currentTemplate = template;
+                await this.templateRepo.save(template);
+                this.ui.loadTemplateToForm(template);
+                this.ui.selectTemplateInList(template.id);
+                this.ui.renderTemplatesList();
+                this.notifications.show('New template created', 'success');
+            });
+        } else {
+            const template = this.templateRepo.createEmptyTemplate();
+            this.templates.unshift(template);
+            this.currentTemplate = template;
+            await this.templateRepo.save(template);
+            this.ui.loadTemplateToForm(template);
+            this.ui.selectTemplateInList(template.id);
+            this.ui.renderTemplatesList();
+            this.notifications.show('New template created', 'success');
+        }
     }
 
     async saveCurrentTemplate() {
@@ -370,6 +388,7 @@ export class InventoryEditor {
         this.ui.renderTemplatesList();
         this.ui.selectTemplateInList(this.currentTemplate.id);
         this.notifications.show('Template saved successfully', 'success');
+        this.dirtyStateManager.markClean();
     }
 
     async duplicateCurrentTemplate() {

@@ -10,6 +10,7 @@
 @import 'header.css';
 @import 'sidebar.css';
 @import 'loading.css';
+@import 'auto-save.css';
 
 /* Form and button components */
 @import 'buttons.css';
