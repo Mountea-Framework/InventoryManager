@@ -86,7 +86,7 @@ export class DirtyStateManager {
     updateDirtyIndicators() {
         if (!this.editor.currentTemplate) return;
 
-        const templateContainer = document.querySelector(`[data-template-id="${this.editor.currentTemplate.id}"]`)?.parentElement;
+        const templateContainer = document.querySelector(`[data-template-id="${this.editor.currentTemplate.id}"]`); //?.parentElement;
         if (templateContainer) {
             templateContainer.classList.toggle('dirty', this.isDirty);
         }

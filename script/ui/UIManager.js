@@ -68,19 +68,7 @@ export class UIManager {
                 }
             });
         } else {
-            const template = this.editor.templates.find(t => t.id === templateId);
-            if (template) {
-                if (this.editor.currentTemplate?.id === templateId) {
-                    this.closeCurrentTemplate();
-                    return;
-                }
-                this.editor.currentTemplate = template;
-                this.loadTemplateToForm(template);
-                this.selectTemplateInList(templateId);
-                this.toggleSelectionBaseButtons(true);
-            } else {
-                this.toggleSelectionBaseButtons(false);
-            }
+            this.toggleSelectionBaseButtons(false);
         }
 
         if (this.editor.dirtyStateManager) {
