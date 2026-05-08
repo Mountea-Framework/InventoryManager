@@ -42,7 +42,7 @@ const CommandDialog = ({ open, onOpenChange, children, label = 'Command Menu' })
   <Dialog open={open} onOpenChange={onOpenChange}>
     <div
       role="dialog" aria-label={label}
-      className="w-[640px] max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
+      className="w-full max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl sm:max-w-[720px] md:max-w-[900px]"
     >
       <Command>{children}</Command>
     </div>

@@ -315,6 +315,40 @@ const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix,
   </div>
 );
 
+/* ---------- FilePicker — TextField + browse button wrapping a hidden file input ---------- */
+/**
+ * Displays a text field for a file path alongside a folder button that opens a native
+ * file picker. Calls onChange with the selected filename (basename only).
+ * @param {{ value: string, onChange: (v: string) => void, accept?: string, placeholder?: string, className?: string }} props
+ */
+const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file…', className = '' }) => {
+  const inputRef = useRef(null);
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) onChange?.(file.name);
+    e.target.value = '';
+  };
+  return (
+    <div className={cn('flex gap-1.5', className)}>
+      <div className={cn(
+        'flex flex-1 h-9 items-center rounded-md border border-input bg-transparent px-3 shadow-sm',
+        'focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+      )}>
+        <input
+          value={value}
+          onChange={e => onChange?.(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      <Button variant="outline" size="icon" onClick={() => inputRef.current?.click()} title="Browse file">
+        <Icon name="folder" size={14}/>
+      </Button>
+      <input ref={inputRef} type="file" accept={accept} className="sr-only" onChange={handleFileChange}/>
+    </div>
+  );
+};
+
 /* ---------- IconBtn — borderless icon button ---------- */
 const IconBtn = ({ icon, onClick, title, tone, size = 'sm' }) => (
   <Button variant="ghost" size={size === 'sm' ? 'icon-sm' : 'icon'}
@@ -412,5 +446,5 @@ Object.assign(window, {
   Button, Input, Textarea, Label, Select,
   Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter,
   Section, Switch, Toggle, Badge, Tag, Separator,
-  Row, TextField, IconBtn, Thumb, CollapsibleAside, SidebarItem, LeftPanel,
+  Row, TextField, FilePicker, IconBtn, Thumb, CollapsibleAside, SidebarItem, LeftPanel,
 });
