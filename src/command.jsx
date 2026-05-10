@@ -42,7 +42,7 @@ const CommandDialog = ({ open, onOpenChange, children, label = 'Command Menu' })
   <Dialog open={open} onOpenChange={onOpenChange}>
     <div
       role="dialog" aria-label={label}
-      className="w-full max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl sm:max-w-[720px] md:max-w-[900px]"
+      className="w-[92vw] max-w-[900px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
     >
       <Command>{children}</Command>
     </div>
@@ -188,7 +188,7 @@ const CommandItem = ({ value, onSelect, children, icon, shortcut, disabled, clas
       )}
     >
       {icon && <Icon name={icon} size={16} className={cn("shrink-0", active ? "text-foreground" : "text-muted-foreground")}/>}
-      <span className="flex-1 truncate">{children}</span>
+      <span className="flex flex-1 min-w-0 items-center gap-2">{children}</span>
       {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
     </div>
   );

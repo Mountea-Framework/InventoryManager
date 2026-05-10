@@ -133,7 +133,7 @@ const Select = ({ value, onChange, options = [], className = '', placeholder }) 
     <select
       value={value} onChange={e => onChange?.(e.target.value)}
       className={cn(
-        "flex h-9 w-full appearance-none items-center justify-between rounded-md border border-input bg-transparent",
+        "h-9 w-full appearance-none rounded-md border border-input bg-transparent text-foreground",
         "px-3 pr-8 py-2 text-sm shadow-sm",
         "focus:outline-none focus:ring-1 focus:ring-ring",
         "disabled:cursor-not-allowed disabled:opacity-50",

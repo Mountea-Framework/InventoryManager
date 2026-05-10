@@ -63,6 +63,10 @@ html, body {
   font-feature-settings: "cv11", "ss01";
 }
 
+#root {
+  overflow: hidden;
+}
+
 .font-mono, code, pre, kbd { font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; }
 
 /* Scrollbar */

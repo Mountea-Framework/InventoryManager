@@ -185,13 +185,8 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
       </button>
       {isOpen && filteredItems.map(item => {
         const isSel = selected === item.guid;
-        const dotCls = item.rarity === 'Legendary' ? 'bg-amber-400'
-          : item.rarity === 'Epic'   ? 'bg-fuchsia-400'
-          : item.rarity === 'Rare'   ? 'bg-sky-400'
-          : 'bg-muted-foreground/40';
         return (
           <SidebarItem key={item.guid} selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
-            <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotCls)}/>
             <div className="min-w-0 flex-1">
               <div className="truncate">{item.displayName}</div>
               <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>

@@ -185,7 +185,6 @@ const Footer = ({ hint }) => (
         </>
       )}
     </span>
-    <span className="font-mono">schema v2.6.0</span>
   </div>
 );
 
@@ -235,6 +234,63 @@ const FRow = ({ label, hint, children }) => (
 );
 
 /* ============================================================
+   TaxListPage — unified shell for all taxonomy list pages
+   ============================================================ */
+/**
+ * Standard shell for taxonomy list pages: header, search, item list, add action, footer.
+ * Pass item rows as children — they must be CommandItem elements.
+ * @param {{ trail: string[], onBack: () => void, onClose: () => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
+ */
+const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) => (
+  <div className="flex flex-col">
+    <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
+    <Command>
+      <CommandInput placeholder={placeholder}/>
+      <CommandList>
+        <CommandEmpty>No results match.</CommandEmpty>
+        <CommandGroup heading={heading}>
+          {children}
+        </CommandGroup>
+        <CommandSeparator/>
+        <CommandGroup>
+          <CommandItem value={`new add create ${addLabel.toLowerCase()}`} icon="plus" onSelect={onAdd}>
+            {addLabel}
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </Command>
+    <Footer/>
+  </div>
+);
+
+/* ============================================================
+   TaxEditPage — unified shell for all taxonomy edit pages
+   ============================================================ */
+/**
+ * Standard shell for taxonomy edit pages: header with delete, scrollable form, footer.
+ * Pass form fields as children — they should be FRow elements.
+ * @param {{ trail: string[], onBack: () => void, onClose: () => void, onDelete: () => void, footerHint?: React.ReactNode, children: React.ReactNode }} props
+ */
+const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children }) => (
+  <div className="flex flex-col">
+    <PageHeader
+      trail={trail} onBack={onBack} onClose={onClose}
+      right={onDelete && (
+        <Button variant="ghost" size="sm" onClick={onDelete}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <Icon name="trash" size={13}/> Delete
+        </Button>
+      )}
+    />
+    <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
+      {children}
+    </div>
+    <Footer hint={footerHint ?? 'changes saved automatically'}/>
+  </div>
+);
+
+/* ============================================================
    Settings Command — page router
    ============================================================ */
 /**
@@ -256,15 +312,15 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
     const parts = ['Settings'];
     for (let i = 1; i < stack.length; i++) {
       const p = stack[i];
-      if (p.type === 'categories')       parts.push('Categories');
-      else if (p.type === 'category')    parts.push(tax.categories.find(c => c.id === p.id)?.title || 'Category');
-      else if (p.type === 'subcategory') parts.push(tax.categories.find(c => c.id === p.catId)?.subcategories.find(s => s.id === p.id)?.title || 'Subcategory');
-      else if (p.type === 'rarities')    parts.push('Rarities');
-      else if (p.type === 'rarity')      parts.push(tax.rarities.find(r => r.id === p.id)?.title || 'Rarity');
-      else if (p.type === 'itemActions')     parts.push('Item Actions');
-      else if (p.type === 'itemAction')      parts.push(tax.itemActions.find(a => a.id === p.id)?.key || 'Action');
-      else if (p.type === 'attachmentSlots') parts.push('Attachment Slots');
-      else if (p.type === 'attachmentSlot')  parts.push(tax.attachmentSlots.find(s => s.id === p.id)?.name || 'Slot');
+      if (p.type === 'categories')        parts.push('Categories');
+      else if (p.type === 'category')     parts.push(tax.categories.find(c => c.id === p.id)?.title || 'Category');
+      else if (p.type === 'subcategory')  parts.push(tax.categories.find(c => c.id === p.catId)?.subcategories.find(s => s.id === p.id)?.title || 'Subcategory');
+      else if (p.type === 'rarities')     parts.push('Rarities');
+      else if (p.type === 'rarity')       parts.push(tax.rarities.find(r => r.id === p.id)?.title || 'Rarity');
+      else if (p.type === 'itemActions')      parts.push('Item Actions');
+      else if (p.type === 'itemAction')       parts.push(tax.itemActions.find(a => a.id === p.id)?.key || 'Action');
+      else if (p.type === 'attachmentSlots')  parts.push('Attachment Slots');
+      else if (p.type === 'attachmentSlot')   parts.push(tax.attachmentSlots.find(s => s.id === p.id)?.name || 'Slot');
       else if (p.type === 'craftingStations') parts.push('Crafting Stations');
       else if (p.type === 'craftingStation')  parts.push(tax.craftingStations.find(s => s.id === p.id)?.name || 'Station');
     }
@@ -277,22 +333,22 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
     <Dialog open={open} onOpenChange={onOpenChange}>
       <div
         role="dialog" aria-label="Settings"
-        className="w-full max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl sm:max-w-[720px] md:max-w-[900px]"
+        className="w-[92vw] max-w-[900px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
       >
         {page.type === 'root' && (
           <RootPage tweaks={tweaks} setTweak={setTweak} screen={screen} setScreen={setScreen} push={push} close={close}/>
         )}
-        {page.type === 'categories'       && <CategoriesPage {...shared}/>}
-        {page.type === 'category'         && <CategoryEditPage {...shared} categoryId={page.id}/>}
-        {page.type === 'subcategory'      && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
-        {page.type === 'rarities'         && <RaritiesPage {...shared}/>}
-        {page.type === 'rarity'           && <RarityEditPage {...shared} rarityId={page.id}/>}
-        {page.type === 'itemActions'      && <ItemActionsPage {...shared}/>}
-        {page.type === 'itemAction'       && <ItemActionEditPage {...shared} actionId={page.id}/>}
-        {page.type === 'attachmentSlots'  && <AttachmentSlotsPage {...shared}/>}
-        {page.type === 'attachmentSlot'   && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
-        {page.type === 'craftingStations' && <CraftingStationsPage {...shared}/>}
-        {page.type === 'craftingStation'  && <CraftingStationEditPage {...shared} stationId={page.id}/>}
+        {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
+        {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id}/>}
+        {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
+        {page.type === 'rarities'          && <RaritiesPage        {...shared}/>}
+        {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id}/>}
+        {page.type === 'itemActions'       && <ItemActionsPage     {...shared}/>}
+        {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id}/>}
+        {page.type === 'attachmentSlots'   && <AttachmentSlotsPage {...shared}/>}
+        {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
+        {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
+        {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id}/>}
       </div>
     </Dialog>
   );
@@ -414,31 +470,22 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
     push({ type: 'category', id });
   };
   return (
-    <div className="flex flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-      <Command>
-        <CommandInput placeholder="Search categories…"/>
-        <CommandList>
-          <CommandEmpty>No categories match.</CommandEmpty>
-          <CommandGroup heading={`${tax.categories.length} categories`}>
-            {tax.categories.map(c => (
-              <CommandItem
-                key={c.id}
-                value={`${c.title} ${c.tags.join(' ')} ${c.subcategories.map(s => s.title).join(' ')}`}
-                icon="folder"
-                shortcut={`${c.subcategories.length} sub`}
-                onSelect={() => push({ type: 'category', id: c.id })}
-              >{c.title}</CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator/>
-          <CommandGroup>
-            <CommandItem value="new category add create" icon="plus" onSelect={addCategory}>New category…</CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      <Footer/>
-    </div>
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder="Search categories…"
+      heading={`${tax.categories.length} categories`}
+      onAdd={addCategory} addLabel="New category…"
+    >
+      {tax.categories.map(c => (
+        <CommandItem
+          key={c.id}
+          value={`${c.title} ${c.tags.join(' ')} ${c.subcategories.map(s => s.title).join(' ')}`}
+          icon="folder"
+          shortcut={`${c.subcategories.length} sub`}
+          onSelect={() => push({ type: 'category', id: c.id })}
+        >{c.title}</CommandItem>
+      ))}
+    </TaxListPage>
   );
 }
 
@@ -465,52 +512,44 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
+    <TaxEditPage
+      trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
+      footerHint={<><kbd className="rounded border border-border bg-background px-1">esc</kbd> back <span className="mx-1">·</span> changes saved automatically</>}
+    >
+      <FRow label="Title">
+        <Input value={cat.title} onChange={e => update({ title: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Tags" hint="Gameplay / data tags applied to every item in this category.">
+        <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
+      </FRow>
+      <FRow label="Subcategories" hint={`${cat.subcategories.length} defined · click to edit`}>
+        <div className="rounded-md border border-border bg-card/40">
+          {cat.subcategories.length === 0 && (
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">No subcategories yet.</div>
+          )}
+          {cat.subcategories.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => push({ type: 'subcategory', catId: categoryId, id: s.id })}
+              className={cn(
+                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                i > 0 && 'border-t border-border/60',
+              )}
+            >
+              <Icon name="folderOpen" size={14} className="text-muted-foreground"/>
+              <span className="flex-1">{s.title}</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} tag{s.tags.length === 1 ? '' : 's'}</span>
+              <Icon name="chevRight" size={12} className="text-muted-foreground"/>
+            </button>
+          ))}
+        </div>
+        <div className="mt-2">
+          <Button variant="outline" size="sm" onClick={addSub}>
+            <Icon name="plus" size={13}/> Add subcategory
           </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Title">
-          <Input value={cat.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Tags" hint="Gameplay / data tags applied to every item in this category.">
-          <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
-        </FRow>
-        <FRow label="Subcategories" hint={`${cat.subcategories.length} defined · click to edit`}>
-          <div className="rounded-md border border-border bg-card/40">
-            {cat.subcategories.length === 0 && (
-              <div className="px-3 py-6 text-center text-xs text-muted-foreground">No subcategories yet.</div>
-            )}
-            {cat.subcategories.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => push({ type: 'subcategory', catId: categoryId, id: s.id })}
-                className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-                  i > 0 && 'border-t border-border/60',
-                )}
-              >
-                <Icon name="folderOpen" size={14} className="text-muted-foreground"/>
-                <span className="flex-1">{s.title}</span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} tag{s.tags.length === 1 ? '' : 's'}</span>
-                <Icon name="chevRight" size={12} className="text-muted-foreground"/>
-              </button>
-            ))}
-          </div>
-          <div className="mt-2">
-            <Button variant="outline" size="sm" onClick={addSub}>
-              <Icon name="plus" size={13}/> Add subcategory
-            </Button>
-          </div>
-        </FRow>
-      </div>
-      <Footer hint={<><kbd className="rounded border border-border bg-background px-1">esc</kbd> back <span className="mx-1">·</span> changes saved automatically</>}/>
-    </div>
+        </div>
+      </FRow>
+    </TaxEditPage>
   );
 }
 
@@ -543,25 +582,17 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
-          </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Title">
-          <Input value={sub.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Tags" hint={`Inherits from ${cat.title} → ${cat.tags.join(', ') || 'no parent tags'}`}>
-          <TagsField value={sub.tags} onChange={tags => update({ tags })}/>
-        </FRow>
-      </div>
-      <Footer hint={<>parent: <span className="text-foreground/80">{cat.title}</span> <span className="mx-1">·</span> changes saved automatically</>}/>
-    </div>
+    <TaxEditPage
+      trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
+      footerHint={<>parent: <span className="text-foreground/80">{cat.title}</span> <span className="mx-1">·</span> changes saved automatically</>}
+    >
+      <FRow label="Title">
+        <Input value={sub.title} onChange={e => update({ title: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Tags" hint={`Inherits from ${cat.title} → ${cat.tags.join(', ') || 'no parent tags'}`}>
+        <TagsField value={sub.tags} onChange={tags => update({ tags })}/>
+      </FRow>
+    </TaxEditPage>
   );
 }
 
@@ -578,33 +609,24 @@ function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
     push({ type: 'rarity', id });
   };
   return (
-    <div className="flex flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-      <Command>
-        <CommandInput placeholder="Search rarities…"/>
-        <CommandList>
-          <CommandEmpty>No rarities match.</CommandEmpty>
-          <CommandGroup heading={`${tax.rarities.length} rarities`}>
-            {tax.rarities.map(r => (
-              <CommandItem
-                key={r.id}
-                value={`${r.title} ${r.tags.join(' ')}`}
-                onSelect={() => push({ type: 'rarity', id: r.id })}
-              >
-                <span className="mr-1 inline-block h-3 w-3 shrink-0 rounded-full ring-1 ring-border" style={{ background: r.color }}/>
-                <span className="flex-1">{r.title}</span>
-                <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">{r.color}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator/>
-          <CommandGroup>
-            <CommandItem value="new rarity add create" icon="plus" onSelect={addRarity}>New rarity…</CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      <Footer/>
-    </div>
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder="Search rarities…"
+      heading={`${tax.rarities.length} rarities`}
+      onAdd={addRarity} addLabel="New rarity…"
+    >
+      {tax.rarities.map(r => (
+        <CommandItem
+          key={r.id}
+          value={`${r.title} ${r.tags.join(' ')}`}
+          shortcut={r.color}
+          onSelect={() => push({ type: 'rarity', id: r.id })}
+        >
+          <span className="h-3 w-3 shrink-0 rounded-full ring-1 ring-border" style={{ background: r.color }}/>
+          <span className="truncate">{r.title}</span>
+        </CommandItem>
+      ))}
+    </TaxListPage>
   );
 }
 
@@ -625,59 +647,48 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
-          </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Title">
-          <Input value={r.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Tags">
-          <TagsField value={r.tags} onChange={tags => update({ tags })}/>
-        </FRow>
-        <FRow label="Colour" hint="Used for badges, borders, and rarity-themed UI accents.">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ background: r.color }}/>
-            <input type="color" value={r.color} onChange={e => update({ color: e.target.value })}
-              className="h-10 w-14 cursor-pointer rounded-md border border-input bg-transparent"/>
-            <input value={r.color} onChange={e => update({ color: e.target.value })}
-              className="h-10 flex-1 rounded-md border border-input bg-transparent px-3 font-mono text-xs uppercase outline-none focus:ring-1 focus:ring-ring"/>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {RARITY_SWATCHES.map(c => (
-              <button key={c} onClick={() => update({ color: c })} title={c}
-                className={cn(
-                  'h-6 w-6 rounded-md border transition-transform hover:scale-110',
-                  r.color.toLowerCase() === c.toLowerCase()
-                    ? 'border-foreground ring-2 ring-ring ring-offset-2 ring-offset-popover'
-                    : 'border-border',
-                )}
-                style={{ background: c }}/>
-            ))}
-          </div>
-        </FRow>
-        <div className="rounded-md border border-border bg-card/40 p-3">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</div>
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
-              style={{ borderColor: r.color, color: r.color, background: `${r.color}1a` }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ background: r.color }}/>
-              {r.title || 'Rarity'}
-            </span>
-            <span className="font-mono text-[10.5px] text-muted-foreground">{r.tags[0] || 'no.tag'}</span>
-          </div>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
+      <FRow label="Title">
+        <Input value={r.title} onChange={e => update({ title: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Tags">
+        <TagsField value={r.tags} onChange={tags => update({ tags })}/>
+      </FRow>
+      <FRow label="Colour" hint="Used for badges, borders, and rarity-themed UI accents.">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ background: r.color }}/>
+          <input type="color" value={r.color} onChange={e => update({ color: e.target.value })}
+            className="h-10 w-14 cursor-pointer rounded-md border border-input bg-transparent"/>
+          <input value={r.color} onChange={e => update({ color: e.target.value })}
+            className="h-10 flex-1 rounded-md border border-input bg-transparent px-3 font-mono text-xs uppercase outline-none focus:ring-1 focus:ring-ring text-foreground"/>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {RARITY_SWATCHES.map(c => (
+            <button key={c} onClick={() => update({ color: c })} title={c}
+              className={cn(
+                'h-6 w-6 rounded-md border transition-transform hover:scale-110',
+                r.color.toLowerCase() === c.toLowerCase()
+                  ? 'border-foreground ring-2 ring-ring ring-offset-2 ring-offset-popover'
+                  : 'border-border',
+              )}
+              style={{ background: c }}/>
+          ))}
+        </div>
+      </FRow>
+      <div className="rounded-md border border-border bg-card/40 p-3">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</div>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
+            style={{ borderColor: r.color, color: r.color, background: `${r.color}1a` }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: r.color }}/>
+            {r.title || 'Rarity'}
+          </span>
+          <span className="font-mono text-[10.5px] text-muted-foreground">{r.tags[0] || 'no.tag'}</span>
         </div>
       </div>
-      <Footer hint="changes saved automatically"/>
-    </div>
+    </TaxEditPage>
   );
 }
 
@@ -694,33 +705,24 @@ function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
     push({ type: 'itemAction', id });
   };
   return (
-    <div className="flex flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-      <Command>
-        <CommandInput placeholder="Search actions…"/>
-        <CommandList>
-          <CommandEmpty>No actions match.</CommandEmpty>
-          <CommandGroup heading={`${tax.itemActions.length} actions`}>
-            {tax.itemActions.map(a => (
-              <CommandItem
-                key={a.id}
-                value={`${a.key} ${a.tip}`}
-                icon={a.icon}
-                onSelect={() => push({ type: 'itemAction', id: a.id })}
-              >
-                <span className="flex-1">{a.key}</span>
-                <span className="ml-auto max-w-[200px] truncate font-mono text-[10.5px] text-muted-foreground">{a.tip}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator/>
-          <CommandGroup>
-            <CommandItem value="new action add create" icon="plus" onSelect={addAction}>New action…</CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      <Footer/>
-    </div>
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder="Search actions…"
+      heading={`${tax.itemActions.length} actions`}
+      onAdd={addAction} addLabel="New action…"
+    >
+      {tax.itemActions.map(a => (
+        <CommandItem
+          key={a.id}
+          value={`${a.key} ${a.tip}`}
+          icon={a.icon}
+          onSelect={() => push({ type: 'itemAction', id: a.id })}
+        >
+          <span className="flex-1 font-medium">{a.key}</span>
+          <span className="max-w-[260px] truncate font-mono text-[10.5px] text-muted-foreground">{a.tip}</span>
+        </CommandItem>
+      ))}
+    </TaxListPage>
   );
 }
 
@@ -741,33 +743,22 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
-          </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Action Key" hint="Programmatic identifier used in game logic (e.g. Equip, Repair).">
-          <Input value={action.key} onChange={e => update({ key: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Icon" hint="Lucide icon name rendered in the item action chip (e.g. shield, trash, eye).">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
-              <Icon name={action.icon} size={16}/>
-            </div>
-            <Input value={action.icon} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs"/>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
+      <FRow label="Action Key" hint="Programmatic identifier used in game logic (e.g. Equip, Repair).">
+        <Input value={action.key} onChange={e => update({ key: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Icon" hint="Lucide icon name rendered in the item action chip (e.g. shield, trash, eye).">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+            <Icon name={action.icon} size={16}/>
           </div>
-        </FRow>
-        <FRow label="Tooltip" hint="Short description shown on hover in the player-facing UI.">
-          <Input value={action.tip} onChange={e => update({ tip: e.target.value })}/>
-        </FRow>
-      </div>
-      <Footer hint="changes saved automatically"/>
-    </div>
+          <Input value={action.icon} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs"/>
+        </div>
+      </FRow>
+      <FRow label="Tooltip" hint="Short description shown on hover in the player-facing UI.">
+        <Input value={action.tip} onChange={e => update({ tip: e.target.value })}/>
+      </FRow>
+    </TaxEditPage>
   );
 }
 
@@ -784,31 +775,22 @@ function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
     push({ type: 'attachmentSlot', id });
   };
   return (
-    <div className="flex flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-      <Command>
-        <CommandInput placeholder="Search slots…"/>
-        <CommandList>
-          <CommandEmpty>No slots match.</CommandEmpty>
-          <CommandGroup heading={`${tax.attachmentSlots.length} slots`}>
-            {tax.attachmentSlots.map(s => (
-              <CommandItem
-                key={s.id}
-                value={`${s.name} ${s.tags.join(' ')}`}
-                icon="link"
-                shortcut={`${s.tags.length} tag${s.tags.length === 1 ? '' : 's'}`}
-                onSelect={() => push({ type: 'attachmentSlot', id: s.id })}
-              >{s.name}</CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator/>
-          <CommandGroup>
-            <CommandItem value="new slot add create" icon="plus" onSelect={addSlot}>New slot…</CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      <Footer/>
-    </div>
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder="Search slots…"
+      heading={`${tax.attachmentSlots.length} slots`}
+      onAdd={addSlot} addLabel="New slot…"
+    >
+      {tax.attachmentSlots.map(s => (
+        <CommandItem
+          key={s.id}
+          value={`${s.name} ${s.tags.join(' ')}`}
+          icon="link"
+          shortcut={`${s.tags.length} tag${s.tags.length === 1 ? '' : 's'}`}
+          onSelect={() => push({ type: 'attachmentSlot', id: s.id })}
+        >{s.name}</CommandItem>
+      ))}
+    </TaxListPage>
   );
 }
 
@@ -829,25 +811,14 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax })
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
-          </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Slot Name" hint="Display name for this equipment slot (e.g. Primary, Head, Accessory).">
-          <Input value={slot.name} onChange={e => update({ name: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Tags" hint="Gameplay tags that identify this slot (e.g. Slot.Primary, Slot.Head).">
-          <TagsField value={slot.tags} onChange={tags => update({ tags })}/>
-        </FRow>
-      </div>
-      <Footer hint="changes saved automatically"/>
-    </div>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
+      <FRow label="Slot Name" hint="Display name for this equipment slot (e.g. Primary, Head, Accessory).">
+        <Input value={slot.name} onChange={e => update({ name: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Tags" hint="Gameplay tags that identify this slot (e.g. Slot.Primary, Slot.Head).">
+        <TagsField value={slot.tags} onChange={tags => update({ tags })}/>
+      </FRow>
+    </TaxEditPage>
   );
 }
 
@@ -864,31 +835,22 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
     push({ type: 'craftingStation', id });
   };
   return (
-    <div className="flex flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-      <Command>
-        <CommandInput placeholder="Search stations…"/>
-        <CommandList>
-          <CommandEmpty>No stations match.</CommandEmpty>
-          <CommandGroup heading={`${tax.craftingStations.length} stations`}>
-            {tax.craftingStations.map(s => (
-              <CommandItem
-                key={s.id}
-                value={`${s.name} ${s.tag}`}
-                icon="hammer"
-                shortcut={s.tag}
-                onSelect={() => push({ type: 'craftingStation', id: s.id })}
-              >{s.name}</CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator/>
-          <CommandGroup>
-            <CommandItem value="new station add create" icon="plus" onSelect={addStation}>New station…</CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-      <Footer/>
-    </div>
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder="Search stations…"
+      heading={`${tax.craftingStations.length} stations`}
+      onAdd={addStation} addLabel="New station…"
+    >
+      {tax.craftingStations.map(s => (
+        <CommandItem
+          key={s.id}
+          value={`${s.name} ${s.tag}`}
+          icon="hammer"
+          shortcut={s.tag}
+          onSelect={() => push({ type: 'craftingStation', id: s.id })}
+        >{s.name}</CommandItem>
+      ))}
+    </TaxListPage>
   );
 }
 
@@ -909,25 +871,14 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
-        right={
-          <Button variant="ghost" size="sm" onClick={remove} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-            <Icon name="trash" size={13}/> Delete
-          </Button>
-        }
-      />
-      <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
-        <FRow label="Station Name" hint="Display name shown in recipe requirements (e.g. Forge, Loom).">
-          <Input value={station.name} onChange={e => update({ name: e.target.value })} autoFocus/>
-        </FRow>
-        <FRow label="Tag" hint="Single gameplay tag identifying this station (e.g. Station.Forge).">
-          <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
-        </FRow>
-      </div>
-      <Footer hint="changes saved automatically"/>
-    </div>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
+      <FRow label="Station Name" hint="Display name shown in recipe requirements (e.g. Forge, Loom).">
+        <Input value={station.name} onChange={e => update({ name: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label="Tag" hint="Single gameplay tag identifying this station (e.g. Station.Forge).">
+        <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
+      </FRow>
+    </TaxEditPage>
   );
 }
 
