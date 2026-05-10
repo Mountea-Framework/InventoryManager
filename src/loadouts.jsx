@@ -4,7 +4,7 @@ import {
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
   Section, Row, TextField, Tag, IconBtn,
 } from './ui.jsx';
-import { Dialog } from './command.jsx';
+import { Dialog, DialogContent } from './command.jsx';
 import { DATA } from './data.js';
 import { useTaxonomy } from './hooks.jsx';
 
@@ -59,7 +59,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <div className="w-full max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl sm:w-[480px]">
+      <DialogContent className="w-full max-w-[92vw] p-0 sm:w-[480px]">
         {/* Header */}
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold">{isEdit ? 'Edit Loadout Item' : 'Add Item to Loadout'}</h2>
@@ -123,7 +123,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
             {isEdit ? 'Save Changes' : 'Add to Loadout'}
           </Button>
         </div>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }

@@ -4,7 +4,7 @@ import {
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
   Section, Row, IconBtn,
 } from './ui.jsx';
-import { Dialog } from './command.jsx';
+import { Dialog, DialogContent } from './command.jsx';
 import { DATA } from './data.js';
 import { useTaxonomy } from './hooks.jsx';
 
@@ -150,7 +150,7 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <div className="w-full max-w-[92vw] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl sm:w-[480px]">
+      <DialogContent className="w-full max-w-[92vw] p-0 sm:w-[480px]">
         {/* Header */}
         <div className="border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold">Add Ingredient</h2>
@@ -201,7 +201,7 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
         <div className="flex items-center justify-end border-t border-border px-4 py-3">
           <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
         </div>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }

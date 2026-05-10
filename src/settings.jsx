@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
 import {
-  Dialog, Command, CommandInput, CommandList, CommandEmpty,
+  Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
 } from './command.jsx';
 import { useTaxonomy, TAX_KEY } from './hooks.jsx';
@@ -134,23 +134,26 @@ const FRow = ({ label, hint, children }) => (
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
  */
 const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) => (
-  <div className="flex flex-col">
+  <div className="flex h-full flex-col">
     <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-    <Command>
+    <Command className="flex-1 h-auto min-h-0">
       <CommandInput placeholder={placeholder}/>
-      <CommandList>
+      <CommandList className="flex-1 max-h-none">
         <CommandEmpty>No results match.</CommandEmpty>
         <CommandGroup heading={heading}>
           {children}
         </CommandGroup>
-        <CommandSeparator/>
-        <CommandGroup>
-          <CommandItem value={`new add create ${addLabel.toLowerCase()}`} icon="plus" onSelect={onAdd}>
-            {addLabel}
-          </CommandItem>
-        </CommandGroup>
       </CommandList>
     </Command>
+    <div className="border-t border-border">
+      <button
+        onClick={onAdd}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        <Icon name="plus" size={14}/>
+        {addLabel}
+      </button>
+    </div>
     <Footer/>
   </div>
 );
@@ -159,7 +162,7 @@ const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addL
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, onDelete: () => void, footerHint?: React.ReactNode, children: React.ReactNode }} props
  */
 const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children }) => (
-  <div className="flex flex-col">
+  <div className="flex h-full flex-col">
     <PageHeader
       trail={trail} onBack={onBack} onClose={onClose}
       right={onDelete && (
@@ -170,7 +173,7 @@ const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children })
         </Button>
       )}
     />
-    <div className="max-h-[60vh] overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {children}
     </div>
     <Footer hint={footerHint ?? 'changes saved automatically'}/>
@@ -217,10 +220,7 @@ export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <div
-        role="dialog" aria-label="Settings"
-        className="w-[92vw] max-w-[900px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
-      >
+      <DialogContent className="flex h-[620px] w-[92vw] max-w-[900px] flex-col overflow-hidden p-0 [&>button]:hidden">
         {page.type === 'root'              && <RootPage tweaks={tweaks} setTweak={setTweak} screen={screen} setScreen={setScreen} push={push} close={close}/>}
         {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
         {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id}/>}
@@ -233,7 +233,7 @@ export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks,
         {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
         {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
         {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id}/>}
-      </div>
+      </DialogContent>
     </Dialog>
   );
 }
@@ -285,7 +285,7 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
   return (
     <Command>
       <CommandInput placeholder="Search settings…"/>
-      <CommandList>
+      <CommandList className="flex-1 max-h-none">
         <CommandEmpty>No settings match.</CommandEmpty>
 
         <CommandGroup heading="Visuals">

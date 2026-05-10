@@ -152,7 +152,7 @@ function App() {
     <TooltipProvider>
       <div data-screen-label={screen} className="flex h-screen flex-col bg-background text-foreground">
         <TopBar screen={screen} setScreen={setScreen} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1">
           <ScreenComp search={globalSearch} tweaks={tweaks}/>
         </div>
         <SettingsCommand
