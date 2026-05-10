@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* shadcn — Nova style, Neutral base, Yellow theme, Medium radius
    Dark mode is the default. Yellow is the primary accent; surfaces
    are layered (background → card → muted) to match the Nova look. */

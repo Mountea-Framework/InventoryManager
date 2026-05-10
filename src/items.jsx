@@ -1,5 +1,11 @@
-// Items screen — Mountea Inventory item template editor
-const { useState: useStateItems, useMemo: useMemoItems } = React;
+import React, { useState, useMemo } from 'react';
+import {
+  cn, Icon, Button, Input, Select, Label, Switch, Badge, Tooltip,
+  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
+  Section, Row, TextField, Textarea, FilePicker, IconBtn,
+} from './ui.jsx';
+import { ITEM_FLAGS, ITEM_ACTIONS, DATA, bitsToFlags, flagsToBits, flagsLabels } from './data.js';
+import { useTaxonomy } from './hooks.jsx';
 
 /* ============================================================
    Type definitions
@@ -27,23 +33,25 @@ const FLAG_ICONS = {
  * @param {{ value: number, onChange: (v: number) => void }} props
  */
 function FlagsPicker({ value, onChange }) {
-  const flags = window.bitsToFlags(value || 0);
-  const toggle = (key) => onChange?.(window.flagsToBits({ ...flags, [key]: !flags[key] }));
+  const flags = bitsToFlags(value || 0);
+  const toggle = (key) => onChange?.(flagsToBits({ ...flags, [key]: !flags[key] }));
   return (
     <div className="grid grid-cols-2 gap-1.5">
-      {window.ITEM_FLAGS.map(f => {
+      {ITEM_FLAGS.map(f => {
         const on = !!flags[f.key];
         return (
-          <button key={f.key} type="button" onClick={() => toggle(f.key)} title={f.tip}
-            className={cn(
-              'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
-              on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
-            )}>
-            <Icon name={FLAG_ICONS[f.key] || 'tag'} size={12} className={on ? 'text-primary' : ''}/>
-            <span className="flex-1 truncate text-xs">{f.label}</span>
-            <span className="font-mono text-[9.5px] opacity-60">1&lt;&lt;{Math.log2(f.bit)}</span>
-            {on && <Icon name="check" size={11} className="text-primary"/>}
-          </button>
+          <Tooltip key={f.key} content={f.tip}>
+            <button type="button" onClick={() => toggle(f.key)}
+              className={cn(
+                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+              )}>
+              <Icon name={FLAG_ICONS[f.key] || 'tag'} size={12} className={on ? 'text-primary' : ''}/>
+              <span className="flex-1 truncate text-xs">{f.label}</span>
+              <span className="font-mono text-[9.5px] opacity-60">1&lt;&lt;{Math.log2(f.bit)}</span>
+              {on && <Icon name="check" size={11} className="text-primary"/>}
+            </button>
+          </Tooltip>
         );
       })}
     </div>
@@ -55,11 +63,11 @@ function FlagsPicker({ value, onChange }) {
    ============================================================ */
 /**
  * Chip grid for selecting which item actions are enabled on this item.
- * Reads available actions from taxonomy (falls back to window.ITEM_ACTIONS for fixture data).
- * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: import('./settings.jsx').Taxonomy }} props
+ * Reads available actions from taxonomy (falls back to ITEM_ACTIONS for fixture data).
+ * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: import('./hooks.jsx').Taxonomy }} props
  */
 function ItemActionsPicker({ value = [], onChange, taxonomy }) {
-  const catalog = taxonomy.itemActions ?? window.ITEM_ACTIONS;
+  const catalog = taxonomy.itemActions ?? ITEM_ACTIONS;
   const enabled = new Set(value);
 
   const toggle = (key) => {
@@ -75,15 +83,17 @@ function ItemActionsPicker({ value = [], onChange, taxonomy }) {
         {catalog.map(a => {
           const on = enabled.has(a.key);
           return (
-            <button key={a.key} type="button" onClick={() => toggle(a.key)} title={a.tip}
-              className={cn(
-                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
-                on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
-              )}>
-              <Icon name={a.icon} size={12} className={on ? 'text-primary' : ''}/>
-              <span className="flex-1 truncate text-xs">{a.key}</span>
-              {on && <Icon name="check" size={11} className="text-primary"/>}
-            </button>
+            <Tooltip key={a.key} content={a.tip}>
+              <button type="button" onClick={() => toggle(a.key)}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                  on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+                )}>
+                <Icon name={a.icon} size={12} className={on ? 'text-primary' : ''}/>
+                <span className="flex-1 truncate text-xs">{a.key}</span>
+                {on && <Icon name="check" size={11} className="text-primary"/>}
+              </button>
+            </Tooltip>
           );
         })}
       </div>
@@ -102,6 +112,54 @@ function ItemActionsPicker({ value = [], onChange, taxonomy }) {
 }
 
 /* ============================================================
+   AttachmentSlotPicker — native-select slot chooser
+   ============================================================ */
+/**
+ * Multi-value slot picker backed by taxonomy.attachmentSlots.
+ * Selected slots render as chips; a native <select> adds from the remaining taxonomy list.
+ * @param {{ values: string[], onChange: (v: string[]) => void, taxonomy: object }} props
+ */
+function AttachmentSlotPicker({ values = [], onChange, taxonomy }) {
+  const [pending, setPending] = useState('');
+  const all = (taxonomy.attachmentSlots ?? []).map(s => s.name);
+  const available = all.filter(s => !values.includes(s));
+
+  const remove = (i) => onChange?.(values.filter((_, j) => j !== i));
+  const add = () => {
+    if (!pending) return;
+    onChange?.([...values, pending]);
+    setPending('');
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {values.map((v, i) => (
+          <span key={i} className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 font-mono text-[10.5px]">
+            {v}
+            <button onClick={() => remove(i)} className="opacity-60 hover:opacity-100"><Icon name="x" size={10}/></button>
+          </span>
+        ))}
+        {values.length === 0 && <span className="text-xs italic text-muted-foreground">no slots assigned</span>}
+      </div>
+      {available.length > 0 && (
+        <div className="flex gap-1.5">
+          <Select
+            value={pending}
+            onChange={setPending}
+            options={[{ value: '', label: 'Select slot…' }, ...available.map(s => ({ value: s, label: s }))]}
+          />
+          <Button size="sm" variant="outline" onClick={add} icon="plus" disabled={!pending}/>
+        </div>
+      )}
+      {available.length === 0 && all.length > 0 && (
+        <p className="text-xs italic text-muted-foreground">All slots assigned.</p>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
    StringListField — reusable tag / slot / affect editor
    ============================================================ */
 /**
@@ -109,8 +167,8 @@ function ItemActionsPicker({ value = [], onChange, taxonomy }) {
  * @param {{ values: string[], onChange: (v: string[]) => void, placeholder?: string, mono?: boolean, suggestions?: string[] }} props
  */
 function StringListField({ values = [], onChange, placeholder = 'add entry', mono = true, suggestions = [] }) {
-  const [draft, setDraft] = useStateItems('');
-  const listId = useMemoItems(() => `sl-${Math.random().toString(36).slice(2, 6)}`, []);
+  const [draft, setDraft] = useState('');
+  const listId = useMemo(() => `sl-${Math.random().toString(36).slice(2, 6)}`, []);
 
   const remove = (i) => onChange?.(values.filter((_, j) => j !== i));
   const add = () => {
@@ -185,13 +243,16 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
       </button>
       {isOpen && filteredItems.map(item => {
         const isSel = selected === item.guid;
+        const tip = item.description?.short || `${item.rarity} · ${item.category}`;
         return (
-          <SidebarItem key={item.guid} selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{item.displayName}</div>
-              <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
-            </div>
-          </SidebarItem>
+          <Tooltip key={item.guid} content={tip} side="right">
+            <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="truncate">{item.displayName}</div>
+                <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
+              </div>
+            </SidebarItem>
+          </Tooltip>
         );
       })}
     </div>
@@ -204,14 +265,14 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
 /**
  * @param {{ search: string, tweaks: object }} props
  */
-function ItemsScreen({ search: globalSearch, tweaks }) {
+export function ItemsScreen({ search: globalSearch, tweaks }) {
   const [tax] = useTaxonomy();
-  const firstGuid = window.DATA.allItems[0]?.guid;
-  const [selected,     setSelected]     = useStateItems(firstGuid);
-  const [expanded,     setExpanded]     = useStateItems({ Weapons: true, Consumables: false, Materials: false, Armor: false, Containers: false });
-  const [browserSearch, setBrowserSearch] = useStateItems('');
+  const firstGuid = DATA.allItems[0]?.guid;
+  const [selected,     setSelected]     = useState(firstGuid);
+  const [expanded,     setExpanded]     = useState({ Weapons: true, Consumables: false, Materials: false, Armor: false, Containers: false });
+  const [browserSearch, setBrowserSearch] = useState('');
   const search = browserSearch || globalSearch;
-  const item = window.DATA.itemById[selected];
+  const item = DATA.itemById[selected];
   const showInspector = tweaks.showInspector !== false;
 
   return (
@@ -222,7 +283,7 @@ function ItemsScreen({ search: globalSearch, tweaks }) {
         search={browserSearch} setSearch={setBrowserSearch}
         searchPlaceholder="Filter items…"
       >
-        {Object.entries(window.DATA.items).map(([cat, arr]) => (
+        {Object.entries(DATA.items).map(([cat, arr]) => (
           <ItemTreeNode key={cat} category={cat} items={arr}
             expanded={expanded} setExpanded={setExpanded}
             selected={selected} setSelected={setSelected}
@@ -255,7 +316,7 @@ function ItemsScreen({ search: globalSearch, tweaks }) {
  * @param {{ item: Item, taxonomy: object }} props
  */
 function ItemEditor({ item, taxonomy }) {
-  const [draft, setDraft] = useStateItems(item);
+  const [draft, setDraft] = useState(item);
 
   /** Deep-sets a dot-path value on the draft. */
   const set = (path, val) => setDraft(d => {
@@ -267,12 +328,10 @@ function ItemEditor({ item, taxonomy }) {
     return next;
   });
 
-  const flagLabels = window.flagsLabels(draft.flags || 0);
+  const flagLabels = flagsLabels(draft.flags || 0);
 
   const activeCat  = taxonomy.categories.find(c => c.title === draft.category);
   const subcatOpts = activeCat?.subcategories ?? [];
-
-  const slotSuggestions = (taxonomy.attachmentSlots ?? []).map(s => s.name);
 
   return (
     <div>
@@ -436,11 +495,10 @@ function ItemEditor({ item, taxonomy }) {
 
         {/* Attachment Slots */}
         <Section title="Attachment Slots" icon="link" defaultOpen={false} compact>
-          <StringListField
+          <AttachmentSlotPicker
             values={draft.attachmentSlots}
             onChange={v => set('attachmentSlots', v)}
-            placeholder="Slot.Gem"
-            suggestions={slotSuggestions}
+            taxonomy={taxonomy}
           />
         </Section>
 
@@ -468,8 +526,8 @@ function ItemEditor({ item, taxonomy }) {
  * @param {{ item: Item }} props
  */
 function ItemInspector({ item }) {
-  const usedInLoadouts = window.DATA.loadouts.filter(l => l.items.some(it => it.ref === item.displayName));
-  const usedInRecipes  = Object.values(window.DATA.recipes).flat().filter(r =>
+  const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => it.ref === item.displayName));
+  const usedInRecipes  = Object.values(DATA.recipes).flat().filter(r =>
     r.groups.some(g => g.ingredients.some(i => i.ref === item.displayName))
   );
 
@@ -511,7 +569,7 @@ function ItemInspector({ item }) {
       <div>
         <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Active Flags</div>
         <div className="flex flex-wrap gap-1.5">
-          {window.flagsLabels(item.flags || 0).map(l => (
+          {flagsLabels(item.flags || 0).map(l => (
             <span key={l} className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10.5px] text-primary">{l}</span>
           ))}
           {(item.flags || 0) === 0 && <span className="text-xs italic text-muted-foreground">No flags set</span>}
@@ -549,5 +607,3 @@ function ItemInspector({ item }) {
     </div>
   );
 }
-
-window.ItemsScreen = ItemsScreen;

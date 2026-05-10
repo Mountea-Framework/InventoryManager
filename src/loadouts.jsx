@@ -1,5 +1,12 @@
-// Loadouts screen — shadcn restyle
-const { useState: useStateLdt, useEffect: useEffectLdt } = React;
+import React, { useState, useEffect } from 'react';
+import {
+  cn, Icon, Button, Input, Select, Label, Switch, Tooltip,
+  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
+  Section, Row, TextField, Tag, IconBtn,
+} from './ui.jsx';
+import { Dialog } from './command.jsx';
+import { DATA } from './data.js';
+import { useTaxonomy } from './hooks.jsx';
 
 /* ============================================================
    Type definitions
@@ -33,9 +40,9 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
     slot:       src?.slot       ?? null,
   });
 
-  const [draft, setDraft] = useStateLdt(() => buildDraft(item));
+  const [draft, setDraft] = useState(() => buildDraft(item));
 
-  useEffectLdt(() => { setDraft(buildDraft(item)); }, [item]);
+  useEffect(() => { setDraft(buildDraft(item)); }, [item]);
 
   const slotOptions = [
     { value: '', label: '— none —' },
@@ -68,7 +75,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
             <Select
               value={draft.ref}
               onChange={v => setDraft(d => ({ ...d, ref: v }))}
-              options={[{ value: '', label: '— select item —' }, ...window.DATA.allItems.map(it => ({ value: it.displayName, label: it.displayName }))]}
+              options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.displayName, label: it.displayName }))]}
               placeholder="Select item…"
             />
           </div>
@@ -94,19 +101,18 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 items-center">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Auto-Equip on Spawn</Label>
-              <Switch checked={draft.autoEquip} onCheckedChange={v => setDraft(d => ({ ...d, autoEquip: v }))}/>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preferred Slot</Label>
-              <Select
-                value={draft.slot ?? ''}
-                onChange={v => setDraft(d => ({ ...d, slot: v || null }))}
-                options={slotOptions}
-              />
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Auto-Equip on Spawn</Label>
+            <Switch checked={draft.autoEquip} onCheckedChange={v => setDraft(d => ({ ...d, autoEquip: v }))}/>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preferred Slot</Label>
+            <Select
+              value={draft.slot ?? ''}
+              onChange={v => setDraft(d => ({ ...d, slot: v || null }))}
+              options={slotOptions}
+            />
           </div>
         </div>
 
@@ -128,15 +134,15 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
 /**
  * @param {{ search: string, tweaks: object }} props
  */
-function LoadoutsScreen({ search: globalSearch, tweaks }) {
+export function LoadoutsScreen({ search: globalSearch, tweaks }) {
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useStateLdt('LDT_001');
-  const [browserSearch, setBrowserSearch] = useStateLdt('');
-  const loadout = window.DATA.loadouts.find(l => l.id === selected);
+  const [selected,      setSelected]      = useState('LDT_001');
+  const [browserSearch, setBrowserSearch] = useState('');
+  const loadout = DATA.loadouts.find(l => l.id === selected);
   const search  = (browserSearch || globalSearch || '').toLowerCase();
   const filtered = search
-    ? window.DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.id).toLowerCase().includes(search))
-    : window.DATA.loadouts;
+    ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.id).toLowerCase().includes(search))
+    : DATA.loadouts;
   const showInspector = tweaks.showInspector !== false;
 
   return (
@@ -150,17 +156,19 @@ function LoadoutsScreen({ search: globalSearch, tweaks }) {
         {filtered.map(l => {
           const sel = l.id === selected;
           return (
-            <SidebarItem key={l.id} selected={sel} onClick={() => setSelected(l.id)} className="block py-2.5">
-              <div className="min-w-0 w-full">
-                <div className="truncate text-sm font-medium">{l.name}</div>
-                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
-                <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                  <span>{l.items.length} items</span>
-                  <span className="opacity-50">·</span>
-                  <span>{Object.keys(l.slots || {}).length} slots</span>
+            <Tooltip key={l.id} content={`${l.items.length} items · ${Object.keys(l.slots || {}).length} slots`} side="right">
+              <SidebarItem selected={sel} onClick={() => setSelected(l.id)} className="block py-2.5">
+                <div className="min-w-0 w-full">
+                  <div className="truncate text-sm font-medium">{l.name}</div>
+                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
+                  <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                    <span>{l.items.length} items</span>
+                    <span className="opacity-50">·</span>
+                    <span>{Object.keys(l.slots || {}).length} slots</span>
+                  </div>
                 </div>
-              </div>
-            </SidebarItem>
+              </SidebarItem>
+            </Tooltip>
           );
         })}
       </LeftPanel>
@@ -186,10 +194,10 @@ function LoadoutsScreen({ search: globalSearch, tweaks }) {
  * @param {{ loadout: Loadout, taxonomy: object }} props
  */
 function LoadoutEditor({ loadout, taxonomy }) {
-  const [draft, setDraft] = useStateLdt(() => ({ ...loadout }));
+  const [draft, setDraft] = useState(() => ({ ...loadout }));
 
-  const [addModalOpen,  setAddModalOpen]  = useStateLdt(false);
-  const [editModalData, setEditModalData] = useStateLdt(null); // { item: LoadoutItem, idx: number } | null
+  const [addModalOpen,  setAddModalOpen]  = useState(false);
+  const [editModalData, setEditModalData] = useState(null); // { item: LoadoutItem, idx: number } | null
 
   const addItem = (item) => setDraft(d => ({ ...d, items: [...d.items, item] }));
 
@@ -236,7 +244,7 @@ function LoadoutEditor({ loadout, taxonomy }) {
             </div>
 
             {draft.items.map((it, idx) => {
-              const src = window.DATA.itemByName[it.ref];
+              const src = DATA.itemByName[it.ref];
               return (
                 <div key={idx} className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 rounded-lg border border-border bg-card p-2">
                   <div className="flex justify-center text-muted-foreground/60">
@@ -277,11 +285,11 @@ function LoadoutEditor({ loadout, taxonomy }) {
         <Section title="Spawn Behaviour" icon="bolt" compact>
           <div className="grid grid-cols-2 gap-x-6">
             <div>
-              <Row label="Apply on spawn"><Toggle on={true} onChange={() => {}}/></Row>
-              <Row label="Randomise qty"><Toggle on={false} onChange={() => {}}/></Row>
+              <Row label="Apply on spawn"><Switch checked={true} onCheckedChange={() => {}}/></Row>
+              <Row label="Randomise qty"><Switch checked={false} onCheckedChange={() => {}}/></Row>
             </div>
             <div>
-              <Row label="Auto-equip pass"><Toggle on={true} onChange={() => {}}/></Row>
+              <Row label="Auto-equip pass"><Switch checked={true} onCheckedChange={() => {}}/></Row>
               <Row label="Drop on death">
                 <Select value="Equipped only" options={DROP_ON_DEATH_OPTIONS}/>
               </Row>
@@ -325,7 +333,7 @@ function SlotMapping({ loadout, taxonomy }) {
       <div className="space-y-2">
         {slots.map(s => {
           const mapped = loadout.slots?.[s.name];
-          const item   = mapped ? window.DATA.itemByName[mapped] : null;
+          const item   = mapped ? DATA.itemByName[mapped] : null;
           return (
             <div key={s.id} className="grid grid-cols-[110px_1fr] items-center gap-2">
               <div className="flex items-center gap-1.5 text-xs text-foreground/80">
@@ -349,5 +357,3 @@ function SlotMapping({ loadout, taxonomy }) {
     </div>
   );
 }
-
-window.LoadoutsScreen = LoadoutsScreen;

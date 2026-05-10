@@ -1,5 +1,12 @@
-// Crafting screen — shadcn restyle
-const { useState: useStateCft, useMemo: useMemoeCft, useEffect: useEffectCft } = React;
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  cn, Icon, Button, Select, TextField, Tooltip,
+  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
+  Section, Row, IconBtn,
+} from './ui.jsx';
+import { Dialog } from './command.jsx';
+import { DATA } from './data.js';
+import { useTaxonomy } from './hooks.jsx';
 
 /* ============================================================
    Type definitions
@@ -17,8 +24,8 @@ const { useState: useStateCft, useMemo: useMemoeCft, useEffect: useEffectCft } =
  * @param {{ value: number, onChange?: (v: number) => void, warn?: boolean }} props
  */
 function IntStepper({ value, onChange, warn }) {
-  const [v, setV] = useStateCft(value);
-  useEffectCft(() => { setV(value); }, [value]);
+  const [v, setV] = useState(value);
+  useEffect(() => { setV(value); }, [value]);
 
   const clamp  = (n) => Math.max(1, Math.min(9999, Math.floor(n || 1)));
   const bump   = (d) => {
@@ -80,8 +87,8 @@ function DurationSliderRow({ value, onChange }) {
   const DURATION_MAX = 600;
 
   const parsed = parseInt(value, 10) || 60;
-  const [v, setV] = useStateCft(parsed);
-  useEffectCft(() => { setV(parseInt(value, 10) || 60); }, [value]);
+  const [v, setV] = useState(parsed);
+  useEffect(() => { setV(parseInt(value, 10) || 60); }, [value]);
 
   const pct = ((v - DURATION_MIN) / (DURATION_MAX - DURATION_MIN)) * 100;
 
@@ -122,10 +129,10 @@ function DurationSliderRow({ value, onChange }) {
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, onAdd: (ing: Ingredient) => void }} props
  */
 function IngredientPickerModal({ open, onOpenChange, onAdd }) {
-  const [query, setQuery] = useStateCft('');
+  const [query, setQuery] = useState('');
 
-  const materials = useMemoeCft(() =>
-    window.DATA.allItems.filter(it => it.tags?.some(t => t.startsWith('Item.Material'))),
+  const materials = useMemo(() =>
+    DATA.allItems.filter(it => it.tags?.some(t => t.startsWith('Item.Material'))),
     [],
   );
 
@@ -233,7 +240,7 @@ function RecipeInspector({ recipe }) {
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ingredient Tally</div>
         <div className="space-y-1">
           {ings.map((ing, i) => {
-            const match = window.DATA.allItems.find(it => it.displayName === ing.ref);
+            const match = DATA.allItems.find(it => it.displayName === ing.ref);
             return (
               <div key={i} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
                 <Thumb size={20} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
@@ -256,9 +263,9 @@ function RecipeInspector({ recipe }) {
  * @param {{ recipe: Recipe, taxonomy: object }} props
  */
 function RecipeEditor({ recipe, taxonomy }) {
-  const [draft, setDraft] = useStateCft(recipe);
+  const [draft, setDraft] = useState(recipe);
 
-  const [ingredientModalGroupId, setIngredientModalGroupId] = useStateCft(null);
+  const [ingredientModalGroupId, setIngredientModalGroupId] = useState(null);
 
   const setResult = (patch) => setDraft(d => ({ ...d, result: { ...d.result, ...patch } }));
   const setReqs   = (patch) => setDraft(d => ({ ...d, reqs:   { ...d.reqs,   ...patch } }));
@@ -284,8 +291,8 @@ function RecipeEditor({ recipe, taxonomy }) {
       }),
     }));
 
-  const craftableItems = useMemoeCft(
-    () => window.DATA.allItems.filter(it => it.flags & (1 << 2)),
+  const craftableItems = useMemo(
+    () => DATA.allItems.filter(it => it.flags & (1 << 2)),
     [],
   );
 
@@ -311,7 +318,7 @@ function RecipeEditor({ recipe, taxonomy }) {
             <Select
               value={draft.result.display}
               onChange={v => {
-                const item = window.DATA.itemByName[v];
+                const item = DATA.itemByName[v];
                 setResult({ display: v, itemRef: item?.guid || v });
               }}
               options={[
@@ -366,7 +373,7 @@ function RecipeEditor({ recipe, taxonomy }) {
           >
             <div className="space-y-1.5">
               {g.ingredients.map((ing, ii) => {
-                const match = window.DATA.allItems.find(it => it.displayName === ing.ref);
+                const match = DATA.allItems.find(it => it.displayName === ing.ref);
                 return (
                   <div key={ii} className="grid grid-cols-[36px_1fr_120px_32px] items-center gap-3 rounded-lg border border-border bg-card p-2.5">
                     <Thumb size={32} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
@@ -382,7 +389,7 @@ function RecipeEditor({ recipe, taxonomy }) {
                         onChange={qty => updateIngredientQty(g.id, ii, qty)}
                       />
                     </div>
-                    <IconBtn icon="trash" tone="danger" onClick={() => removeIngredient(g.id, ii)}/>
+                    <IconBtn icon="trash" tone="danger" title="Remove ingredient" onClick={() => removeIngredient(g.id, ii)}/>
                   </div>
                 );
               })}
@@ -410,11 +417,11 @@ function RecipeEditor({ recipe, taxonomy }) {
 /**
  * @param {{ search: string, tweaks: object }} props
  */
-function CraftingScreen({ search: globalSearch, tweaks = {} }) {
+export function CraftingScreen({ search: globalSearch, tweaks = {} }) {
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useStateCft('RECIPE_SMITH_042');
-  const [browserSearch, setBrowserSearch] = useStateCft('');
-  const allRecipes = Object.values(window.DATA.recipes).flat();
+  const [selected,      setSelected]      = useState('RECIPE_SMITH_042');
+  const [browserSearch, setBrowserSearch] = useState('');
+  const allRecipes = Object.values(DATA.recipes).flat();
   const recipe     = allRecipes.find(r => r.id === selected);
   const search     = (browserSearch || globalSearch || '').toLowerCase();
   const showInspector = tweaks.showInspector !== false;
@@ -427,7 +434,7 @@ function CraftingScreen({ search: globalSearch, tweaks = {} }) {
         search={browserSearch} setSearch={setBrowserSearch}
         searchPlaceholder="Filter recipes…"
       >
-        {Object.entries(window.DATA.recipes).map(([family, recipes]) => {
+        {Object.entries(DATA.recipes).map(([family, recipes]) => {
           const icon     = family === 'Smithing' ? 'hammer' : 'beaker';
           const filtered = search ? recipes.filter(r => (r.name + ' ' + r.id).toLowerCase().includes(search)) : recipes;
           if (filtered.length === 0) return null;
@@ -439,12 +446,14 @@ function CraftingScreen({ search: globalSearch, tweaks = {} }) {
                 <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
               </div>
               {filtered.map(r => (
-                <SidebarItem key={r.id} selected={r.id === selected} onClick={() => setSelected(r.id)}>
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{r.name}</div>
-                    <div className="truncate font-mono text-[10px] text-muted-foreground">{r.id}</div>
-                  </div>
-                </SidebarItem>
+                <Tooltip key={r.id} content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
+                  <SidebarItem selected={r.id === selected} onClick={() => setSelected(r.id)}>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{r.name}</div>
+                      <div className="truncate font-mono text-[10px] text-muted-foreground">{r.id}</div>
+                    </div>
+                  </SidebarItem>
+                </Tooltip>
               ))}
             </div>
           );
@@ -463,5 +472,3 @@ function CraftingScreen({ search: globalSearch, tweaks = {} }) {
     </>
   );
 }
-
-window.CraftingScreen = CraftingScreen;

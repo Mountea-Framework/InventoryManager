@@ -1,12 +1,11 @@
-// shadcn-style UI primitives (Tailwind classes mirror the official source)
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+import React, { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from 'react';
+import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 
-/* ---------- cn() utility (mirrors shadcn's clsx+tailwind-merge helper) ---------- */
-const cn = (...args) =>
-  args.flat(Infinity).filter(Boolean).join(' ');
+/* ---------- cn() utility ---------- */
+export const cn = (...args) => args.flat(Infinity).filter(Boolean).join(' ');
 
 /* ---------- Icons (lucide-react look, 1.5 stroke) ---------- */
-const Icon = ({ name, size = 16, className = '' }) => {
+export const Icon = ({ name, size = 16, className = '' }) => {
   const p = {
     width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
     stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round',
@@ -63,29 +62,60 @@ const Icon = ({ name, size = 16, className = '' }) => {
   return <svg {...p}>{paths[name] || null}</svg>;
 };
 
+/* ---------- Tooltip (shadcn — @radix-ui/react-tooltip) ---------- */
+export const TooltipProvider = TooltipPrimitive.Provider;
+
+export const TooltipContent = forwardRef(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        'z-50 overflow-hidden rounded-md border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md',
+        'animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+        'data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2',
+        'data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+        className,
+      )}
+      {...props}
+    />
+  </TooltipPrimitive.Portal>
+));
+TooltipContent.displayName = 'TooltipContent';
+
+/**
+ * Convenience wrapper matching shadcn's Tooltip pattern.
+ * @param {{ children: React.ReactNode, content: React.ReactNode, side?: 'top'|'bottom'|'left'|'right', delayDuration?: number }} props
+ */
+export const Tooltip = ({ children, content, side = 'top', delayDuration = 500 }) => (
+  <TooltipPrimitive.Root delayDuration={delayDuration}>
+    <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+    <TooltipContent side={side}>{content}</TooltipContent>
+  </TooltipPrimitive.Root>
+);
+
 /* ---------- Button (shadcn variants) ---------- */
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium " +
-  "transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
-  "disabled:pointer-events-none disabled:opacity-50";
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ' +
+  'transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
+  'disabled:pointer-events-none disabled:opacity-50';
 
-const Button = React.forwardRef(({ children, variant = 'default', size = 'default', icon, full, className = '', ...rest }, ref) => {
+export const Button = forwardRef(({ children, variant = 'default', size = 'default', icon, full, className = '', ...rest }, ref) => {
   const variants = {
-    default:     "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-    secondary:   "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-    destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-    outline:     "border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground",
-    ghost:       "hover:bg-accent hover:text-accent-foreground",
-    link:        "text-primary underline-offset-4 hover:underline",
+    default:     'bg-primary text-primary-foreground shadow hover:bg-primary/90',
+    secondary:   'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
+    destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
+    outline:     'border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground',
+    ghost:       'hover:bg-accent hover:text-accent-foreground',
+    link:        'text-primary underline-offset-4 hover:underline',
   };
   const sizes = {
-    default: "h-9 px-4 py-2",
-    sm:      "h-8 rounded-md px-3 text-xs",
-    lg:      "h-10 rounded-md px-8",
-    icon:    "h-9 w-9",
-    'icon-sm': "h-7 w-7",
+    default:   'h-9 px-4 py-2',
+    sm:        'h-8 rounded-md px-3 text-xs',
+    lg:        'h-10 rounded-md px-8',
+    icon:      'h-9 w-9',
+    'icon-sm': 'h-7 w-7',
   };
-  // shadcn-style: render as icon-only when no children
   const inferredSize = !children && icon ? (size === 'sm' ? 'icon-sm' : 'icon') : size;
   return (
     <button ref={ref} className={cn(buttonBase, variants[variant], sizes[inferredSize], full && 'w-full', className)} {...rest}>
@@ -94,50 +124,53 @@ const Button = React.forwardRef(({ children, variant = 'default', size = 'defaul
     </button>
   );
 });
+Button.displayName = 'Button';
 
 /* ---------- Input ---------- */
-const Input = React.forwardRef(({ className = '', type = 'text', ...rest }, ref) => (
+export const Input = forwardRef(({ className = '', type = 'text', ...rest }, ref) => (
   <input ref={ref} type={type}
     className={cn(
-      "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm",
-      "transition-colors placeholder:text-muted-foreground",
-      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-      "disabled:cursor-not-allowed disabled:opacity-50",
+      'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm',
+      'transition-colors placeholder:text-muted-foreground',
+      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+      'disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...rest}/>
 ));
+Input.displayName = 'Input';
 
 /* ---------- Textarea ---------- */
-const Textarea = React.forwardRef(({ className = '', ...rest }, ref) => (
+export const Textarea = forwardRef(({ className = '', ...rest }, ref) => (
   <textarea ref={ref}
     className={cn(
-      "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm",
-      "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-      "disabled:cursor-not-allowed disabled:opacity-50",
+      'flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm',
+      'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+      'disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...rest}/>
 ));
+Textarea.displayName = 'Textarea';
 
 /* ---------- Label ---------- */
-const Label = ({ className = '', children, ...rest }) => (
-  <label className={cn("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70", className)} {...rest}>
+export const Label = ({ className = '', children, ...rest }) => (
+  <label className={cn('text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70', className)} {...rest}>
     {children}
   </label>
 );
 
 /* ---------- Select (native, styled to look like shadcn select trigger) ---------- */
-const Select = ({ value, onChange, options = [], className = '', placeholder }) => (
+export const Select = ({ value, onChange, options = [], className = '', placeholder }) => (
   <div className="relative">
     <select
       value={value} onChange={e => onChange?.(e.target.value)}
       className={cn(
-        "h-9 w-full appearance-none rounded-md border border-input bg-transparent text-foreground",
-        "px-3 pr-8 py-2 text-sm shadow-sm",
-        "focus:outline-none focus:ring-1 focus:ring-ring",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        "[&>option]:bg-popover [&>option]:text-popover-foreground",
+        'h-9 w-full appearance-none rounded-md border border-input bg-transparent text-foreground',
+        'px-3 pr-8 py-2 text-sm shadow-sm',
+        'focus:outline-none focus:ring-1 focus:ring-ring',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        '[&>option]:bg-popover [&>option]:text-popover-foreground',
         className,
       )}
     >
@@ -149,27 +182,27 @@ const Select = ({ value, onChange, options = [], className = '', placeholder }) 
 );
 
 /* ---------- Card ---------- */
-const Card = ({ className = '', children }) => (
-  <div className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}>{children}</div>
+export const Card = ({ className = '', children }) => (
+  <div className={cn('rounded-xl border bg-card text-card-foreground shadow', className)}>{children}</div>
 );
-const CardHeader = ({ className = '', children }) => (
-  <div className={cn("flex flex-col space-y-1.5 p-6", className)}>{children}</div>
+export const CardHeader = ({ className = '', children }) => (
+  <div className={cn('flex flex-col space-y-1.5 p-6', className)}>{children}</div>
 );
-const CardTitle = ({ className = '', children }) => (
-  <div className={cn("font-semibold leading-none tracking-tight", className)}>{children}</div>
+export const CardTitle = ({ className = '', children }) => (
+  <div className={cn('font-semibold leading-none tracking-tight', className)}>{children}</div>
 );
-const CardDescription = ({ className = '', children }) => (
-  <div className={cn("text-sm text-muted-foreground", className)}>{children}</div>
+export const CardDescription = ({ className = '', children }) => (
+  <div className={cn('text-sm text-muted-foreground', className)}>{children}</div>
 );
-const CardContent = ({ className = '', children }) => (
-  <div className={cn("p-6 pt-0", className)}>{children}</div>
+export const CardContent = ({ className = '', children }) => (
+  <div className={cn('p-6 pt-0', className)}>{children}</div>
 );
-const CardFooter = ({ className = '', children }) => (
-  <div className={cn("flex items-center p-6 pt-0", className)}>{children}</div>
+export const CardFooter = ({ className = '', children }) => (
+  <div className={cn('flex items-center p-6 pt-0', className)}>{children}</div>
 );
 
 /* ---------- Section (borderless; subtle header divider only) ---------- */
-const Section = ({ title, icon, right, children, defaultOpen = true, compact = false }) => {
+export const Section = ({ title, icon, right, children, defaultOpen = true, compact = false }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="overflow-hidden rounded-lg border border-border/50 bg-card/40">
@@ -179,60 +212,59 @@ const Section = ({ title, icon, right, children, defaultOpen = true, compact = f
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">{title}</span>
         {right && <span onClick={e => e.stopPropagation()}>{right}</span>}
       </div>
-      {open && <div className={cn(compact ? "px-4 pb-3" : "px-4 pb-4")}>{children}</div>}
+      {open && <div className={cn(compact ? 'px-4 pb-3' : 'px-4 pb-4')}>{children}</div>}
     </section>
   );
 };
 
-/* ---------- Switch (shadcn-style toggle) ---------- */
-const Switch = ({ checked, onCheckedChange, className = '' }) => (
+/* ---------- Switch ---------- */
+export const Switch = ({ checked, onCheckedChange, className = '' }) => (
   <button
     role="switch" aria-checked={!!checked}
     onClick={() => onCheckedChange?.(!checked)}
     className={cn(
-      "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm",
-      "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      "disabled:cursor-not-allowed disabled:opacity-50",
-      checked ? "bg-primary" : "bg-input",
+      'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm',
+      'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+      'disabled:cursor-not-allowed disabled:opacity-50',
+      checked ? 'bg-primary' : 'bg-input',
       className,
     )}>
-    <span
-      className={cn(
-        "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-        checked ? "translate-x-4" : "translate-x-0",
-      )}/>
+    <span className={cn(
+      'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform',
+      checked ? 'translate-x-4' : 'translate-x-0',
+    )}/>
   </button>
 );
-// Backwards-compat alias used by existing call sites
-const Toggle = ({ on, onChange }) => <Switch checked={on} onCheckedChange={onChange}/>;
 
-/* ---------- Badge (shadcn variants) ---------- */
-const Badge = ({ children, variant = 'default', className = '' }) => {
+export const Toggle = ({ on, onChange }) => <Switch checked={on} onCheckedChange={onChange}/>;
+
+/* ---------- Badge ---------- */
+export const Badge = ({ children, variant = 'default', className = '' }) => {
   const variants = {
-    default:     "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
-    secondary:   "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-    destructive: "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-    outline:     "text-foreground",
+    default:     'border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80',
+    secondary:   'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    destructive: 'border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80',
+    outline:     'text-foreground',
   };
   return (
     <span className={cn(
-      "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors",
-      "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold transition-colors',
+      'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
       variants[variant], className,
     )}>{children}</span>
   );
 };
 
-/* ---------- Tag (project-specific badge with onRemove) ---------- */
-const Tag = ({ children, tone = 'neutral', onRemove }) => {
+/* ---------- Tag ---------- */
+export const Tag = ({ children, tone = 'neutral', onRemove }) => {
   const variant = tone === 'rare' || tone === 'quest' ? 'default'
     : tone === 'neutral' ? 'outline' : 'secondary';
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[10.5px] font-medium tracking-wide",
-      variant === 'default' && "border-transparent bg-primary/15 text-primary-foreground/90",
-      variant === 'outline' && "border-border bg-transparent text-foreground/80",
-      variant === 'secondary' && "border-transparent bg-secondary text-secondary-foreground",
+      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[10.5px] font-medium tracking-wide',
+      variant === 'default' && 'border-transparent bg-primary/15 text-primary-foreground/90',
+      variant === 'outline' && 'border-border bg-transparent text-foreground/80',
+      variant === 'secondary' && 'border-transparent bg-secondary text-secondary-foreground',
     )}>
       {children}
       {onRemove && (
@@ -245,40 +277,16 @@ const Tag = ({ children, tone = 'neutral', onRemove }) => {
 };
 
 /* ---------- Separator ---------- */
-const Separator = ({ orientation = 'horizontal', className = '' }) => (
+export const Separator = ({ orientation = 'horizontal', className = '' }) => (
   <div className={cn(
-    "shrink-0 bg-border",
-    orientation === 'horizontal' ? "h-[1px] w-full" : "h-full w-[1px]",
+    'shrink-0 bg-border',
+    orientation === 'horizontal' ? 'h-[1px] w-full' : 'h-full w-[1px]',
     className,
   )}/>
 );
 
-/* ---------- Tabs (controlled; mimics shadcn TabsList/TabsTrigger structure) ---------- */
-const Tabs = ({ value, onValueChange, children, className = '' }) => (
-  <div className={className} data-state={value}>
-    {React.Children.map(children, child =>
-      React.isValidElement(child) ? React.cloneElement(child, { value, onValueChange }) : child)}
-  </div>
-);
-const TabsList = ({ children, value, onValueChange, className = '' }) => (
-  <div className={cn(
-    "inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground",
-    className,
-  )}>
-    {React.Children.map(children, child =>
-      React.isValidElement(child) ? React.cloneElement(child, { value, onValueChange }) : child)}
-  </div>
-);
-const TabsTrigger = ({ children, value: ownValue, value: _v, onValueChange, ...rest }) => {
-  // We need both: ownValue (this trigger's id) and current value (selected). React.cloneElement only passes one — workaround via prop name
-  const { activeValue, val } = rest;
-  const isActive = (rest._activeValue ?? rest.activeValue ?? rest.value) === ownValue;
-  // Simpler: read `data-active` from props
-  return null;
-};
-
-/* ---------- Form-style field row used across editors ---------- */
-const Row = ({ label, hint, children, stack = false }) => (
+/* ---------- Row ---------- */
+export const Row = ({ label, hint, children, stack = false }) => (
   stack ? (
     <div className="space-y-1.5 py-2">
       <Label className="text-foreground/90">{label}</Label>
@@ -296,11 +304,11 @@ const Row = ({ label, hint, children, stack = false }) => (
   )
 );
 
-/* ---------- Field-prefixed Input (with optional left/right adornments) ---------- */
-const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, className = '' }) => (
+/* ---------- TextField ---------- */
+export const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, className = '' }) => (
   <div className={cn(
-    "flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm",
-    "focus-within:outline-none focus-within:ring-1 focus-within:ring-ring",
+    'flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm',
+    'focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
     className,
   )}>
     {prefix && <span className="mr-2 flex text-muted-foreground">{prefix}</span>}
@@ -308,20 +316,15 @@ const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix,
       value={value ?? ''} onChange={e => onChange?.(e.target.value)}
       placeholder={placeholder} readOnly={readOnly}
       className={cn(
-        "flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground",
-        mono && "font-mono text-xs",
+        'flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground',
+        mono && 'font-mono text-xs',
       )}/>
     {suffix && <span className="ml-2 flex text-muted-foreground">{suffix}</span>}
   </div>
 );
 
-/* ---------- FilePicker — TextField + browse button wrapping a hidden file input ---------- */
-/**
- * Displays a text field for a file path alongside a folder button that opens a native
- * file picker. Calls onChange with the selected filename (basename only).
- * @param {{ value: string, onChange: (v: string) => void, accept?: string, placeholder?: string, className?: string }} props
- */
-const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file…', className = '' }) => {
+/* ---------- FilePicker ---------- */
+export const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file…', className = '' }) => {
   const inputRef = useRef(null);
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -341,7 +344,7 @@ const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file�
           className="flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <Button variant="outline" size="icon" onClick={() => inputRef.current?.click()} title="Browse file">
+      <Button variant="outline" size="icon" onClick={() => inputRef.current?.click()}>
         <Icon name="folder" size={14}/>
       </Button>
       <input ref={inputRef} type="file" accept={accept} className="sr-only" onChange={handleFileChange}/>
@@ -349,16 +352,25 @@ const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file�
   );
 };
 
-/* ---------- IconBtn — borderless icon button ---------- */
-const IconBtn = ({ icon, onClick, title, tone, size = 'sm' }) => (
-  <Button variant="ghost" size={size === 'sm' ? 'icon-sm' : 'icon'}
-    onClick={onClick} title={title}
-    className={cn(tone === 'danger' && "text-destructive hover:text-destructive hover:bg-destructive/10")}
-    icon={icon}/>
-);
+/* ---------- IconBtn — borderless icon button with automatic Tooltip ---------- */
+export const IconBtn = forwardRef(({ icon, onClick, title, tone, size = 'sm' }, ref) => {
+  const btn = (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size={size === 'sm' ? 'icon-sm' : 'icon'}
+      onClick={onClick}
+      className={cn(tone === 'danger' && 'text-destructive hover:text-destructive hover:bg-destructive/10')}
+      icon={icon}
+    />
+  );
+  if (!title) return btn;
+  return <Tooltip content={title}>{btn}</Tooltip>;
+});
+IconBtn.displayName = 'IconBtn';
 
 /* ---------- Thumbnail placeholder ---------- */
-const Thumb = ({ tone = 1, size = 36, icon }) => {
+export const Thumb = ({ tone = 1, size = 36, icon }) => {
   const tones = [
     ['#1a1f26', '#252c35'],
     ['#1d232a', '#2a323c'],
@@ -370,31 +382,29 @@ const Thumb = ({ tone = 1, size = 36, icon }) => {
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground/60"
-      style={{
-        width: size, height: size,
-        background: `repeating-linear-gradient(135deg, ${a} 0 6px, ${b} 6px 12px)`,
-      }}>
+      style={{ width: size, height: size, background: `repeating-linear-gradient(135deg, ${a} 0 6px, ${b} 6px 12px)` }}>
       {icon && <Icon name={icon} size={Math.round(size * 0.45)}/>}
     </div>
   );
 };
 
-/* ---------- SidebarItem — unified left-rail selectable row ---------- */
-const SidebarItem = ({ selected, onClick, children, className = '' }) => (
-  <button onClick={onClick}
+/* ---------- SidebarItem ---------- */
+export const SidebarItem = forwardRef(({ selected, onClick, children, className = '' }, ref) => (
+  <button ref={ref} onClick={onClick}
     className={cn(
-      "flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left transition-colors",
+      'flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left transition-colors',
       selected
-        ? "border-l-primary bg-accent text-foreground"
-        : "border-l-transparent text-foreground/80 hover:bg-accent/50 hover:text-foreground",
+        ? 'border-l-primary bg-accent text-foreground'
+        : 'border-l-transparent text-foreground/80 hover:bg-accent/50 hover:text-foreground',
       className,
     )}>
     {children}
   </button>
-);
+));
+SidebarItem.displayName = 'SidebarItem';
 
-/* ---------- LeftPanel — unified left-rail layout for every screen ---------- */
-const LeftPanel = ({ title, headerActions, search, setSearch, searchPlaceholder = 'Filter…', children }) => (
+/* ---------- LeftPanel ---------- */
+export const LeftPanel = ({ title, headerActions, search, setSearch, searchPlaceholder = 'Filter…', children }) => (
   <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-muted/20">
     <div className="border-b border-border p-3 space-y-2">
       <div className="flex items-center gap-1">
@@ -411,8 +421,8 @@ const LeftPanel = ({ title, headerActions, search, setSearch, searchPlaceholder 
   </aside>
 );
 
-/* ---------- Collapsible inspector aside ---------- */
-const CollapsibleAside = ({ storageKey, width, children }) => {
+/* ---------- CollapsibleAside ---------- */
+export const CollapsibleAside = ({ storageKey, width, children }) => {
   const [collapsed, setCollapsed] = React.useState(() => {
     try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
   });
@@ -426,13 +436,13 @@ const CollapsibleAside = ({ storageKey, width, children }) => {
   if (collapsed) {
     return (
       <aside className="flex w-8 shrink-0 justify-center border-l border-border bg-muted/30 pt-3">
-        <Button variant="ghost" size="icon-sm" onClick={toggle} title="Expand panel" icon="chevLeft"/>
+        <Button variant="ghost" size="icon-sm" onClick={toggle} icon="chevLeft"/>
       </aside>
     );
   }
   return (
     <aside className="relative shrink-0 overflow-auto border-l border-border bg-muted/20" style={{ width }}>
-      <button onClick={toggle} title="Collapse panel"
+      <button onClick={toggle}
         className="absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground">
         <Icon name="chevRight" size={12}/>
       </button>
@@ -440,11 +450,3 @@ const CollapsibleAside = ({ storageKey, width, children }) => {
     </aside>
   );
 };
-
-Object.assign(window, {
-  cn, Icon,
-  Button, Input, Textarea, Label, Select,
-  Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter,
-  Section, Switch, Toggle, Badge, Tag, Separator,
-  Row, TextField, FilePicker, IconBtn, Thumb, CollapsibleAside, SidebarItem, LeftPanel,
-});

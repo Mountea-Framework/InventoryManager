@@ -1,5 +1,12 @@
-// Architect Editor — App shell + Screen router (shadcn-styled)
-const { useState: useStateApp, useEffect: useEffectApp } = React;
+import React, { useState, useEffect } from 'react';
+import {
+  cn, Icon, Button, Input, Switch, Label, Separator, Tooltip, TooltipProvider,
+} from './ui.jsx';
+import { ItemsScreen }   from './items.jsx';
+import { LoadoutsScreen } from './loadouts.jsx';
+import { CraftingScreen } from './crafting.jsx';
+import { SettingsCommand } from './settings.jsx';
+import { DATA } from './data.js';
 
 function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings }) {
   const tabs = [
@@ -19,7 +26,7 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
 
       <Separator orientation="vertical" className="mx-2 h-6"/>
 
-      {/* shadcn Tabs (pill style on muted) */}
+      {/* Tabs (pill style on muted) */}
       <nav className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
         {tabs.map(t => (
           <button
@@ -54,9 +61,15 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
         </kbd>
       </div>
 
-      <Button variant="ghost" size="icon-sm" title="Save workspace" icon="save"/>
-      <Button variant="ghost" size="icon-sm" title="Export data" icon="export"/>
-      <Button variant="ghost" size="icon-sm" title="Settings (⌘,)" icon="cog" onClick={openSettings}/>
+      <Tooltip content="Save workspace">
+        <Button variant="ghost" size="icon-sm" icon="save"/>
+      </Tooltip>
+      <Tooltip content="Export data">
+        <Button variant="ghost" size="icon-sm" icon="export"/>
+      </Tooltip>
+      <Tooltip content="Settings (⌘,)">
+        <Button variant="ghost" size="icon-sm" icon="cog" onClick={openSettings}/>
+      </Tooltip>
     </header>
   );
 }
@@ -82,25 +95,23 @@ function StatusBar({ counts }) {
 }
 
 function App() {
-  const [screen, setScreen] = useStateApp(() => localStorage.getItem('arch.screen') || 'items');
-  const [globalSearch, setGlobalSearch] = useStateApp('');
-  const [tweaks, setTweaks] = useStateApp(() => {
+  const [screen, setScreen] = useState(() => localStorage.getItem('arch.screen') || 'items');
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [tweaks, setTweaks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('arch.tweaks') || '{}'); } catch { return {}; }
   });
 
-  useEffectApp(() => { localStorage.setItem('arch.screen', screen); }, [screen]);
+  useEffect(() => { localStorage.setItem('arch.screen', screen); }, [screen]);
 
-  // One-time migration: unify the right-inspector collapse state across screens
-  useEffectApp(() => {
+  useEffect(() => {
     if (localStorage.getItem('arch.aside-migrated-v1')) return;
     ['aside-items', 'aside-loadouts', 'aside-crafting'].forEach(k => localStorage.removeItem(k));
     localStorage.setItem('arch.aside-migrated-v1', '1');
   }, []);
 
-  const [settingsOpen, setSettingsOpen] = useStateApp(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // ⌘, / Ctrl+, opens settings; Esc/Enter handled inside palette
-  useEffectApp(() => {
+  useEffect(() => {
     const onKey = (e) => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === ',') { e.preventDefault(); setSettingsOpen(o => !o); }
@@ -109,8 +120,8 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const [tweaksOpen, setTweaksOpen] = useStateApp(false);
-  useEffectApp(() => {
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  useEffect(() => {
     const handler = (e) => {
       if (e.data?.type === '__activate_edit_mode') setTweaksOpen(true);
       if (e.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
@@ -128,32 +139,34 @@ function App() {
   };
 
   const counts = {
-    items: window.DATA.allItems.length,
-    loadouts: window.DATA.loadouts.length,
-    recipes: Object.values(window.DATA.recipes).flat().length,
+    items: DATA.allItems.length,
+    loadouts: DATA.loadouts.length,
+    recipes: Object.values(DATA.recipes).flat().length,
   };
 
-  const ScreenComp = screen === 'items' ? window.ItemsScreen
-    : screen === 'loadouts' ? window.LoadoutsScreen
-    : window.CraftingScreen;
+  const ScreenComp = screen === 'items' ? ItemsScreen
+    : screen === 'loadouts' ? LoadoutsScreen
+    : CraftingScreen;
 
   return (
-    <div data-screen-label={screen} className="flex h-screen flex-col bg-background text-foreground">
-      <TopBar screen={screen} setScreen={setScreen} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
-      <div className="flex flex-1 overflow-hidden">
-        <ScreenComp search={globalSearch} tweaks={tweaks}/>
+    <TooltipProvider>
+      <div data-screen-label={screen} className="flex h-screen flex-col bg-background text-foreground">
+        <TopBar screen={screen} setScreen={setScreen} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
+        <div className="flex flex-1 overflow-hidden">
+          <ScreenComp search={globalSearch} tweaks={tweaks}/>
+        </div>
+        <SettingsCommand
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          screen={screen} setScreen={setScreen}
+          tweaks={tweaks} setTweak={setTweak}
+        />
+        {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweak={setTweak} close={() => {
+          setTweaksOpen(false);
+          window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+        }}/>}
       </div>
-      <window.SettingsCommand
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        screen={screen} setScreen={setScreen}
-        tweaks={tweaks} setTweak={setTweak}
-      />
-      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweak={setTweak} close={() => {
-        setTweaksOpen(false);
-        window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
-      }}/>}
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -191,4 +204,4 @@ function TweaksPanel({ tweaks, setTweak, close }) {
   );
 }
 
-window.App = App;
+export default App;

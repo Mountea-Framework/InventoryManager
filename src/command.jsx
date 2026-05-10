@@ -1,11 +1,9 @@
-// shadcn-style Command palette + Dialog primitives
-// Mirrors shadcn/ui's <Command> (cmdk) + <Dialog> classnames and structure.
-const { useState: useStateCmd, useEffect: useEffectCmd, useRef: useRefCmd, useMemo: useMemoCmd, useCallback: useCallbackCmd } = React;
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { cn, Icon } from './ui.jsx';
 
 /* ---------- Dialog ---------- */
-// Minimal shadcn-style modal: fixed overlay + centered content w/ animation.
-const Dialog = ({ open, onOpenChange, children }) => {
-  useEffectCmd(() => {
+export const Dialog = ({ open, onOpenChange, children }) => {
+  useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === 'Escape') onOpenChange?.(false); };
     window.addEventListener('keydown', onKey);
@@ -19,13 +17,11 @@ const Dialog = ({ open, onOpenChange, children }) => {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      {/* Overlay */}
       <div
         onClick={() => onOpenChange?.(false)}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0"
         style={{ animation: 'cmdkFade .12s ease-out' }}
       />
-      {/* Content wrapper */}
       <div
         className="relative z-50"
         style={{ animation: 'cmdkPop .14s cubic-bezier(.2,.8,.2,1)' }}
@@ -37,8 +33,8 @@ const Dialog = ({ open, onOpenChange, children }) => {
   );
 };
 
-/* ---------- CommandDialog: Dialog with the cmdk-style chrome baked in ---------- */
-const CommandDialog = ({ open, onOpenChange, children, label = 'Command Menu' }) => (
+/* ---------- CommandDialog ---------- */
+export const CommandDialog = ({ open, onOpenChange, children, label = 'Command Menu' }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <div
       role="dialog" aria-label={label}
@@ -49,23 +45,22 @@ const CommandDialog = ({ open, onOpenChange, children, label = 'Command Menu' })
   </Dialog>
 );
 
-/* ---------- Command context (search + selection) ---------- */
+/* ---------- Command context ---------- */
 const CommandCtx = React.createContext(null);
 
-const Command = ({ children, className = '' }) => {
-  const [query, setQuery] = useStateCmd('');
-  // Registered items: id -> { value, onSelect, disabled }
-  const itemsRef = useRefCmd(new Map());
-  const [, force] = useStateCmd(0);
+export const Command = ({ children, className = '' }) => {
+  const [query, setQuery] = useState('');
+  const itemsRef = useRef(new Map());
+  const [, force] = useState(0);
   const rerender = () => force(x => x + 1);
 
-  const register = useCallbackCmd((id, meta) => {
+  const register = useCallback((id, meta) => {
     itemsRef.current.set(id, meta);
     rerender();
     return () => { itemsRef.current.delete(id); rerender(); };
   }, []);
 
-  const visibleIds = useMemoCmd(() => {
+  const visibleIds = useMemo(() => {
     const q = query.trim().toLowerCase();
     const out = [];
     for (const [id, meta] of itemsRef.current.entries()) {
@@ -75,8 +70,8 @@ const Command = ({ children, className = '' }) => {
     return out;
   }, [query, itemsRef.current.size, itemsRef.current]);
 
-  const [activeId, setActiveId] = useStateCmd(null);
-  useEffectCmd(() => {
+  const [activeId, setActiveId] = useState(null);
+  useEffect(() => {
     if (!visibleIds.includes(activeId)) setActiveId(visibleIds[0] || null);
   }, [visibleIds.join('|')]);
 
@@ -93,7 +88,7 @@ const Command = ({ children, className = '' }) => {
 
   return (
     <CommandCtx.Provider value={{ query, setQuery, register, activeId, setActiveId, move, trigger, visibleIds }}>
-      <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground", className)}>
+      <div className={cn('flex h-full w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground', className)}>
         {children}
       </div>
     </CommandCtx.Provider>
@@ -101,10 +96,10 @@ const Command = ({ children, className = '' }) => {
 };
 
 /* ---------- CommandInput ---------- */
-const CommandInput = ({ placeholder = 'Type a command or search…', autoFocus = true }) => {
+export const CommandInput = ({ placeholder = 'Type a command or search…', autoFocus = true }) => {
   const ctx = React.useContext(CommandCtx);
-  const ref = useRefCmd(null);
-  useEffectCmd(() => { if (autoFocus) ref.current?.focus(); }, []);
+  const ref = useRef(null);
+  useEffect(() => { if (autoFocus) ref.current?.focus(); }, []);
   return (
     <div className="flex items-center gap-2 border-b border-border px-3" cmdk-input-wrapper="">
       <Icon name="search" size={16} className="shrink-0 text-muted-foreground"/>
@@ -124,31 +119,27 @@ const CommandInput = ({ placeholder = 'Type a command or search…', autoFocus =
   );
 };
 
-/* ---------- CommandList / Empty / Group / Item / Separator / Shortcut ---------- */
-const CommandList = ({ children, className = '' }) => (
-  <div className={cn("max-h-[360px] overflow-y-auto overflow-x-hidden p-1", className)}>{children}</div>
+export const CommandList = ({ children, className = '' }) => (
+  <div className={cn('max-h-[360px] overflow-y-auto overflow-x-hidden p-1', className)}>{children}</div>
 );
 
-const CommandEmpty = ({ children = 'No results found.' }) => {
+export const CommandEmpty = ({ children = 'No results found.' }) => {
   const ctx = React.useContext(CommandCtx);
   if (ctx.visibleIds.length > 0) return null;
   return <div className="py-6 text-center text-sm text-muted-foreground">{children}</div>;
 };
 
-const CommandGroup = ({ heading, children }) => {
+export const CommandGroup = ({ heading, children }) => {
   const ctx = React.useContext(CommandCtx);
-  // Only render group if it has any visible item
-  // We naively render and rely on hidden filtering via item visibility.
-  // Count visible children by snapshotting ids the group contains.
-  const groupRef = useRefCmd(null);
-  const [hasVisible, setHasVisible] = useStateCmd(true);
-  useEffectCmd(() => {
+  const groupRef = useRef(null);
+  const [hasVisible, setHasVisible] = useState(true);
+  useEffect(() => {
     if (!groupRef.current) return;
     const ids = Array.from(groupRef.current.querySelectorAll('[data-cmd-item]')).map(n => n.getAttribute('data-cmd-item'));
     setHasVisible(ids.some(id => ctx.visibleIds.includes(id)));
   });
   return (
-    <div ref={groupRef} className={cn("overflow-hidden p-1 text-foreground", !hasVisible && "hidden")}>
+    <div ref={groupRef} className={cn('overflow-hidden p-1 text-foreground', !hasVisible && 'hidden')}>
       {heading && (
         <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{heading}</div>
       )}
@@ -157,15 +148,15 @@ const CommandGroup = ({ heading, children }) => {
   );
 };
 
-const CommandSeparator = ({ className = '' }) => (
-  <div className={cn("-mx-1 h-px bg-border", className)}/>
+export const CommandSeparator = ({ className = '' }) => (
+  <div className={cn('-mx-1 h-px bg-border', className)}/>
 );
 
 let __cmdItemSeq = 0;
-const CommandItem = ({ value, onSelect, children, icon, shortcut, disabled, className = '' }) => {
+export const CommandItem = ({ value, onSelect, children, icon, shortcut, disabled, className = '' }) => {
   const ctx = React.useContext(CommandCtx);
-  const id = useMemoCmd(() => `cmd-${++__cmdItemSeq}`, []);
-  useEffectCmd(() => {
+  const id = useMemo(() => `cmd-${++__cmdItemSeq}`, []);
+  useEffect(() => {
     return ctx.register(id, { value: typeof value === 'string' ? value : (typeof children === 'string' ? children : id), onSelect, disabled });
   }, [value, onSelect, disabled]);
 
@@ -181,21 +172,21 @@ const CommandItem = ({ value, onSelect, children, icon, shortcut, disabled, clas
       onMouseEnter={() => ctx.setActiveId(id)}
       onClick={() => !disabled && onSelect?.()}
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none",
-        active ? "bg-accent text-accent-foreground" : "text-foreground/90",
-        disabled && "pointer-events-none opacity-50",
+        'relative flex cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none',
+        active ? 'bg-accent text-accent-foreground' : 'text-foreground/90',
+        disabled && 'pointer-events-none opacity-50',
         className,
       )}
     >
-      {icon && <Icon name={icon} size={16} className={cn("shrink-0", active ? "text-foreground" : "text-muted-foreground")}/>}
+      {icon && <Icon name={icon} size={16} className={cn('shrink-0', active ? 'text-foreground' : 'text-muted-foreground')}/>}
       <span className="flex flex-1 min-w-0 items-center gap-2">{children}</span>
       {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
     </div>
   );
 };
 
-const CommandShortcut = ({ children, className = '' }) => (
-  <span className={cn("ml-auto text-xs tracking-widest text-muted-foreground", className)}>{children}</span>
+export const CommandShortcut = ({ children, className = '' }) => (
+  <span className={cn('ml-auto text-xs tracking-widest text-muted-foreground', className)}>{children}</span>
 );
 
 /* ---------- Animations (injected once) ---------- */
@@ -209,9 +200,3 @@ const CommandShortcut = ({ children, className = '' }) => (
   `;
   document.head.appendChild(s);
 })();
-
-Object.assign(window, {
-  Dialog, CommandDialog,
-  Command, CommandInput, CommandList, CommandEmpty,
-  CommandGroup, CommandItem, CommandSeparator, CommandShortcut,
-});

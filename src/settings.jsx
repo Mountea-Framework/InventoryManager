@@ -1,6 +1,11 @@
-// Settings command palette with sub-pages (shadcn cmdk pattern)
-// Root page → Categories / Rarities / ItemActions / AttachmentSlots / CraftingStations
-const { useState: useStateSet, useEffect: useEffectSet, useMemo: useMemoSet } = React;
+import React, { useState, useEffect, useMemo } from 'react';
+import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
+import {
+  Dialog, Command, CommandInput, CommandList, CommandEmpty,
+  CommandGroup, CommandItem, CommandSeparator,
+} from './command.jsx';
+import { useTaxonomy, TAX_KEY } from './hooks.jsx';
+import { DATA } from './data.js';
 
 /* ============================================================
    Type definitions
@@ -18,7 +23,6 @@ const { useState: useStateSet, useEffect: useEffectSet, useMemo: useMemoSet } = 
 /* ============================================================
    Constants
    ============================================================ */
-const TAX_KEY   = 'arch.taxonomy.v1';
 const LANGUAGES = ['English', 'Čeština', 'Deutsch', 'Français', 'Español', '日本語'];
 
 const RARITY_SWATCHES = [
@@ -26,116 +30,13 @@ const RARITY_SWATCHES = [
   '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#eab308',
 ];
 
-/** @type {Taxonomy} */
-const DEFAULT_TAXONOMY = {
-  categories: [
-    { id: 'cat-weapons',     title: 'Weapons',     tags: ['Item.Weapon'],     subcategories: [
-      { id: 'sub-energy',    title: 'Energy Rifle',    tags: ['Item.Weapon.Energy'] },
-      { id: 'sub-precision', title: 'Precision Rifle', tags: ['Item.Weapon.Precision'] },
-      { id: 'sub-pistol',    title: 'Pistol',          tags: ['Item.Weapon.Kinetic', 'Item.Sidearm'] },
-    ]},
-    { id: 'cat-consumables', title: 'Consumables', tags: ['Item.Consumable'], subcategories: [
-      { id: 'sub-injector', title: 'Injector', tags: ['Item.Consumable.Injector'] },
-      { id: 'sub-medical',  title: 'Medical',  tags: ['Item.Consumable.Medical'] },
-    ]},
-    { id: 'cat-materials',   title: 'Materials',   tags: ['Item.Material'],   subcategories: [
-      { id: 'sub-metal',   title: 'Metal',   tags: ['Item.Material.Metal'] },
-      { id: 'sub-hide',    title: 'Hide',    tags: ['Item.Material.Hide'] },
-      { id: 'sub-reagent', title: 'Reagent', tags: ['Item.Material.Reagent'] },
-    ]},
-    { id: 'cat-armor',       title: 'Armor',       tags: ['Item.Armor'],      subcategories: [
-      { id: 'sub-chest', title: 'Chest', tags: ['Item.Armor.Chest'] },
-      { id: 'sub-head',  title: 'Head',  tags: ['Item.Armor.Head'] },
-    ]},
-    { id: 'cat-containers',  title: 'Containers',  tags: ['Item.Container'],  subcategories: [
-      { id: 'sub-backpack', title: 'Backpack',    tags: ['Item.Container.Backpack'] },
-      { id: 'sub-medbag',   title: 'Medical Bag', tags: ['Item.Container.Medical'] },
-    ]},
-  ],
-  rarities: [
-    { id: 'rar-common',    title: 'Common',    tags: ['Rarity.Common'],    color: '#9ca3af' },
-    { id: 'rar-uncommon',  title: 'Uncommon',  tags: ['Rarity.Uncommon'],  color: '#22c55e' },
-    { id: 'rar-rare',      title: 'Rare',      tags: ['Rarity.Rare'],      color: '#3b82f6' },
-    { id: 'rar-epic',      title: 'Epic',      tags: ['Rarity.Epic'],      color: '#a855f7' },
-    { id: 'rar-legendary', title: 'Legendary', tags: ['Rarity.Legendary'], color: '#f59e0b' },
-  ],
-  itemActions: [
-    { id: 'ia-drop',        key: 'Drop',        icon: 'export',  tip: 'Drop the item into the world.' },
-    { id: 'ia-pickup',      key: 'Pickup',      icon: 'plus',    tip: 'Pick the item up from the world.' },
-    { id: 'ia-use',         key: 'Use',         icon: 'play',    tip: 'Generic activation.' },
-    { id: 'ia-consume',     key: 'Consume',     icon: 'drop',    tip: 'Consume the item for an effect.' },
-    { id: 'ia-equip',       key: 'Equip',       icon: 'shield',  tip: 'Equip into a matching slot.' },
-    { id: 'ia-unequip',     key: 'Unequip',     icon: 'minus',   tip: 'Unequip and return to inventory.' },
-    { id: 'ia-learn',       key: 'Learn',       icon: 'sparkle', tip: 'Learn a recipe or skill from the item.' },
-    { id: 'ia-read',        key: 'Read',        icon: 'eye',     tip: "Open the item's readable content." },
-    { id: 'ia-inspect',     key: 'Inspect',     icon: 'info',    tip: 'Open detailed inspection panel.' },
-    { id: 'ia-split',       key: 'Split',       icon: 'branch',  tip: 'Split a stack.' },
-    { id: 'ia-combine',     key: 'Combine',     icon: 'layers',  tip: 'Combine matching items into a stack.' },
-    { id: 'ia-repair',      key: 'Repair',      icon: 'history', tip: 'Repair durability at a station.' },
-    { id: 'ia-disassemble', key: 'Disassemble', icon: 'cog',     tip: 'Break down into components.' },
-    { id: 'ia-sell',        key: 'Sell',        icon: 'export',  tip: 'Sell at a vendor.' },
-    { id: 'ia-discard',     key: 'Discard',     icon: 'trash',   tip: 'Permanently destroy.' },
-  ],
-  attachmentSlots: [
-    { id: 'as-head',      name: 'Head',      tags: ['Slot.Head'] },
-    { id: 'as-primary',   name: 'Primary',   tags: ['Slot.Primary'] },
-    { id: 'as-secondary', name: 'Secondary', tags: ['Slot.Secondary'] },
-    { id: 'as-back',      name: 'Back',      tags: ['Slot.Back'] },
-    { id: 'as-chest',     name: 'Chest',     tags: ['Slot.Chest'] },
-    { id: 'as-accessory', name: 'Accessory', tags: ['Slot.Accessory'] },
-  ],
-  craftingStations: [
-    { id: 'cs-workbench',   name: 'Workbench',     tag: 'Station.Workbench' },
-    { id: 'cs-forge',       name: 'Forge',         tag: 'Station.Forge' },
-    { id: 'cs-dragonforge', name: 'Dragonforge',   tag: 'Station.Dragonforge' },
-    { id: 'cs-alchemy',     name: 'Alchemy Bench', tag: 'Station.AlchemyBench' },
-    { id: 'cs-shadow',      name: 'Shadow Altar',  tag: 'Station.ShadowAltar' },
-    { id: 'cs-loom',        name: 'Loom',          tag: 'Station.Loom' },
-    { id: 'cs-arcane',      name: 'Arcane Table',  tag: 'Station.ArcaneTable' },
-  ],
-};
-
-/* ============================================================
-   Taxonomy persistence hook
-   ============================================================ */
-/**
- * Reads and writes the full taxonomy from localStorage.
- * Migration guard ensures new fields appear for existing installations.
- * @returns {[Taxonomy, React.Dispatch<React.SetStateAction<Taxonomy>>]}
- */
-const useTaxonomy = () => {
-  const [tax, setTax] = useStateSet(() => {
-    try {
-      const raw = localStorage.getItem(TAX_KEY);
-      if (raw) {
-        const stored = JSON.parse(raw);
-        return {
-          ...DEFAULT_TAXONOMY,
-          ...stored,
-          itemActions:      stored.itemActions      ?? DEFAULT_TAXONOMY.itemActions,
-          attachmentSlots:  stored.attachmentSlots  ?? DEFAULT_TAXONOMY.attachmentSlots,
-          craftingStations: stored.craftingStations ?? DEFAULT_TAXONOMY.craftingStations,
-        };
-      }
-    } catch {}
-    return DEFAULT_TAXONOMY;
-  });
-
-  useEffectSet(() => {
-    try { localStorage.setItem(TAX_KEY, JSON.stringify(tax)); } catch {}
-  }, [tax]);
-
-  return [tax, setTax];
-};
-
-/** Generates a short random ID with a given prefix. @param {string} prefix @returns {string} */
+/** @param {string} prefix @returns {string} */
 const newId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 
 /* ============================================================
    Shared sub-components
    ============================================================ */
 /**
- * Page header with back/close buttons and a breadcrumb trail.
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, right?: React.ReactNode }} props
  */
 const PageHeader = ({ trail, onBack, onClose, right }) => (
@@ -166,10 +67,7 @@ const PageHeader = ({ trail, onBack, onClose, right }) => (
   </div>
 );
 
-/**
- * Settings footer with keyboard hint and schema version.
- * @param {{ hint?: React.ReactNode }} props
- */
+/** @param {{ hint?: React.ReactNode }} props */
 const Footer = ({ hint }) => (
   <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
     <span className="inline-flex items-center gap-1.5 font-mono">
@@ -189,11 +87,10 @@ const Footer = ({ hint }) => (
 );
 
 /**
- * Tag chip input — press Enter or comma to commit a tag.
  * @param {{ value: string[], onChange: (v: string[]) => void, placeholder?: string }} props
  */
 const TagsField = ({ value = [], onChange, placeholder = 'Add tag and press Enter…' }) => {
-  const [draft, setDraft] = useStateSet('');
+  const [draft, setDraft] = useState('');
   const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
   const commit = () => {
     const v = draft.trim().replace(/,$/, '');
@@ -204,7 +101,7 @@ const TagsField = ({ value = [], onChange, placeholder = 'Add tag and press Ente
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-ring">
       {value.map((t, i) => (
-        <Tag key={i} tone="rare" onRemove={() => remove(i)}>{t}</Tag>
+        <Tag key={i} onRemove={() => remove(i)}>{t}</Tag>
       ))}
       <input
         value={draft}
@@ -221,10 +118,7 @@ const TagsField = ({ value = [], onChange, placeholder = 'Add tag and press Ente
   );
 };
 
-/**
- * Labelled form row used throughout settings pages.
- * @param {{ label: string, hint?: string, children: React.ReactNode }} props
- */
+/** @param {{ label: string, hint?: string, children: React.ReactNode }} props */
 const FRow = ({ label, hint, children }) => (
   <div className="space-y-1.5">
     <Label className="text-xs uppercase tracking-wider text-muted-foreground">{label}</Label>
@@ -234,11 +128,9 @@ const FRow = ({ label, hint, children }) => (
 );
 
 /* ============================================================
-   TaxListPage — unified shell for all taxonomy list pages
+   TaxListPage / TaxEditPage shells
    ============================================================ */
 /**
- * Standard shell for taxonomy list pages: header, search, item list, add action, footer.
- * Pass item rows as children — they must be CommandItem elements.
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
  */
 const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) => (
@@ -263,12 +155,7 @@ const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addL
   </div>
 );
 
-/* ============================================================
-   TaxEditPage — unified shell for all taxonomy edit pages
-   ============================================================ */
 /**
- * Standard shell for taxonomy edit pages: header with delete, scrollable form, footer.
- * Pass form fields as children — they should be FRow elements.
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, onDelete: () => void, footerHint?: React.ReactNode, children: React.ReactNode }} props
  */
 const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children }) => (
@@ -291,14 +178,13 @@ const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children })
 );
 
 /* ============================================================
-   Settings Command — page router
+   SettingsCommand — page router
    ============================================================ */
 /**
- * Root settings dialog — uses a page-stack pattern for sub-navigation.
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, screen: string, setScreen: (s: string) => void, tweaks: object, setTweak: (k: string, v: any) => void }} props
  */
-function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTweak }) {
-  const [stack, setStack] = useStateSet([{ type: 'root' }]);
+export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTweak }) {
+  const [stack, setStack] = useState([{ type: 'root' }]);
   const page  = stack[stack.length - 1];
   const push  = (p) => setStack(s => [...s, p]);
   const pop   = () => setStack(s => s.length > 1 ? s.slice(0, -1) : s);
@@ -306,9 +192,9 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
 
   const [tax, setTax] = useTaxonomy();
 
-  useEffectSet(() => { if (open) setStack([{ type: 'root' }]); }, [open]);
+  useEffect(() => { if (open) setStack([{ type: 'root' }]); }, [open]);
 
-  const trail = useMemoSet(() => {
+  const trail = useMemo(() => {
     const parts = ['Settings'];
     for (let i = 1; i < stack.length; i++) {
       const p = stack[i];
@@ -335,9 +221,7 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
         role="dialog" aria-label="Settings"
         className="w-[92vw] max-w-[900px] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
       >
-        {page.type === 'root' && (
-          <RootPage tweaks={tweaks} setTweak={setTweak} screen={screen} setScreen={setScreen} push={push} close={close}/>
-        )}
+        {page.type === 'root'              && <RootPage tweaks={tweaks} setTweak={setTweak} screen={screen} setScreen={setScreen} push={push} close={close}/>}
         {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
         {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id}/>}
         {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
@@ -345,7 +229,7 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
         {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id}/>}
         {page.type === 'itemActions'       && <ItemActionsPage     {...shared}/>}
         {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id}/>}
-        {page.type === 'attachmentSlots'   && <AttachmentSlotsPage {...shared}/>}
+        {page.type === 'attachmentSlots'   && <AttachmentSlotsPage    {...shared}/>}
         {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
         {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
         {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id}/>}
@@ -355,11 +239,8 @@ function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTwe
 }
 
 /* ============================================================
-   Root page — top-level command list
+   Root page
    ============================================================ */
-/**
- * @param {{ tweaks: object, setTweak: (k: string, v: any) => void, screen: string, setScreen: (s: string) => void, push: (p: object) => void, close: () => void }} props
- */
 function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
   const isDark = document.documentElement.classList.contains('dark');
 
@@ -372,9 +253,9 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
   const exportAll = () => {
     try {
       const blob = new Blob([JSON.stringify({
-        items: window.DATA.allItems,
-        loadouts: window.DATA.loadouts,
-        recipes: window.DATA.recipes,
+        items: DATA.allItems,
+        loadouts: DATA.loadouts,
+        recipes: DATA.recipes,
         taxonomy: JSON.parse(localStorage.getItem(TAX_KEY) || 'null'),
         tweaks,
       }, null, 2)], { type: 'application/json' });
@@ -441,8 +322,8 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
           <CommandItem value="categories taxonomy subcategories" icon="folder"  shortcut="→" onSelect={() => push({ type: 'categories' })}>Categories</CommandItem>
           <CommandItem value="rarities tiers colours"            icon="sparkle" shortcut="→" onSelect={() => push({ type: 'rarities' })}>Rarities</CommandItem>
           <CommandItem value="item actions verbs player"         icon="cog"     shortcut="→" onSelect={() => push({ type: 'itemActions' })}>Item Actions</CommandItem>
-          <CommandItem value="attachment slots equipment sockets" icon="link"   shortcut="→" onSelect={() => push({ type: 'attachmentSlots' })}>Attachment Slots</CommandItem>
-          <CommandItem value="crafting stations workbench forge"  icon="hammer" shortcut="→" onSelect={() => push({ type: 'craftingStations' })}>Crafting Stations</CommandItem>
+          <CommandItem value="attachment slots equipment"        icon="link"    shortcut="→" onSelect={() => push({ type: 'attachmentSlots' })}>Attachment Slots</CommandItem>
+          <CommandItem value="crafting stations workbench forge" icon="hammer"  shortcut="→" onSelect={() => push({ type: 'craftingStations' })}>Crafting Stations</CommandItem>
         </CommandGroup>
 
         <CommandSeparator/>
@@ -458,11 +339,8 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
 }
 
 /* ============================================================
-   Categories — list + edit pages
+   Categories
    ============================================================ */
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
   const addCategory = () => {
     const id = newId('cat');
@@ -489,9 +367,6 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, categoryId: string, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, push }) {
   const cat = tax.categories.find(c => c.id === categoryId);
   if (!cat) return null;
@@ -553,9 +428,6 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, categoryId: string, subcategoryId: string, tax: Taxonomy, setTax: Function }} props
- */
 function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId, tax, setTax }) {
   const cat = tax.categories.find(c => c.id === categoryId);
   const sub = cat?.subcategories.find(s => s.id === subcategoryId);
@@ -597,11 +469,8 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
 }
 
 /* ============================================================
-   Rarities — list + edit pages
+   Rarities
    ============================================================ */
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
   const addRarity = () => {
     const id = newId('rar');
@@ -630,9 +499,6 @@ function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, rarityId: string, tax: Taxonomy, setTax: Function }} props
- */
 function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
   const r = tax.rarities.find(r => r.id === rarityId);
   if (!r) return null;
@@ -693,11 +559,8 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
 }
 
 /* ============================================================
-   Item Actions — list + edit pages
+   Item Actions
    ============================================================ */
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
   const addAction = () => {
     const id = newId('ia');
@@ -726,9 +589,6 @@ function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, actionId: string, tax: Taxonomy, setTax: Function }} props
- */
 function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
   const action = tax.itemActions.find(a => a.id === actionId);
   if (!action) return null;
@@ -763,11 +623,8 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
 }
 
 /* ============================================================
-   Attachment Slots — list + edit pages
+   Attachment Slots
    ============================================================ */
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
   const addSlot = () => {
     const id = newId('as');
@@ -794,9 +651,6 @@ function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, slotId: string, tax: Taxonomy, setTax: Function }} props
- */
 function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax }) {
   const slot = tax.attachmentSlots.find(s => s.id === slotId);
   if (!slot) return null;
@@ -823,11 +677,8 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax })
 }
 
 /* ============================================================
-   Crafting Stations — list + edit pages
+   Crafting Stations
    ============================================================ */
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, tax: Taxonomy, setTax: Function, push: Function }} props
- */
 function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
   const addStation = () => {
     const id = newId('cs');
@@ -854,9 +705,6 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-/**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, stationId: string, tax: Taxonomy, setTax: Function }} props
- */
 function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTax }) {
   const station = tax.craftingStations.find(s => s.id === stationId);
   if (!station) return null;
@@ -881,5 +729,3 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
     </TaxEditPage>
   );
 }
-
-Object.assign(window, { SettingsCommand, useTaxonomy });
