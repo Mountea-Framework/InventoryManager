@@ -1,0 +1,342 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  cn, Icon, Button, Input, Select, Switch, Tooltip,
+  Section, Row, TextField, Textarea, FilePicker,
+} from './ui.jsx';
+import { ITEM_FLAGS, ITEM_ACTIONS, bitsToFlags, flagsToBits } from './data.js';
+
+/**
+ * @typedef {import('./form-schemas.js').FieldSchema} FieldSchema
+ * @typedef {import('./form-schemas.js').SectionSchema} SectionSchema
+ * @typedef {import('./form-schemas.js').FormSchema} FormSchema
+ */
+
+/* ============================================================
+   Shared form components
+   ============================================================ */
+
+const FLAG_ICONS = {
+  tradeable: 'export', stackable: 'layers', craftable: 'hammer', dropable: 'arrowRight',
+  consumable: 'drop',  questItem: 'tag',    unique: 'sparkle',   durable: 'history',
+};
+
+/**
+ * Toggleable bitmask chip grid for EInventoryItemFlags.
+ * @param {{ value: number, onChange: (v: number) => void }} props
+ */
+export function FlagsPicker({ value, onChange }) {
+  const flags = bitsToFlags(value || 0);
+  const toggle = (key) => onChange?.(flagsToBits({ ...flags, [key]: !flags[key] }));
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {ITEM_FLAGS.map(f => {
+        const on = !!flags[f.key];
+        return (
+          <Tooltip key={f.key} content={f.tip}>
+            <button type="button" onClick={() => toggle(f.key)}
+              className={cn(
+                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+              )}>
+              <Icon name={FLAG_ICONS[f.key] || 'tag'} size={12} className={on ? 'text-primary' : ''}/>
+              <span className="flex-1 truncate text-xs">{f.label}</span>
+              <span className="font-mono text-[9.5px] opacity-60">1&lt;&lt;{Math.log2(f.bit)}</span>
+              {on && <Icon name="check" size={11} className="text-primary"/>}
+            </button>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Editable chip list with optional datalist autocomplete.
+ * @param {{ values: string[], onChange: (v: string[]) => void, placeholder?: string, mono?: boolean, suggestions?: string[] }} props
+ */
+export function StringListField({ values = [], onChange, placeholder = 'add entry', mono = true, suggestions = [] }) {
+  const [draft, setDraft] = useState('');
+  const listId = useMemo(() => `sl-${Math.random().toString(36).slice(2, 6)}`, []);
+
+  const remove = (i) => onChange?.(values.filter((_, j) => j !== i));
+  const add = () => {
+    const v = draft.trim();
+    if (!v) return;
+    onChange?.([...values, v]);
+    setDraft('');
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {values.map((v, i) => (
+          <span key={i} className={cn(
+            'inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5',
+            mono ? 'font-mono text-[10.5px]' : 'text-xs',
+          )}>
+            {v}
+            <button onClick={() => remove(i)} className="opacity-60 hover:opacity-100"><Icon name="x" size={10}/></button>
+          </span>
+        ))}
+        {values.length === 0 && <span className="text-xs italic text-muted-foreground">empty</span>}
+      </div>
+      <div className="flex gap-1.5">
+        <Input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder={placeholder}
+          list={suggestions.length ? listId : undefined}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          className={cn('h-8 text-xs', mono && 'font-mono')}
+        />
+        {suggestions.length > 0 && (
+          <datalist id={listId}>
+            {suggestions.map(s => <option key={s} value={s}/>)}
+          </datalist>
+        )}
+        <Button size="sm" variant="outline" onClick={add} icon="plus"/>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Multi-select action chip grid. Reads available actions from taxonomy (falls back to ITEM_ACTIONS).
+ * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
+ */
+function ItemActionsPicker({ value = [], onChange, taxonomy }) {
+  const catalog = taxonomy?.itemActions ?? ITEM_ACTIONS;
+  const enabled = new Set(value);
+
+  const toggle = (key) => {
+    const next = enabled.has(key)
+      ? value.filter(k => k !== key)
+      : catalog.filter(a => enabled.has(a.key) || a.key === key).map(a => a.key);
+    onChange?.(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        {catalog.map(a => {
+          const on = enabled.has(a.key);
+          return (
+            <Tooltip key={a.key} content={a.tip}>
+              <button type="button" onClick={() => toggle(a.key)}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors',
+                  on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+                )}>
+                <Icon name={a.icon} size={12} className={on ? 'text-primary' : ''}/>
+                <span className="flex-1 truncate text-xs">{a.key}</span>
+                {on && <Icon name="check" size={11} className="text-primary"/>}
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <div className="rounded-md border border-border/60 bg-card/40 p-2.5">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Enabled actions (in order)</div>
+          <div className="flex flex-wrap gap-1.5">
+            {value.map(k => (
+              <span key={k} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10.5px] text-primary">{k}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Generic range slider for schema-driven forms.
+ * @param {{ field: FieldSchema, value: string|number, onChange: (v: string|number) => void }} props
+ */
+function RangeField({ field, value, onChange }) {
+  const min  = field.min ?? 0;
+  const max  = field.max ?? 100;
+  const unit = field.unit ?? '';
+  const [v, setV] = useState(parseInt(value, 10) || min);
+
+  useEffect(() => { setV(parseInt(value, 10) || min); }, [value, min]);
+
+  const pct = Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+
+  const handleChange = (next) => {
+    setV(next);
+    onChange(unit ? `${next}${unit}` : next);
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative flex h-5 flex-1 items-center">
+        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
+          <div className="h-full bg-primary" style={{ width: `${pct}%` }}/>
+        </div>
+        <input
+          type="range" min={min} max={max} step={field.step ?? 1} value={v}
+          onChange={e => handleChange(+e.target.value)}
+          className="absolute inset-0 m-0 h-full w-full cursor-pointer opacity-0"
+        />
+        <div
+          className="pointer-events-none absolute h-4 w-4 -translate-y-1/2 rounded-full border-2 border-primary bg-background shadow top-1/2"
+          style={{ left: `calc(${pct}% - 8px)` }}
+        />
+      </div>
+      <span className="shrink-0 text-right font-mono text-xs">{v}{unit}</span>
+    </div>
+  );
+}
+
+/* ============================================================
+   Internals
+   ============================================================ */
+
+/** @param {object} obj @param {string} path @returns {*} */
+const getPath = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj);
+
+/** Field types that need a stacked (full-width) Row layout. */
+const STACK_TYPES = new Set(['textarea', 'flags', 'tags', 'string-list', 'chip-multi', 'file', 'item-list', 'group-list', 'slot-map']);
+
+/**
+ * Resolves a field's option list from its static options and/or taxonomy source.
+ * @param {FieldSchema} field
+ * @param {object} taxonomy
+ * @param {object} draft
+ * @returns {Array}
+ */
+function resolveOptions(field, taxonomy, draft) {
+  const base = field.options ?? [];
+  if (!field.source) return base;
+
+  if (field.source === 'taxonomy.categories') {
+    if (field.dependsOn === 'category') {
+      const activeCat = (taxonomy?.categories ?? []).find(c => c.title === (draft?.[field.dependsOn] ?? ''));
+      return [
+        { value: '', label: '— none —' },
+        ...(activeCat?.subcategories ?? []).map(s => ({ value: s.title, label: s.title })),
+      ];
+    }
+    return (taxonomy?.categories ?? []).map(c => ({ value: c.title, label: c.title }));
+  }
+  if (field.source === 'taxonomy.rarities')
+    return (taxonomy?.rarities ?? []).map(r => ({ value: r.title, label: r.title }));
+  if (field.source === 'taxonomy.craftingStations')
+    return [...base, ...(taxonomy?.craftingStations ?? []).map(s => ({ value: s.name, label: s.name }))];
+  if (field.source === 'taxonomy.itemActions')
+    return taxonomy?.itemActions ?? ITEM_ACTIONS;
+  if (field.source === 'taxonomy.attachmentSlots')
+    return (taxonomy?.attachmentSlots ?? []).map(s => s.name);
+  return base;
+}
+
+/**
+ * Renders one field based on its schema type.
+ * Calls renderField(field, value, onChange) first — return non-null to override.
+ * @param {{ field: FieldSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
+ */
+function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
+  const value    = getPath(draft, field.id);
+  const onChange = (v) => set(field.id, v);
+
+  if (renderField) {
+    const custom = renderField(field, value, onChange);
+    if (custom != null) return custom;
+  }
+
+  switch (field.type) {
+    case 'readonly':
+      return <TextField value={value ?? ''} mono readOnly/>;
+    case 'text':
+      return <TextField value={value ?? ''} onChange={onChange} placeholder={field.placeholder}/>;
+    case 'textarea':
+      return <Textarea value={value ?? ''} onChange={e => onChange(e.target.value)} rows={4} placeholder={field.placeholder}/>;
+    case 'number': {
+      const suffix = field.unit ? <span className="text-xs">{field.unit}</span> : undefined;
+      return (
+        <TextField
+          value={String(value ?? '')}
+          onChange={v => onChange(field.step === 1 ? parseInt(v) || 0 : parseFloat(v) || 0)}
+          mono
+          suffix={suffix}
+        />
+      );
+    }
+    case 'select': {
+      const options = resolveOptions(field, taxonomy, draft);
+      return <Select value={value ?? ''} onChange={onChange} options={options} placeholder={field.placeholder}/>;
+    }
+    case 'switch':
+      return <Switch checked={!!value} onCheckedChange={onChange}/>;
+    case 'file':
+      return <FilePicker value={value ?? ''} onChange={onChange} accept={field.accept} placeholder={field.placeholder}/>;
+    case 'tags':
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder}/>;
+    case 'string-list': {
+      const suggestions = field.source ? resolveOptions(field, taxonomy, draft) : [];
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions}/>;
+    }
+    case 'flags':
+      return <FlagsPicker value={value ?? 0} onChange={onChange}/>;
+    case 'chip-multi':
+      return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+    case 'range':
+      return <RangeField field={field} value={value} onChange={onChange}/>;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Renders one schema section as a collapsible <Section> with its fields as <Row>s.
+ * @param {{ section: SectionSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
+ */
+function SectionRenderer({ section, draft, set, taxonomy, renderField }) {
+  return (
+    <Section title={section.title} icon={section.icon} compact={section.compact}>
+      {section.fields.map(field => (
+        <Row key={field.id} label={field.label} hint={field.hint} tooltip={field.tooltip} stack={STACK_TYPES.has(field.type)}>
+          <FieldRenderer field={field} draft={draft} set={set} taxonomy={taxonomy} renderField={renderField}/>
+        </Row>
+      ))}
+    </Section>
+  );
+}
+
+/* ============================================================
+   FormRenderer — public API
+   ============================================================ */
+
+/**
+ * Renders a complete form driven by a FormSchema.
+ *
+ * @param {{
+ *   schema: FormSchema,
+ *   draft: object,
+ *   set: (path: string, val: *) => void,
+ *   taxonomy: object,
+ *   renderField?: (field: FieldSchema, value: *, onChange: Function) => React.ReactNode|null,
+ *   sectionIds?: string[]
+ * }} props
+ */
+export function FormRenderer({ schema, draft, set, taxonomy, renderField, sectionIds }) {
+  const sections = sectionIds
+    ? schema.sections.filter(s => sectionIds.includes(s.id))
+    : schema.sections;
+
+  return (
+    <div className="space-y-4 p-6">
+      {sections.map(section => (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          draft={draft}
+          set={set}
+          taxonomy={taxonomy}
+          renderField={renderField}
+        />
+      ))}
+    </div>
+  );
+}
