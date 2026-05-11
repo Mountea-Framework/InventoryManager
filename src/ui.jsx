@@ -1,4 +1,5 @@
 import React, { useState, useRef, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 /* ---------- shadcn component imports ---------- */
@@ -19,6 +20,7 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton as SkeletonPrim } from '@/components/ui/skeleton';
 
 /* ---------- re-exports of shadcn primitives (no changes needed at call sites) ---------- */
 export { cn }                      from '@/lib/utils';
@@ -28,6 +30,7 @@ export { Label }                   from '@/components/ui/label';
 export { Switch }                  from '@/components/ui/switch';
 export { Badge }                   from '@/components/ui/badge';
 export { Separator }               from '@/components/ui/separator';
+export { Skeleton }                from '@/components/ui/skeleton';
 export { TooltipProvider }         from '@/components/ui/tooltip';
 export {
   Select as RadixSelect,
@@ -184,23 +187,30 @@ export const Section = ({ title, icon, right, children, defaultOpen = true, comp
 /* ============================================================
    Row — label + control grid row (custom)
    ============================================================ */
-export const Row = ({ label, hint, children, stack = false }) => (
-  stack ? (
-    <div className="space-y-1.5 py-2">
+export const Row = ({ label, hint, tooltip, children, stack = false }) => {
+  const labelEl = tooltip ? (
+    <Tooltip content={tooltip}>
       <ShadcnLabel className="text-foreground/90">{label}</ShadcnLabel>
+    </Tooltip>
+  ) : (
+    <ShadcnLabel className="text-foreground/90">{label}</ShadcnLabel>
+  );
+  return stack ? (
+    <div className="space-y-1.5 py-2">
+      {labelEl}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       <div>{children}</div>
     </div>
   ) : (
     <div className="grid grid-cols-[180px_1fr] items-center gap-3 py-1.5">
       <div>
-        <ShadcnLabel className="text-foreground/90">{label}</ShadcnLabel>
+        {labelEl}
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
       <div className="min-w-0">{children}</div>
     </div>
-  )
-);
+  );
+};
 
 /* ============================================================
    TextField — styled text input with optional prefix/suffix
@@ -226,7 +236,9 @@ export const TextField = ({ value, onChange, placeholder, mono = false, suffix, 
 /* ============================================================
    FilePicker — text field + folder button file picker
    ============================================================ */
-export const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select file…', className = '' }) => {
+export const FilePicker = ({ value = '', onChange, accept, placeholder, className = '' }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('ui.selectFile');
   const inputRef = useRef(null);
   return (
     <div className={cn('flex gap-1.5', className)}>
@@ -236,7 +248,7 @@ export const FilePicker = ({ value = '', onChange, accept, placeholder = 'Select
       )}>
         <input
           value={value} onChange={e => onChange?.(e.target.value)}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           className="flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
         />
       </div>
@@ -302,24 +314,90 @@ export const SidebarItem = forwardRef(({ selected, onClick, children, className 
 SidebarItem.displayName = 'SidebarItem';
 
 /* ============================================================
-   LeftPanel — sidebar container with title, search, action slots
+   SidebarSkeleton — shimmer placeholder for left panel list
    ============================================================ */
-export const LeftPanel = ({ title, headerActions, search, setSearch, searchPlaceholder = 'Filter…', children }) => (
-  <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-muted/20">
-    <div className="border-b border-border p-3 space-y-2">
-      <div className="flex items-center gap-1">
-        <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</span>
-        {headerActions}
+function SidebarSkeleton() {
+  return (
+    <div className="space-y-px px-3 py-2">
+      <SkeletonPrim className="mb-3 h-4 w-24"/>
+      <SkeletonPrim className="h-9 w-full rounded"/>
+      <SkeletonPrim className="h-9 w-[87%] rounded"/>
+      <SkeletonPrim className="h-9 w-full rounded"/>
+      <SkeletonPrim className="mt-5 mb-3 h-4 w-20"/>
+      <SkeletonPrim className="h-9 w-[92%] rounded"/>
+      <SkeletonPrim className="h-9 w-full rounded"/>
+    </div>
+  );
+}
+
+/* ============================================================
+   ContentSkeleton — shimmer placeholder for main editor area
+   ============================================================ */
+export function ContentSkeleton() {
+  return (
+    <div className="p-6 max-w-2xl space-y-6">
+      <div className="flex items-start gap-4">
+        <SkeletonPrim className="h-14 w-14 shrink-0 rounded-lg"/>
+        <div className="flex-1 space-y-2 pt-1">
+          <SkeletonPrim className="h-5 w-52"/>
+          <SkeletonPrim className="h-4 w-80"/>
+        </div>
       </div>
-      <div className="relative">
-        <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
-        <ShadcnInput placeholder={searchPlaceholder} value={search ?? ''}
-          onChange={e => setSearch?.(e.target.value)} className="h-8 pl-7 text-xs"/>
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-1.5">
+            <SkeletonPrim className="h-3.5 w-24"/>
+            <SkeletonPrim className="h-9 w-full"/>
+          </div>
+        ))}
       </div>
     </div>
-    <div className="flex-1 overflow-auto py-2">{children}</div>
-  </aside>
-);
+  );
+}
+
+/* ============================================================
+   EmptyState — centred icon + heading + optional description
+   ============================================================ */
+export function EmptyState({ icon = 'sparkle', title, description, children }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon name={icon} size={22}/>
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        {description && <p className="mx-auto max-w-[240px] text-xs text-muted-foreground">{description}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/* ============================================================
+   LeftPanel — sidebar container with title, search, action slots
+   ============================================================ */
+export function LeftPanel({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = searchPlaceholder ?? t('ui.filterPlaceholder');
+  return (
+    <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-muted/20">
+      <div className="border-b border-border p-3 space-y-2">
+        <div className="flex items-center gap-1">
+          <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</span>
+          {headerActions}
+        </div>
+        <div className="relative">
+          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
+          <ShadcnInput placeholder={resolvedPlaceholder} value={search ?? ''}
+            onChange={e => setSearch?.(e.target.value)} className="h-8 pl-7 text-xs"/>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto py-2">
+        {loading ? <SidebarSkeleton/> : children}
+      </div>
+    </aside>
+  );
+}
 
 /* ============================================================
    CollapsibleAside — collapsible right inspector panel

@@ -5,25 +5,25 @@ export const TAX_KEY = 'arch.taxonomy.v1';
 /** @type {import('./settings.jsx').Taxonomy} */
 export const DEFAULT_TAXONOMY = {
   categories: [
-    { id: 'cat-weapons',     title: 'Weapons',     tags: ['Item.Weapon'],     subcategories: [
+    { id: 'cat-weapons',     title: 'Weapons',     icon: 'sword',    tags: ['Item.Weapon'],     subcategories: [
       { id: 'sub-energy',    title: 'Energy Rifle',    tags: ['Item.Weapon.Energy'] },
       { id: 'sub-precision', title: 'Precision Rifle', tags: ['Item.Weapon.Precision'] },
       { id: 'sub-pistol',    title: 'Pistol',          tags: ['Item.Weapon.Kinetic', 'Item.Sidearm'] },
     ]},
-    { id: 'cat-consumables', title: 'Consumables', tags: ['Item.Consumable'], subcategories: [
+    { id: 'cat-consumables', title: 'Consumables', icon: 'beaker',   tags: ['Item.Consumable'], subcategories: [
       { id: 'sub-injector', title: 'Injector', tags: ['Item.Consumable.Injector'] },
       { id: 'sub-medical',  title: 'Medical',  tags: ['Item.Consumable.Medical'] },
     ]},
-    { id: 'cat-materials',   title: 'Materials',   tags: ['Item.Material'],   subcategories: [
+    { id: 'cat-materials',   title: 'Materials',   icon: 'cube',     tags: ['Item.Material'],   subcategories: [
       { id: 'sub-metal',   title: 'Metal',   tags: ['Item.Material.Metal'] },
       { id: 'sub-hide',    title: 'Hide',    tags: ['Item.Material.Hide'] },
       { id: 'sub-reagent', title: 'Reagent', tags: ['Item.Material.Reagent'] },
     ]},
-    { id: 'cat-armor',       title: 'Armor',       tags: ['Item.Armor'],      subcategories: [
+    { id: 'cat-armor',       title: 'Armor',       icon: 'shield',   tags: ['Item.Armor'],      subcategories: [
       { id: 'sub-chest', title: 'Chest', tags: ['Item.Armor.Chest'] },
       { id: 'sub-head',  title: 'Head',  tags: ['Item.Armor.Head'] },
     ]},
-    { id: 'cat-containers',  title: 'Containers',  tags: ['Item.Container'],  subcategories: [
+    { id: 'cat-containers',  title: 'Containers',  icon: 'backpack', tags: ['Item.Container'],  subcategories: [
       { id: 'sub-backpack', title: 'Backpack',    tags: ['Item.Container.Backpack'] },
       { id: 'sub-medbag',   title: 'Medical Bag', tags: ['Item.Container.Medical'] },
     ]},
@@ -61,13 +61,13 @@ export const DEFAULT_TAXONOMY = {
     { id: 'as-accessory', name: 'Accessory', tags: ['Slot.Accessory'] },
   ],
   craftingStations: [
-    { id: 'cs-workbench',   name: 'Workbench',     tag: 'Station.Workbench' },
-    { id: 'cs-forge',       name: 'Forge',         tag: 'Station.Forge' },
-    { id: 'cs-dragonforge', name: 'Dragonforge',   tag: 'Station.Dragonforge' },
-    { id: 'cs-alchemy',     name: 'Alchemy Bench', tag: 'Station.AlchemyBench' },
-    { id: 'cs-shadow',      name: 'Shadow Altar',  tag: 'Station.ShadowAltar' },
-    { id: 'cs-loom',        name: 'Loom',          tag: 'Station.Loom' },
-    { id: 'cs-arcane',      name: 'Arcane Table',  tag: 'Station.ArcaneTable' },
+    { id: 'cs-workbench',   name: 'Workbench',     icon: 'cog',     tag: 'Station.Workbench' },
+    { id: 'cs-forge',       name: 'Forge',         icon: 'hammer',  tag: 'Station.Forge' },
+    { id: 'cs-dragonforge', name: 'Dragonforge',   icon: 'hammer',  tag: 'Station.Dragonforge' },
+    { id: 'cs-alchemy',     name: 'Alchemy Bench', icon: 'beaker',  tag: 'Station.AlchemyBench' },
+    { id: 'cs-shadow',      name: 'Shadow Altar',  icon: 'sparkle', tag: 'Station.ShadowAltar' },
+    { id: 'cs-loom',        name: 'Loom',          icon: 'layers',  tag: 'Station.Loom' },
+    { id: 'cs-arcane',      name: 'Arcane Table',  icon: 'sparkle', tag: 'Station.ArcaneTable' },
   ],
 };
 
@@ -76,6 +76,12 @@ export const DEFAULT_TAXONOMY = {
  * Migration guard ensures new fields appear for existing installations.
  * @returns {[import('./settings.jsx').Taxonomy, React.Dispatch<React.SetStateAction<import('./settings.jsx').Taxonomy>>]}
  */
+const mergeIcon = (storedList, defaultList) =>
+  storedList.map(item => {
+    const def = defaultList.find(d => d.id === item.id);
+    return (def?.icon && !item.icon) ? { ...item, icon: def.icon } : item;
+  });
+
 export const useTaxonomy = () => {
   const [tax, setTax] = useState(() => {
     try {
@@ -85,9 +91,10 @@ export const useTaxonomy = () => {
         return {
           ...DEFAULT_TAXONOMY,
           ...stored,
+          categories:       stored.categories       ? mergeIcon(stored.categories,       DEFAULT_TAXONOMY.categories)       : DEFAULT_TAXONOMY.categories,
           itemActions:      stored.itemActions      ?? DEFAULT_TAXONOMY.itemActions,
           attachmentSlots:  stored.attachmentSlots  ?? DEFAULT_TAXONOMY.attachmentSlots,
-          craftingStations: stored.craftingStations ?? DEFAULT_TAXONOMY.craftingStations,
+          craftingStations: stored.craftingStations ? mergeIcon(stored.craftingStations, DEFAULT_TAXONOMY.craftingStations) : DEFAULT_TAXONOMY.craftingStations,
         };
       }
     } catch {}

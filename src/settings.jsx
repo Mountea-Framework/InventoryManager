@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n.js';
 import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
 import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
 } from './command.jsx';
 import { useTaxonomy, TAX_KEY } from './hooks.jsx';
-import { DATA } from './data.js';
+import { exportAllData, bulkImport } from './store.js';
 
 /* ============================================================
    Type definitions
@@ -39,57 +41,65 @@ const newId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 /**
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, right?: React.ReactNode }} props
  */
-const PageHeader = ({ trail, onBack, onClose, right }) => (
-  <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-    <button
-      onClick={onBack}
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      title="Back"
-    >
-      <Icon name="chevLeft" size={14}/>
-    </button>
-    <div className="flex flex-1 items-center gap-1.5 text-sm font-medium">
-      {trail.map((t, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <Icon name="chevRight" size={12} className="text-muted-foreground/60"/>}
-          <span className={i === trail.length - 1 ? 'text-foreground' : 'text-muted-foreground'}>{t}</span>
-        </React.Fragment>
-      ))}
+function PageHeader({ trail, onBack, onClose, right }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+      <button
+        onClick={onBack}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        title={t('settings.back')}
+      >
+        <Icon name="chevLeft" size={14}/>
+      </button>
+      <div className="flex flex-1 items-center gap-1.5 text-sm font-medium">
+        {trail.map((item, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <Icon name="chevRight" size={12} className="text-muted-foreground/60"/>}
+            <span className={i === trail.length - 1 ? 'text-foreground' : 'text-muted-foreground'}>{item}</span>
+          </React.Fragment>
+        ))}
+      </div>
+      {right}
+      <button
+        onClick={onClose}
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        title={t('settings.close')}
+      >
+        <Icon name="x" size={14}/>
+      </button>
     </div>
-    {right}
-    <button
-      onClick={onClose}
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      title="Close"
-    >
-      <Icon name="x" size={14}/>
-    </button>
-  </div>
-);
+  );
+}
 
 /** @param {{ hint?: React.ReactNode }} props */
-const Footer = ({ hint }) => (
-  <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-    <span className="inline-flex items-center gap-1.5 font-mono">
-      {hint || (
-        <>
-          <kbd className="rounded border border-border bg-background px-1">↑</kbd>
-          <kbd className="rounded border border-border bg-background px-1">↓</kbd>
-          to navigate
-          <span className="mx-1">·</span>
-          <kbd className="rounded border border-border bg-background px-1">⏎</kbd> to select
-          <span className="mx-1">·</span>
-          <kbd className="rounded border border-border bg-background px-1">esc</kbd> to close
-        </>
-      )}
-    </span>
-  </div>
-);
+function Footer({ hint }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 font-mono">
+        {hint || (
+          <>
+            <kbd className="rounded border border-border bg-background px-1">↑</kbd>
+            <kbd className="rounded border border-border bg-background px-1">↓</kbd>
+            {t('settings.navHint')}
+            <span className="mx-1">·</span>
+            <kbd className="rounded border border-border bg-background px-1">⏎</kbd> {t('settings.selectHint')}
+            <span className="mx-1">·</span>
+            <kbd className="rounded border border-border bg-background px-1">esc</kbd> {t('settings.closeHint')}
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
 
 /**
  * @param {{ value: string[], onChange: (v: string[]) => void, placeholder?: string }} props
  */
-const TagsField = ({ value = [], onChange, placeholder = 'Add tag and press Enter…' }) => {
+const TagsField = ({ value = [], onChange, placeholder }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('settings.tagPlaceholder');
   const [draft, setDraft] = useState('');
   const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
   const commit = () => {
@@ -111,7 +121,7 @@ const TagsField = ({ value = [], onChange, placeholder = 'Add tag and press Ente
           else if (e.key === 'Backspace' && !draft && value.length) remove(value.length - 1);
         }}
         onBlur={commit}
-        placeholder={value.length ? '' : placeholder}
+        placeholder={value.length ? '' : resolvedPlaceholder}
         className="min-w-[120px] flex-1 bg-transparent py-1 font-mono text-xs outline-none placeholder:text-muted-foreground"
       />
     </div>
@@ -133,60 +143,67 @@ const FRow = ({ label, hint, children }) => (
 /**
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
  */
-const TaxListPage = ({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) => (
-  <div className="flex h-full flex-col">
-    <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
-    <Command className="flex-1 h-auto min-h-0">
-      <CommandInput placeholder={placeholder}/>
-      <CommandList className="flex-1 max-h-none">
-        <CommandEmpty>No results match.</CommandEmpty>
-        <CommandGroup heading={heading}>
-          {children}
-        </CommandGroup>
-      </CommandList>
-    </Command>
-    <div className="border-t border-border">
-      <button
-        onClick={onAdd}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      >
-        <Icon name="plus" size={14}/>
-        {addLabel}
-      </button>
+function TaxListPage({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex h-full flex-col">
+      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
+      <Command className="flex-1 h-auto min-h-0">
+        <CommandInput placeholder={placeholder}/>
+        <CommandList className="flex-1 max-h-none">
+          <CommandEmpty>{t('settings.noResults')}</CommandEmpty>
+          <CommandGroup heading={heading}>
+            {children}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+      <div className="border-t border-border">
+        <button
+          onClick={onAdd}
+          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Icon name="plus" size={14}/>
+          {addLabel}
+        </button>
+      </div>
+      <Footer/>
     </div>
-    <Footer/>
-  </div>
-);
+  );
+}
 
 /**
  * @param {{ trail: string[], onBack: () => void, onClose: () => void, onDelete: () => void, footerHint?: React.ReactNode, children: React.ReactNode }} props
  */
-const TaxEditPage = ({ trail, onBack, onClose, onDelete, footerHint, children }) => (
-  <div className="flex h-full flex-col">
-    <PageHeader
-      trail={trail} onBack={onBack} onClose={onClose}
-      right={onDelete && (
-        <Button variant="ghost" size="sm" onClick={onDelete}
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Icon name="trash" size={13}/> Delete
-        </Button>
-      )}
-    />
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {children}
+function TaxEditPage({ trail, onBack, onClose, onDelete, footerHint, children }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex h-full flex-col">
+      <PageHeader
+        trail={trail} onBack={onBack} onClose={onClose}
+        right={onDelete && (
+          <Button variant="ghost" size="sm" onClick={onDelete}
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Icon name="trash" size={13}/> {t('settings.delete')}
+          </Button>
+        )}
+      />
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {children}
+      </div>
+      <Footer hint={footerHint ?? t('settings.savedAuto')}/>
     </div>
-    <Footer hint={footerHint ?? 'changes saved automatically'}/>
-  </div>
-);
+  );
+}
 
 /* ============================================================
    SettingsCommand — page router
    ============================================================ */
 /**
- * @param {{ open: boolean, onOpenChange: (v: boolean) => void, screen: string, setScreen: (s: string) => void, tweaks: object, setTweak: (k: string, v: any) => void }} props
+ * @param {{ open: boolean, onOpenChange: (v: boolean) => void }} props
  */
-export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks, setTweak }) {
+export function SettingsCommand({ open, onOpenChange }) {
+  const { t } = useTranslation();
   const [stack, setStack] = useState([{ type: 'root' }]);
   const page  = stack[stack.length - 1];
   const push  = (p) => setStack(s => [...s, p]);
@@ -198,30 +215,30 @@ export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks,
   useEffect(() => { if (open) setStack([{ type: 'root' }]); }, [open]);
 
   const trail = useMemo(() => {
-    const parts = ['Settings'];
+    const parts = [t('settings.panelTitle')];
     for (let i = 1; i < stack.length; i++) {
       const p = stack[i];
-      if (p.type === 'categories')        parts.push('Categories');
-      else if (p.type === 'category')     parts.push(tax.categories.find(c => c.id === p.id)?.title || 'Category');
-      else if (p.type === 'subcategory')  parts.push(tax.categories.find(c => c.id === p.catId)?.subcategories.find(s => s.id === p.id)?.title || 'Subcategory');
-      else if (p.type === 'rarities')     parts.push('Rarities');
-      else if (p.type === 'rarity')       parts.push(tax.rarities.find(r => r.id === p.id)?.title || 'Rarity');
-      else if (p.type === 'itemActions')      parts.push('Item Actions');
-      else if (p.type === 'itemAction')       parts.push(tax.itemActions.find(a => a.id === p.id)?.key || 'Action');
-      else if (p.type === 'attachmentSlots')  parts.push('Attachment Slots');
-      else if (p.type === 'attachmentSlot')   parts.push(tax.attachmentSlots.find(s => s.id === p.id)?.name || 'Slot');
-      else if (p.type === 'craftingStations') parts.push('Crafting Stations');
-      else if (p.type === 'craftingStation')  parts.push(tax.craftingStations.find(s => s.id === p.id)?.name || 'Station');
+      if (p.type === 'categories')        parts.push(t('settings.categories'));
+      else if (p.type === 'category')     parts.push(tax.categories.find(c => c.id === p.id)?.title || t('settings.categories'));
+      else if (p.type === 'subcategory')  parts.push(tax.categories.find(c => c.id === p.catId)?.subcategories.find(s => s.id === p.id)?.title || t('settings.subcategories'));
+      else if (p.type === 'rarities')     parts.push(t('settings.rarities'));
+      else if (p.type === 'rarity')       parts.push(tax.rarities.find(r => r.id === p.id)?.title || t('settings.rarities'));
+      else if (p.type === 'itemActions')      parts.push(t('settings.itemActions'));
+      else if (p.type === 'itemAction')       parts.push(tax.itemActions.find(a => a.id === p.id)?.key || t('settings.itemActions'));
+      else if (p.type === 'attachmentSlots')  parts.push(t('settings.attachmentSlots'));
+      else if (p.type === 'attachmentSlot')   parts.push(tax.attachmentSlots.find(s => s.id === p.id)?.name || t('settings.attachmentSlots'));
+      else if (p.type === 'craftingStations') parts.push(t('settings.craftingStations'));
+      else if (p.type === 'craftingStation')  parts.push(tax.craftingStations.find(s => s.id === p.id)?.name || t('settings.craftingStations'));
     }
     return parts;
-  }, [stack, tax]);
+  }, [stack, tax, t]);
 
   const shared = { trail, onBack: pop, onClose: close, tax, setTax, push };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[620px] w-[92vw] max-w-[900px] flex-col overflow-hidden p-0 [&>button]:hidden">
-        {page.type === 'root'              && <RootPage tweaks={tweaks} setTweak={setTweak} screen={screen} setScreen={setScreen} push={push} close={close}/>}
+        {page.type === 'root'              && <RootPage push={push} close={close}/>}
         {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
         {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id}/>}
         {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
@@ -241,23 +258,25 @@ export function SettingsCommand({ open, onOpenChange, screen, setScreen, tweaks,
 /* ============================================================
    Root page
    ============================================================ */
-function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
-  const isDark = document.documentElement.classList.contains('dark');
+const LANG_CODES = { 'English': 'en', 'Čeština': 'cs' };
+
+function RootPage({ push, close }) {
+  const { t } = useTranslation();
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
   const setTheme = (mode) => {
     if (mode === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
+    setIsDark(mode === 'dark');
     try { localStorage.setItem('arch.theme', mode); } catch {}
   };
 
-  const exportAll = () => {
+  const exportAll = async () => {
     try {
+      const data = await exportAllData();
       const blob = new Blob([JSON.stringify({
-        items: DATA.allItems,
-        loadouts: DATA.loadouts,
-        recipes: DATA.recipes,
+        ...data,
         taxonomy: JSON.parse(localStorage.getItem(TAX_KEY) || 'null'),
-        tweaks,
       }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -275,35 +294,46 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
       try {
         const data = JSON.parse(await f.text());
         if (data.taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(data.taxonomy));
-        if (data.tweaks)   localStorage.setItem('arch.tweaks', JSON.stringify(data.tweaks));
+        await bulkImport({
+          items:    data.items    ?? [],
+          loadouts: data.loadouts ?? [],
+          recipes:  data.recipes  ?? [],
+        });
         location.reload();
-      } catch (e) { alert('Import failed: ' + e.message); }
+      } catch (e) { alert(t('settings.importFailed') + ' ' + e.message); }
     };
     input.click();
   };
 
+  const currentLang = Object.keys(LANG_CODES).find(k => LANG_CODES[k] === (localStorage.getItem('arch.lang') || 'en')) ?? 'English';
+
   return (
     <Command>
-      <CommandInput placeholder="Search settings…"/>
+      <CommandInput placeholder={t('settings.searchPlaceholder')}/>
       <CommandList className="flex-1 max-h-none">
-        <CommandEmpty>No settings match.</CommandEmpty>
+        <CommandEmpty>{t('settings.noMatch')}</CommandEmpty>
 
-        <CommandGroup heading="Visuals">
+        <CommandGroup heading={t('settings.visuals')}>
           <CommandItem
             value="dark mode theme appearance"
             icon="eye"
             shortcut={isDark ? 'On' : 'Off'}
             onSelect={() => setTheme(isDark ? 'light' : 'dark')}
-          >Dark Mode</CommandItem>
+          >{t('settings.darkMode')}</CommandItem>
 
           <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
             <Icon name="flag" size={16} className="shrink-0 text-muted-foreground"/>
-            <span className="flex-1 text-sm text-foreground/90">Language</span>
+            <span className="flex-1 text-sm text-foreground/90">{t('settings.language')}</span>
             <div className="w-36">
               <Select
-                value={tweaks.language ?? 'English'}
-                onChange={v => setTweak('language', v)}
-                options={LANGUAGES.map(l => ({ value: l, label: l }))}
+                value={currentLang}
+                onChange={v => {
+                  const code = LANG_CODES[v] ?? 'en';
+                  localStorage.setItem('arch.lang', code);
+                  i18n.changeLanguage(code);
+                  setTweak('language', v);
+                }}
+                options={LANGUAGES.filter(l => l in LANG_CODES).map(l => ({ value: l, label: l }))}
               />
             </div>
           </div>
@@ -311,26 +341,26 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
 
         <CommandSeparator/>
 
-        <CommandGroup heading="Data">
-          <CommandItem value="export all workspace json" icon="export" onSelect={exportAll}>Export all…</CommandItem>
-          <CommandItem value="import workspace json"     icon="open"   onSelect={importAll}>Import…</CommandItem>
+        <CommandGroup heading={t('settings.data')}>
+          <CommandItem value="export all workspace json" icon="export" onSelect={exportAll}>{t('settings.exportAll')}</CommandItem>
+          <CommandItem value="import workspace json"     icon="open"   onSelect={importAll}>{t('settings.import')}</CommandItem>
         </CommandGroup>
 
         <CommandSeparator/>
 
-        <CommandGroup heading="Config">
-          <CommandItem value="categories taxonomy subcategories" icon="folder"  shortcut="→" onSelect={() => push({ type: 'categories' })}>Categories</CommandItem>
-          <CommandItem value="rarities tiers colours"            icon="sparkle" shortcut="→" onSelect={() => push({ type: 'rarities' })}>Rarities</CommandItem>
-          <CommandItem value="item actions verbs player"         icon="cog"     shortcut="→" onSelect={() => push({ type: 'itemActions' })}>Item Actions</CommandItem>
-          <CommandItem value="attachment slots equipment"        icon="link"    shortcut="→" onSelect={() => push({ type: 'attachmentSlots' })}>Attachment Slots</CommandItem>
-          <CommandItem value="crafting stations workbench forge" icon="hammer"  shortcut="→" onSelect={() => push({ type: 'craftingStations' })}>Crafting Stations</CommandItem>
+        <CommandGroup heading={t('settings.config')}>
+          <CommandItem value="categories taxonomy subcategories" icon="folder"  shortcut="→" onSelect={() => push({ type: 'categories' })}>{t('settings.categories')}</CommandItem>
+          <CommandItem value="rarities tiers colours"            icon="sparkle" shortcut="→" onSelect={() => push({ type: 'rarities' })}>{t('settings.rarities')}</CommandItem>
+          <CommandItem value="item actions verbs player"         icon="cog"     shortcut="→" onSelect={() => push({ type: 'itemActions' })}>{t('settings.itemActions')}</CommandItem>
+          <CommandItem value="attachment slots equipment"        icon="link"    shortcut="→" onSelect={() => push({ type: 'attachmentSlots' })}>{t('settings.attachmentSlots')}</CommandItem>
+          <CommandItem value="crafting stations workbench forge" icon="hammer"  shortcut="→" onSelect={() => push({ type: 'craftingStations' })}>{t('settings.craftingStations')}</CommandItem>
         </CommandGroup>
 
         <CommandSeparator/>
 
-        <CommandGroup heading="Link">
-          <CommandItem value="help documentation guide"  icon="info"    shortcut="↗" onSelect={() => window.open('https://mountea.tools/docs', '_blank')}>Help</CommandItem>
-          <CommandItem value="support us donate sponsor" icon="sparkle" shortcut="↗" onSelect={() => window.open('https://mountea.tools/support', '_blank')}>Support Us</CommandItem>
+        <CommandGroup heading={t('settings.link')}>
+          <CommandItem value="help documentation guide"  icon="info"    shortcut="↗" onSelect={() => window.open('https://mountea.tools/docs', '_blank')}>{t('settings.help')}</CommandItem>
+          <CommandItem value="support us donate sponsor" icon="sparkle" shortcut="↗" onSelect={() => window.open('https://mountea.tools/support', '_blank')}>{t('settings.supportUs')}</CommandItem>
         </CommandGroup>
       </CommandList>
       <Footer/>
@@ -342,6 +372,7 @@ function RootPage({ tweaks, setTweak, screen, setScreen, push, close }) {
    Categories
    ============================================================ */
 function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
   const addCategory = () => {
     const id = newId('cat');
     setTax({ ...tax, categories: [...tax.categories, { id, title: 'New Category', tags: [], subcategories: [] }] });
@@ -350,9 +381,9 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
   return (
     <TaxListPage
       trail={trail} onBack={onBack} onClose={onClose}
-      placeholder="Search categories…"
-      heading={`${tax.categories.length} categories`}
-      onAdd={addCategory} addLabel="New category…"
+      placeholder={t('settings.searchCategories')}
+      heading={`${tax.categories.length} ${t('settings.categories').toLowerCase()}`}
+      onAdd={addCategory} addLabel={t('settings.newCategory')}
     >
       {tax.categories.map(c => (
         <CommandItem
@@ -368,6 +399,7 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
 }
 
 function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, push }) {
+  const { t } = useTranslation();
   const cat = tax.categories.find(c => c.id === categoryId);
   if (!cat) return null;
 
@@ -375,7 +407,7 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
     setTax({ ...tax, categories: tax.categories.map(c => c.id === categoryId ? { ...c, ...patch } : c) });
 
   const remove = () => {
-    if (!confirm(`Delete category "${cat.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteCategory')} "${cat.title}"?`)) return;
     setTax({ ...tax, categories: tax.categories.filter(c => c.id !== categoryId) });
     onBack();
   };
@@ -389,18 +421,18 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
   return (
     <TaxEditPage
       trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
-      footerHint={<><kbd className="rounded border border-border bg-background px-1">esc</kbd> back <span className="mx-1">·</span> changes saved automatically</>}
+      footerHint={<><kbd className="rounded border border-border bg-background px-1">esc</kbd> {t('settings.back').toLowerCase()} <span className="mx-1">·</span> {t('settings.savedAuto')}</>}
     >
-      <FRow label="Title">
+      <FRow label={t('settings.title')}>
         <Input value={cat.title} onChange={e => update({ title: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Tags" hint="Gameplay / data tags applied to every item in this category.">
+      <FRow label={t('settings.tags')} hint={t('settings.tagsDesc')}>
         <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
       </FRow>
-      <FRow label="Subcategories" hint={`${cat.subcategories.length} defined · click to edit`}>
+      <FRow label={t('settings.subcategories')} hint={`${cat.subcategories.length} ${t('settings.subcategoriesDefined')}`}>
         <div className="rounded-md border border-border bg-card/40">
           {cat.subcategories.length === 0 && (
-            <div className="px-3 py-6 text-center text-xs text-muted-foreground">No subcategories yet.</div>
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">{t('settings.noSubcategories')}</div>
           )}
           {cat.subcategories.map((s, i) => (
             <button
@@ -413,14 +445,14 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
             >
               <Icon name="folderOpen" size={14} className="text-muted-foreground"/>
               <span className="flex-1">{s.title}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} tag{s.tags.length === 1 ? '' : 's'}</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} {s.tags.length === 1 ? t('settings.tags').replace(/s$/, '') : t('settings.tags').toLowerCase()}</span>
               <Icon name="chevRight" size={12} className="text-muted-foreground"/>
             </button>
           ))}
         </div>
         <div className="mt-2">
           <Button variant="outline" size="sm" onClick={addSub}>
-            <Icon name="plus" size={13}/> Add subcategory
+            <Icon name="plus" size={13}/> {t('settings.addSubcategory')}
           </Button>
         </div>
       </FRow>
@@ -429,6 +461,7 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
 }
 
 function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId, tax, setTax }) {
+  const { t } = useTranslation();
   const cat = tax.categories.find(c => c.id === categoryId);
   const sub = cat?.subcategories.find(s => s.id === subcategoryId);
   if (!cat || !sub) return null;
@@ -444,7 +477,7 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
     });
 
   const remove = () => {
-    if (!confirm(`Delete subcategory "${sub.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteSubcategory')} "${sub.title}"?`)) return;
     setTax({
       ...tax,
       categories: tax.categories.map(c =>
@@ -456,12 +489,12 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
   return (
     <TaxEditPage
       trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
-      footerHint={<>parent: <span className="text-foreground/80">{cat.title}</span> <span className="mx-1">·</span> changes saved automatically</>}
+      footerHint={<>{t('settings.inheritedFrom').toLowerCase().replace('inherits from', 'parent')}: <span className="text-foreground/80">{cat.title}</span> <span className="mx-1">·</span> {t('settings.savedAuto')}</>}
     >
-      <FRow label="Title">
+      <FRow label={t('settings.title')}>
         <Input value={sub.title} onChange={e => update({ title: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Tags" hint={`Inherits from ${cat.title} → ${cat.tags.join(', ') || 'no parent tags'}`}>
+      <FRow label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${cat.tags.join(', ') || '—'}`}>
         <TagsField value={sub.tags} onChange={tags => update({ tags })}/>
       </FRow>
     </TaxEditPage>
@@ -472,6 +505,7 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
    Rarities
    ============================================================ */
 function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
   const addRarity = () => {
     const id = newId('rar');
     setTax({ ...tax, rarities: [...tax.rarities, { id, title: 'New Rarity', tags: [], color: '#9ca3af' }] });
@@ -480,9 +514,9 @@ function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
   return (
     <TaxListPage
       trail={trail} onBack={onBack} onClose={onClose}
-      placeholder="Search rarities…"
-      heading={`${tax.rarities.length} rarities`}
-      onAdd={addRarity} addLabel="New rarity…"
+      placeholder={t('settings.searchRarities')}
+      heading={`${tax.rarities.length} ${t('settings.rarities').toLowerCase()}`}
+      onAdd={addRarity} addLabel={t('settings.newRarity')}
     >
       {tax.rarities.map(r => (
         <CommandItem
@@ -500,6 +534,7 @@ function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
 }
 
 function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
+  const { t } = useTranslation();
   const r = tax.rarities.find(r => r.id === rarityId);
   if (!r) return null;
 
@@ -507,20 +542,20 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
     setTax({ ...tax, rarities: tax.rarities.map(x => x.id === rarityId ? { ...x, ...patch } : x) });
 
   const remove = () => {
-    if (!confirm(`Delete rarity "${r.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteRarity')} "${r.title}"?`)) return;
     setTax({ ...tax, rarities: tax.rarities.filter(x => x.id !== rarityId) });
     onBack();
   };
 
   return (
     <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label="Title">
+      <FRow label={t('settings.title')}>
         <Input value={r.title} onChange={e => update({ title: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Tags">
+      <FRow label={t('settings.tags')}>
         <TagsField value={r.tags} onChange={tags => update({ tags })}/>
       </FRow>
-      <FRow label="Colour" hint="Used for badges, borders, and rarity-themed UI accents.">
+      <FRow label={t('settings.colour')} hint={t('settings.colourDesc')}>
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ background: r.color }}/>
           <input type="color" value={r.color} onChange={e => update({ color: e.target.value })}
@@ -542,7 +577,7 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
         </div>
       </FRow>
       <div className="rounded-md border border-border bg-card/40 p-3">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Preview</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('settings.preview')}</div>
         <div className="flex items-center gap-2">
           <span
             className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
@@ -562,6 +597,7 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
    Item Actions
    ============================================================ */
 function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
   const addAction = () => {
     const id = newId('ia');
     setTax({ ...tax, itemActions: [...tax.itemActions, { id, key: 'NewAction', icon: 'tag', tip: '' }] });
@@ -570,9 +606,9 @@ function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
   return (
     <TaxListPage
       trail={trail} onBack={onBack} onClose={onClose}
-      placeholder="Search actions…"
-      heading={`${tax.itemActions.length} actions`}
-      onAdd={addAction} addLabel="New action…"
+      placeholder={t('settings.searchActions')}
+      heading={`${tax.itemActions.length} ${t('settings.itemActions').toLowerCase()}`}
+      onAdd={addAction} addLabel={t('settings.newAction')}
     >
       {tax.itemActions.map(a => (
         <CommandItem
@@ -590,6 +626,7 @@ function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
 }
 
 function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
+  const { t } = useTranslation();
   const action = tax.itemActions.find(a => a.id === actionId);
   if (!action) return null;
 
@@ -597,17 +634,17 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
     setTax({ ...tax, itemActions: tax.itemActions.map(a => a.id === actionId ? { ...a, ...patch } : a) });
 
   const remove = () => {
-    if (!confirm(`Delete action "${action.key}"?`)) return;
+    if (!confirm(`${t('settings.deleteAction')} "${action.key}"?`)) return;
     setTax({ ...tax, itemActions: tax.itemActions.filter(a => a.id !== actionId) });
     onBack();
   };
 
   return (
     <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label="Action Key" hint="Programmatic identifier used in game logic (e.g. Equip, Repair).">
+      <FRow label={t('settings.actionKey')} hint={t('settings.actionKeyDesc')}>
         <Input value={action.key} onChange={e => update({ key: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Icon" hint="Lucide icon name rendered in the item action chip (e.g. shield, trash, eye).">
+      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
             <Icon name={action.icon} size={16}/>
@@ -615,7 +652,7 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
           <Input value={action.icon} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs"/>
         </div>
       </FRow>
-      <FRow label="Tooltip" hint="Short description shown on hover in the player-facing UI.">
+      <FRow label={t('settings.tooltip')} hint={t('settings.tooltipDesc')}>
         <Input value={action.tip} onChange={e => update({ tip: e.target.value })}/>
       </FRow>
     </TaxEditPage>
@@ -626,6 +663,7 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
    Attachment Slots
    ============================================================ */
 function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
   const addSlot = () => {
     const id = newId('as');
     setTax({ ...tax, attachmentSlots: [...tax.attachmentSlots, { id, name: 'New Slot', tags: [] }] });
@@ -634,9 +672,9 @@ function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
   return (
     <TaxListPage
       trail={trail} onBack={onBack} onClose={onClose}
-      placeholder="Search slots…"
-      heading={`${tax.attachmentSlots.length} slots`}
-      onAdd={addSlot} addLabel="New slot…"
+      placeholder={t('settings.searchSlots')}
+      heading={`${tax.attachmentSlots.length} ${t('settings.attachmentSlots').toLowerCase()}`}
+      onAdd={addSlot} addLabel={t('settings.newSlot')}
     >
       {tax.attachmentSlots.map(s => (
         <CommandItem
@@ -652,6 +690,7 @@ function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
 }
 
 function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax }) {
+  const { t } = useTranslation();
   const slot = tax.attachmentSlots.find(s => s.id === slotId);
   if (!slot) return null;
 
@@ -659,17 +698,17 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax })
     setTax({ ...tax, attachmentSlots: tax.attachmentSlots.map(s => s.id === slotId ? { ...s, ...patch } : s) });
 
   const remove = () => {
-    if (!confirm(`Delete slot "${slot.name}"?`)) return;
+    if (!confirm(`${t('settings.deleteSlot')} "${slot.name}"?`)) return;
     setTax({ ...tax, attachmentSlots: tax.attachmentSlots.filter(s => s.id !== slotId) });
     onBack();
   };
 
   return (
     <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label="Slot Name" hint="Display name for this equipment slot (e.g. Primary, Head, Accessory).">
+      <FRow label={t('settings.slotName')} hint={t('settings.slotNameDesc')}>
         <Input value={slot.name} onChange={e => update({ name: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Tags" hint="Gameplay tags that identify this slot (e.g. Slot.Primary, Slot.Head).">
+      <FRow label={t('settings.tags')} hint={t('settings.slotTagsDesc')}>
         <TagsField value={slot.tags} onChange={tags => update({ tags })}/>
       </FRow>
     </TaxEditPage>
@@ -680,6 +719,7 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax })
    Crafting Stations
    ============================================================ */
 function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
   const addStation = () => {
     const id = newId('cs');
     setTax({ ...tax, craftingStations: [...tax.craftingStations, { id, name: 'New Station', tag: 'Station.New' }] });
@@ -688,9 +728,9 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
   return (
     <TaxListPage
       trail={trail} onBack={onBack} onClose={onClose}
-      placeholder="Search stations…"
-      heading={`${tax.craftingStations.length} stations`}
-      onAdd={addStation} addLabel="New station…"
+      placeholder={t('settings.searchStations')}
+      heading={`${tax.craftingStations.length} ${t('settings.craftingStations').toLowerCase()}`}
+      onAdd={addStation} addLabel={t('settings.newStation')}
     >
       {tax.craftingStations.map(s => (
         <CommandItem
@@ -706,6 +746,7 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
 }
 
 function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTax }) {
+  const { t } = useTranslation();
   const station = tax.craftingStations.find(s => s.id === stationId);
   if (!station) return null;
 
@@ -713,17 +754,17 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
     setTax({ ...tax, craftingStations: tax.craftingStations.map(s => s.id === stationId ? { ...s, ...patch } : s) });
 
   const remove = () => {
-    if (!confirm(`Delete station "${station.name}"?`)) return;
+    if (!confirm(`${t('settings.deleteStation')} "${station.name}"?`)) return;
     setTax({ ...tax, craftingStations: tax.craftingStations.filter(s => s.id !== stationId) });
     onBack();
   };
 
   return (
     <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label="Station Name" hint="Display name shown in recipe requirements (e.g. Forge, Loom).">
+      <FRow label={t('settings.stationName')} hint={t('settings.stationNameDesc')}>
         <Input value={station.name} onChange={e => update({ name: e.target.value })} autoFocus/>
       </FRow>
-      <FRow label="Tag" hint="Single gameplay tag identifying this station (e.g. Station.Forge).">
+      <FRow label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
         <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
       </FRow>
     </TaxEditPage>

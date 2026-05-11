@@ -1,12 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  cn, Icon, Button, Select, TextField, Tooltip,
+  cn, Icon, Button, Select, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, Row, IconBtn,
+  Section, IconBtn,
+  ContentSkeleton, EmptyState,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA } from './data.js';
+import { DATA } from './store.js';
 import { useTaxonomy } from './hooks.jsx';
+import { FormRenderer } from './form-renderer.jsx';
+import { RECIPE_SCHEMA } from './form-schemas.js';
 
 /* ============================================================
    Type definitions
@@ -18,7 +22,7 @@ import { useTaxonomy } from './hooks.jsx';
  */
 
 /* ============================================================
-   IntStepper — compact number stepper with optional onChange callback
+   IntStepper — compact number stepper
    ============================================================ */
 /**
  * @param {{ value: number, onChange?: (v: number) => void, warn?: boolean }} props
@@ -28,16 +32,8 @@ function IntStepper({ value, onChange, warn }) {
   useEffect(() => { setV(value); }, [value]);
 
   const clamp  = (n) => Math.max(1, Math.min(9999, Math.floor(n || 1)));
-  const bump   = (d) => {
-    const next = clamp((parseInt(v, 10) || 0) + d);
-    setV(next);
-    onChange?.(next);
-  };
-  const commit = (raw) => {
-    const clamped = clamp(parseInt(raw, 10));
-    setV(clamped);
-    onChange?.(clamped);
-  };
+  const bump   = (d) => { const next = clamp((parseInt(v, 10) || 0) + d); setV(next); onChange?.(next); };
+  const commit = (raw) => { const clamped = clamp(parseInt(raw, 10)); setV(clamped); onChange?.(clamped); };
 
   return (
     <div className="inline-flex h-8 items-stretch overflow-hidden rounded-md border border-input bg-transparent shadow-sm">
@@ -57,78 +53,13 @@ function IntStepper({ value, onChange, warn }) {
 }
 
 /* ============================================================
-   CraftingStationRow — station selector sourced from taxonomy
-   ============================================================ */
-/**
- * @param {{ value: string, onChange: (v: string) => void, taxonomy: object }} props
- */
-function CraftingStationRow({ value, onChange, taxonomy }) {
-  const stationOptions = [
-    { value: 'None', label: 'None' },
-    ...(taxonomy.craftingStations ?? []).map(s => ({ value: s.name, label: s.name })),
-  ];
-  return (
-    <div className="grid grid-cols-[24px_180px_1fr] items-center gap-3 py-2">
-      <Icon name="hammer" size={14} className="text-muted-foreground"/>
-      <span className="text-sm text-foreground/90">Crafting Station</span>
-      <div className="max-w-[260px]">
-        <Select value={value} onChange={onChange} options={stationOptions}/>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   DurationSliderRow — craft duration slider
-   ============================================================ */
-/** @param {{ value: string, onChange: (v: string) => void }} props */
-function DurationSliderRow({ value, onChange }) {
-  const DURATION_MIN = 1;
-  const DURATION_MAX = 600;
-
-  const parsed = parseInt(value, 10) || 60;
-  const [v, setV] = useState(parsed);
-  useEffect(() => { setV(parseInt(value, 10) || 60); }, [value]);
-
-  const pct = ((v - DURATION_MIN) / (DURATION_MAX - DURATION_MIN)) * 100;
-
-  const handleChange = (next) => {
-    setV(next);
-    onChange?.(`${next}s`);
-  };
-
-  return (
-    <div className="grid grid-cols-[24px_180px_1fr_80px] items-center gap-3 py-2">
-      <Icon name="history" size={14} className="text-muted-foreground"/>
-      <span className="text-sm text-foreground/90">Craft Duration</span>
-      <div className="relative flex h-5 items-center">
-        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-secondary">
-          <div className="h-full bg-primary" style={{ width: `${pct}%` }}/>
-        </div>
-        <input
-          type="range" min={DURATION_MIN} max={DURATION_MAX} value={v}
-          onChange={e => handleChange(+e.target.value)}
-          className="absolute inset-0 m-0 h-full w-full cursor-pointer opacity-0"
-        />
-        <div
-          className="pointer-events-none absolute h-4 w-4 -translate-y-1/2 rounded-full border-2 border-primary bg-background shadow top-1/2"
-          style={{ left: `calc(${pct}% - 8px)` }}
-        />
-      </div>
-      <span className="text-right font-mono text-xs">{v}s</span>
-    </div>
-  );
-}
-
-/* ============================================================
    IngredientPickerModal — searchable material item picker
    ============================================================ */
 /**
- * Modal for selecting a crafting material to add as an ingredient.
- * Filters to items whose tags include any tag starting with 'Item.Material'.
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, onAdd: (ing: Ingredient) => void }} props
  */
 function IngredientPickerModal({ open, onOpenChange, onAdd }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
   const materials = useMemo(() =>
@@ -151,19 +82,16 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-full max-w-[92vw] p-0 sm:w-[480px]">
-        {/* Header */}
         <div className="border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">Add Ingredient</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Showing items tagged as crafting materials (Item.Material.*)</p>
+          <h2 className="text-sm font-semibold">{t('crafting.addIngredientTitle')}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('crafting.addIngredientDesc')}</p>
         </div>
-
-        {/* Search */}
         <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <Icon name="search" size={14} className="shrink-0 text-muted-foreground"/>
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search materials…"
+            placeholder={t('crafting.searchMaterials')}
             autoFocus
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -173,11 +101,9 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
             </button>
           )}
         </div>
-
-        {/* Item list */}
         <div className="max-h-64 overflow-y-auto">
           {filtered.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground">No matching materials found.</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">{t('crafting.noMaterials')}</div>
           )}
           {filtered.map(item => (
             <button
@@ -196,10 +122,8 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
             </button>
           ))}
         </div>
-
-        {/* Footer */}
         <div className="flex items-center justify-end border-t border-border px-4 py-3">
-          <Button variant="outline" size="sm" onClick={handleClose}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={handleClose}>{t('loadouts.cancel')}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -211,11 +135,12 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
    ============================================================ */
 /** @param {{ recipe: Recipe }} props */
 function RecipeInspector({ recipe }) {
+  const { t } = useTranslation();
   const ings = recipe.groups.flatMap(g => g.ingredients);
   return (
     <div className="space-y-4 p-4">
       <div>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Output</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.output')}</div>
         <div className="flex items-center gap-2.5 rounded-md border border-border bg-card p-2.5">
           <Thumb size={32} tone={recipe.result.tone} icon={recipe.result.icon}/>
           <div className="min-w-0 flex-1">
@@ -225,19 +150,17 @@ function RecipeInspector({ recipe }) {
           <span className="font-mono text-xs text-primary">×{recipe.qtyMin}</span>
         </div>
       </div>
-
       <div>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Stats</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.stats')}</div>
         <div className="space-y-1.5 rounded-md border border-border/50 bg-card/40 p-3 text-xs">
-          <div className="flex justify-between"><span className="text-muted-foreground">Success Chance</span><span className="font-mono">{recipe.successChance}%</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-mono">{recipe.reqs.duration}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Station</span><span className="font-mono">{recipe.reqs.station}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Ingredients</span><span className="font-mono">{ings.length}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t('crafting.successChance')}</span><span className="font-mono">{recipe.successChance}%</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t('crafting.duration')}</span><span className="font-mono">{recipe.reqs.duration}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t('crafting.station')}</span><span className="font-mono">{recipe.reqs.station}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">{t('crafting.ingredients')}</span><span className="font-mono">{ings.length}</span></div>
         </div>
       </div>
-
       <div>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ingredient Tally</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.ingredientTally')}</div>
         <div className="space-y-1">
           {ings.map((ing, i) => {
             const match = DATA.allItems.find(it => it.displayName === ing.ref);
@@ -263,12 +186,21 @@ function RecipeInspector({ recipe }) {
  * @param {{ recipe: Recipe, taxonomy: object }} props
  */
 function RecipeEditor({ recipe, taxonomy }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(recipe);
-
   const [ingredientModalGroupId, setIngredientModalGroupId] = useState(null);
 
-  const setResult = (patch) => setDraft(d => ({ ...d, result: { ...d.result, ...patch } }));
-  const setReqs   = (patch) => setDraft(d => ({ ...d, reqs:   { ...d.reqs,   ...patch } }));
+  const set = (path, val) => setDraft(d => {
+    const next = structuredClone(d);
+    const keys = path.split('.');
+    let cur = next;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (cur[keys[i]] == null) cur[keys[i]] = {};
+      cur = cur[keys[i]];
+    }
+    cur[keys[keys.length - 1]] = val;
+    return next;
+  });
 
   const addIngredient = (groupId, ing) =>
     setDraft(d => ({
@@ -296,10 +228,31 @@ function RecipeEditor({ recipe, taxonomy }) {
     [],
   );
 
+  const renderField = (field, value, onChange) => {
+    if (field.id === 'result.itemRef') {
+      return (
+        <Select
+          value={draft.result?.display ?? ''}
+          onChange={v => {
+            const item = DATA.itemByName[v];
+            set('result.display', v);
+            set('result.itemRef', item?.guid || v);
+          }}
+          options={[
+            { value: '', label: '— select craftable item —' },
+            ...craftableItems.map(it => ({ value: it.displayName, label: it.displayName })),
+          ]}
+          placeholder="Select craftable item…"
+        />
+      );
+    }
+    return null;
+  };
+
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
         <div className="flex items-start gap-4">
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="hammer" size={22}/>
@@ -311,55 +264,18 @@ function RecipeEditor({ recipe, taxonomy }) {
         </div>
       </div>
 
-      <div className="space-y-4 p-6">
-        {/* Resulting Item */}
-        <Section title="Resulting Item" icon="cube">
-          <Row label="Base Template" hint="Craftable item this recipe produces">
-            <Select
-              value={draft.result.display}
-              onChange={v => {
-                const item = DATA.itemByName[v];
-                setResult({ display: v, itemRef: item?.guid || v });
-              }}
-              options={[
-                { value: '', label: '— select craftable item —' },
-                ...craftableItems.map(it => ({ value: it.displayName, label: it.displayName })),
-              ]}
-              placeholder="Select craftable item…"
-            />
-          </Row>
-          <div className="mt-2 grid grid-cols-2 gap-3">
-            <Row label="Success Chance">
-              <TextField
-                value={`${draft.successChance}%`}
-                onChange={v => setDraft(d => ({ ...d, successChance: parseInt(v) || 0 }))}
-                mono
-              />
-            </Row>
-            <Row label="Quantity Min / Max">
-              <TextField
-                value={String(draft.qtyMin)}
-                onChange={v => setDraft(d => ({ ...d, qtyMin: parseInt(v) || 1 }))}
-                mono
-              />
-            </Row>
-          </div>
-        </Section>
+      {/* Schema-driven sections: identity, result, requirements */}
+      <FormRenderer
+        schema={RECIPE_SCHEMA}
+        draft={draft}
+        set={set}
+        taxonomy={taxonomy}
+        sectionIds={['identity', 'result', 'requirements']}
+        renderField={renderField}
+      />
 
-        {/* Global Requirements */}
-        <Section title="Global Requirements" icon="info">
-          <CraftingStationRow
-            value={draft.reqs.station}
-            onChange={v => setReqs({ station: v })}
-            taxonomy={taxonomy}
-          />
-          <DurationSliderRow
-            value={draft.reqs.duration}
-            onChange={v => setReqs({ duration: v })}
-          />
-        </Section>
-
-        {/* Ingredient groups */}
+      {/* Ingredient groups — rendered manually since each group is its own Section */}
+      <div className="space-y-4 px-6 pb-6">
         {draft.groups.map(g => (
           <Section
             key={g.id}
@@ -367,7 +283,7 @@ function RecipeEditor({ recipe, taxonomy }) {
             icon={g.required ? 'tag' : 'sparkle'}
             right={
               <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
-                Add Ingredient
+                {t('crafting.addIngredientTitle')}
               </Button>
             }
           >
@@ -379,29 +295,29 @@ function RecipeEditor({ recipe, taxonomy }) {
                     <Thumb size={32} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
                     <div className="min-w-0">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">REF_ID</div>
+                      {/* REF_ID is a technical label, not translated */}
                       <div className="truncate font-mono text-xs">{ing.ref}</div>
                     </div>
                     <div>
-                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Amount</div>
+                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.amount')}</div>
                       <IntStepper
                         value={ing.qty}
                         warn={!match}
                         onChange={qty => updateIngredientQty(g.id, ii, qty)}
                       />
                     </div>
-                    <IconBtn icon="trash" tone="danger" title="Remove ingredient" onClick={() => removeIngredient(g.id, ii)}/>
+                    <IconBtn icon="trash" tone="danger" title={t('crafting.removeIngredient')} onClick={() => removeIngredient(g.id, ii)}/>
                   </div>
                 );
               })}
               {g.ingredients.length === 0 && (
-                <div className="py-4 text-center text-xs text-muted-foreground italic">No ingredients yet.</div>
+                <div className="py-4 text-center text-xs italic text-muted-foreground">{t('crafting.noIngredients')}</div>
               )}
             </div>
           </Section>
         ))}
       </div>
 
-      {/* Ingredient picker modal — one shared instance, keyed by active group */}
       <IngredientPickerModal
         open={ingredientModalGroupId !== null}
         onOpenChange={open => { if (!open) setIngredientModalGroupId(null); }}
@@ -415,27 +331,31 @@ function RecipeEditor({ recipe, taxonomy }) {
    CraftingScreen — top-level screen component
    ============================================================ */
 /**
- * @param {{ search: string, tweaks: object }} props
+ * @param {{ search: string }} props
  */
-export function CraftingScreen({ search: globalSearch, tweaks = {} }) {
+const RECIPE_FAMILY_ICONS = { Smithing: 'hammer', Alchemy: 'beaker' };
+
+export function CraftingScreen({ search: globalSearch, loading }) {
+  const { t } = useTranslation();
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useState('RECIPE_SMITH_042');
+  const [selected,      setSelected]      = useState(null);
   const [browserSearch, setBrowserSearch] = useState('');
-  const allRecipes = Object.values(DATA.recipes).flat();
-  const recipe     = allRecipes.find(r => r.id === selected);
-  const search     = (browserSearch || globalSearch || '').toLowerCase();
-  const showInspector = tweaks.showInspector !== false;
+  const allRecipes    = Object.values(DATA.recipes).flat();
+  const recipe        = allRecipes.find(r => r.id === selected);
+  const search        = (browserSearch || globalSearch || '').toLowerCase();
+
 
   return (
     <>
       <LeftPanel
-        title="Recipe Templates"
-        headerActions={<IconBtn icon="plus" title="New recipe"/>}
+        title={t('crafting.title')}
+        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')}/>}
         search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder="Filter recipes…"
+        searchPlaceholder={t('crafting.filterPlaceholder')}
+        loading={loading}
       >
         {Object.entries(DATA.recipes).map(([family, recipes]) => {
-          const icon     = family === 'Smithing' ? 'hammer' : 'beaker';
+          const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
           const filtered = search ? recipes.filter(r => (r.name + ' ' + r.id).toLowerCase().includes(search)) : recipes;
           if (filtered.length === 0) return null;
           return (
@@ -461,10 +381,15 @@ export function CraftingScreen({ search: globalSearch, tweaks = {} }) {
       </LeftPanel>
 
       <main className="min-w-0 flex-1 overflow-auto">
-        {recipe && <RecipeEditor key={recipe.id} recipe={recipe} taxonomy={tax}/>}
+        {loading
+          ? <ContentSkeleton/>
+          : allRecipes.length === 0
+            ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}/>
+            : recipe && <RecipeEditor key={recipe.id} recipe={recipe} taxonomy={tax}/>
+        }
       </main>
 
-      {showInspector && recipe && (
+      {recipe && (
         <CollapsibleAside storageKey="aside-inspector" width={340}>
           <RecipeInspector recipe={recipe}/>
         </CollapsibleAside>

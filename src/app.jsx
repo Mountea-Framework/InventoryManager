@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  cn, Icon, Button, Input, Switch, Label, Separator, Tooltip, TooltipProvider,
+  cn, Icon, Button, Input, Separator, Tooltip, TooltipProvider,
 } from './ui.jsx';
 import { ItemsScreen }   from './items.jsx';
 import { LoadoutsScreen } from './loadouts.jsx';
 import { CraftingScreen } from './crafting.jsx';
 import { SettingsCommand } from './settings.jsx';
-import { DATA } from './data.js';
+import { loadData } from './store.js';
 
 function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings }) {
+  const { t } = useTranslation();
   const tabs = [
-    { id: 'items',    label: 'Inventory' },
-    { id: 'loadouts', label: 'Loadouts' },
-    { id: 'crafting', label: 'Crafting' },
+    { id: 'items',    label: t('nav.inventory'), tip: t('nav.inventoryTip') },
+    { id: 'loadouts', label: t('nav.loadouts'),  tip: t('nav.loadoutsTip') },
+    { id: 'crafting', label: t('nav.crafting'),  tip: t('nav.craftingTip') },
   ];
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       {/* Brand mark */}
       <div className="flex items-center gap-2.5">
         <div className="leading-tight">
-          <div className="text-sm font-semibold">Mountea</div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Inventory</div>
+          <div className="text-sm font-semibold">{t('app.brand')}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t('app.brandSub')}</div>
         </div>
       </div>
 
@@ -28,20 +30,21 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
 
       {/* Tabs (pill style on muted) */}
       <nav className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setScreen(t.id)}
-            className={cn(
-              "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium",
-              "ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              screen === t.id
-                ? "bg-background text-foreground shadow"
-                : "hover:text-foreground/80",
-            )}
-          >
-            {t.label}
-          </button>
+        {tabs.map(tab => (
+          <Tooltip key={tab.id} content={tab.tip}>
+            <button
+              onClick={() => setScreen(tab.id)}
+              className={cn(
+                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium",
+                "ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                screen === tab.id
+                  ? "bg-background text-foreground shadow"
+                  : "hover:text-foreground/80",
+              )}
+            >
+              {tab.label}
+            </button>
+          </Tooltip>
         ))}
       </nav>
 
@@ -51,7 +54,7 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
       <div className="relative w-[280px]">
         <Icon name="search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
         <Input
-          placeholder="Search templates, tags, refs…"
+          placeholder={t('app.searchPlaceholder')}
           value={globalSearch}
           onChange={e => setGlobalSearch(e.target.value)}
           className="pl-8 pr-12"
@@ -61,13 +64,13 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
         </kbd>
       </div>
 
-      <Tooltip content="Save workspace">
+      <Tooltip content={t('app.saveWorkspace')}>
         <Button variant="ghost" size="icon-sm" icon="save"/>
       </Tooltip>
-      <Tooltip content="Export data">
+      <Tooltip content={t('app.exportData')}>
         <Button variant="ghost" size="icon-sm" icon="export"/>
       </Tooltip>
-      <Tooltip content="Settings (⌘,)">
+      <Tooltip content={t('app.settingsTip')}>
         <Button variant="ghost" size="icon-sm" icon="cog" onClick={openSettings}/>
       </Tooltip>
     </header>
@@ -75,19 +78,20 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
 }
 
 function StatusBar({ counts }) {
+  const { t } = useTranslation();
   return (
     <footer className="flex h-7 items-center gap-4 border-t border-border bg-muted/30 px-3 font-mono text-[11px] text-muted-foreground">
       <span className="inline-flex items-center gap-1.5">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"/>
-        workspace synced
+        {t('app.statusSynced')}
       </span>
-      <span>branch: <span className="text-foreground/80">main</span></span>
-      <span>refs: <span className="text-foreground/80">{counts.items} items · {counts.loadouts} loadouts · {counts.recipes} recipes</span></span>
+      <span>{t('app.statusBranch')} <span className="text-foreground/80">{t('app.statusMain')}</span></span>
+      <span>{t('app.statusRefs')} <span className="text-foreground/80">{counts.items} {t('app.statusItems')} · {counts.loadouts} {t('app.statusLoadouts')} · {counts.recipes} {t('app.statusRecipes')}</span></span>
       <div className="flex-1"/>
-      <span>schema: <span className="text-foreground/80">v2.6.0</span></span>
+      <span>{t('app.statusSchema')} <span className="text-foreground/80">v2.6.0</span></span>
       <span className="inline-flex items-center gap-1.5">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"/>
-        3 unresolved refs
+        3 {t('app.statusUnresolved')}
       </span>
       <span>LN 1, COL 1</span>
     </footer>
@@ -95,11 +99,11 @@ function StatusBar({ counts }) {
 }
 
 function App() {
+  const { t } = useTranslation();
+  const [ready, setReady] = useState(false);
   const [screen, setScreen] = useState(() => localStorage.getItem('arch.screen') || 'items');
   const [globalSearch, setGlobalSearch] = useState('');
-  const [tweaks, setTweaks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('arch.tweaks') || '{}'); } catch { return {}; }
-  });
+  useEffect(() => { loadData().then(() => setReady(true)); }, []);
 
   useEffect(() => { localStorage.setItem('arch.screen', screen); }, [screen]);
 
@@ -120,30 +124,6 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const [tweaksOpen, setTweaksOpen] = useState(false);
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.data?.type === '__activate_edit_mode') setTweaksOpen(true);
-      if (e.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
-    };
-    window.addEventListener('message', handler);
-    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
-    return () => window.removeEventListener('message', handler);
-  }, []);
-
-  const setTweak = (k, v) => {
-    const next = { ...tweaks, [k]: v };
-    setTweaks(next);
-    localStorage.setItem('arch.tweaks', JSON.stringify(next));
-    window.parent.postMessage({ type: '__edit_mode_set_keys', edits: { [k]: v } }, '*');
-  };
-
-  const counts = {
-    items: DATA.allItems.length,
-    loadouts: DATA.loadouts.length,
-    recipes: Object.values(DATA.recipes).flat().length,
-  };
-
   const ScreenComp = screen === 'items' ? ItemsScreen
     : screen === 'loadouts' ? LoadoutsScreen
     : CraftingScreen;
@@ -152,55 +132,15 @@ function App() {
     <TooltipProvider>
       <div data-screen-label={screen} className="flex h-screen flex-col bg-background text-foreground">
         <TopBar screen={screen} setScreen={setScreen} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
-        <div className="flex min-h-0 flex-1">
-          <ScreenComp search={globalSearch} tweaks={tweaks}/>
+        <div key={screen} className="screen-enter flex min-h-0 flex-1">
+          <ScreenComp search={globalSearch} loading={!ready}/>
         </div>
         <SettingsCommand
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
-          screen={screen} setScreen={setScreen}
-          tweaks={tweaks} setTweak={setTweak}
         />
-        {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweak={setTweak} close={() => {
-          setTweaksOpen(false);
-          window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
-        }}/>}
       </div>
     </TooltipProvider>
-  );
-}
-
-function TweaksPanel({ tweaks, setTweak, close }) {
-  return (
-    <div className="fixed bottom-4 right-4 z-50 w-72 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider">Tweaks</span>
-        <Button variant="ghost" size="icon-sm" onClick={close} icon="x"/>
-      </div>
-      <div className="space-y-4 p-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">Density</Label>
-          <div className="flex gap-1.5">
-            {['compact', 'comfortable'].map(d => {
-              const active = (tweaks.density || 'comfortable') === d;
-              return (
-                <Button key={d} size="sm"
-                  variant={active ? 'default' : 'outline'}
-                  onClick={() => setTweak('density', d)}>{d}</Button>
-              );
-            })}
-          </div>
-        </div>
-        <Separator/>
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label>Show inspector</Label>
-            <p className="text-xs text-muted-foreground">Right-side panel on Loadouts &amp; Items</p>
-          </div>
-          <Switch checked={tweaks.showInspector !== false} onCheckedChange={v => setTweak('showInspector', v)}/>
-        </div>
-      </div>
-    </div>
   );
 }
 

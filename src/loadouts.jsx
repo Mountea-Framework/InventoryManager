@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  cn, Icon, Button, Input, Select, Label, Switch, Tooltip,
+  cn, Icon, Button, Select, Label, Switch, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
   Section, Row, TextField, Tag, IconBtn,
+  ContentSkeleton, EmptyState,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA } from './data.js';
+import { DATA } from './store.js';
 import { useTaxonomy } from './hooks.jsx';
+import { FormRenderer } from './form-renderer.jsx';
+import { LOADOUT_SCHEMA } from './form-schemas.js';
 
 /* ============================================================
    Type definitions
@@ -17,19 +21,13 @@ import { useTaxonomy } from './hooks.jsx';
  */
 
 /* ============================================================
-   Constants
-   ============================================================ */
-const DROP_ON_DEATH_OPTIONS = ['None', 'Equipped only', 'All items'];
-
-/* ============================================================
    LoadoutItemModal — create / edit a single loadout item entry
    ============================================================ */
 /**
- * Dialog for adding or editing a single item entry within a loadout.
- * Pass item=null for create mode; pass an existing LoadoutItem for edit mode.
  * @param {{ open: boolean, onOpenChange: (v: boolean) => void, item: LoadoutItem|null, onSave: (item: LoadoutItem) => void, taxonomy: object }} props
  */
 function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
+  const { t } = useTranslation();
   const isEdit = item != null;
 
   const buildDraft = (src) => ({
@@ -42,7 +40,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
 
   const [draft, setDraft] = useState(() => buildDraft(item));
 
-  useEffect(() => { setDraft(buildDraft(item)); }, [item]);
+  React.useEffect(() => { setDraft(buildDraft(item)); }, [item]);
 
   const slotOptions = [
     { value: '', label: '— none —' },
@@ -60,54 +58,48 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-[92vw] p-0 sm:w-[480px]">
-        {/* Header */}
         <div className="border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">{isEdit ? 'Edit Loadout Item' : 'Add Item to Loadout'}</h2>
+          <h2 className="text-sm font-semibold">{isEdit ? t('loadouts.editItemTitle') : t('loadouts.addItemTitle')}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {isEdit ? 'Update the quantity, slot, or behaviour for this entry.' : 'Select an item template and configure its spawn properties.'}
+            {isEdit ? t('loadouts.editItemDesc') : t('loadouts.addItemDesc')}
           </p>
         </div>
-
-        {/* Body */}
         <div className="space-y-4 p-4">
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Item Template</Label>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.itemTemplate')}</Label>
             <Select
               value={draft.ref}
               onChange={v => setDraft(d => ({ ...d, ref: v }))}
               options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.displayName, label: it.displayName }))]}
-              placeholder="Select item…"
+              placeholder={t('loadouts.selectItem')}
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Quantity</Label>
-              <Input
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.quantity')}</Label>
+              <input
                 type="number" min={1}
                 value={String(draft.qty)}
                 onChange={e => setDraft(d => ({ ...d, qty: Math.max(1, parseInt(e.target.value) || 1) }))}
-                className="font-mono text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 font-mono text-sm shadow-sm outline-none"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Durability <span className="normal-case text-muted-foreground/60">(0–1)</span></Label>
-              <Input
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.durability')} <span className="normal-case text-muted-foreground/60">{t('loadouts.durabilityHint')}</span></Label>
+              <input
                 type="number" min={0} max={1} step={0.01}
                 value={String(draft.durability)}
                 onChange={e => setDraft(d => ({ ...d, durability: Math.min(1, Math.max(0, parseFloat(e.target.value) || 0)) }))}
-                className="font-mono text-sm"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 font-mono text-sm shadow-sm outline-none"
               />
             </div>
           </div>
-
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Auto-Equip on Spawn</Label>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.autoEquip')}</Label>
             <Switch checked={draft.autoEquip} onCheckedChange={v => setDraft(d => ({ ...d, autoEquip: v }))}/>
           </div>
-
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preferred Slot</Label>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.preferredSlot')}</Label>
             <Select
               value={draft.slot ?? ''}
               onChange={v => setDraft(d => ({ ...d, slot: v || null }))}
@@ -115,12 +107,10 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
             />
           </div>
         </div>
-
-        {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t('loadouts.cancel')}</Button>
           <Button size="sm" onClick={handleSave} disabled={!canSave}>
-            {isEdit ? 'Save Changes' : 'Add to Loadout'}
+            {isEdit ? t('loadouts.saveChanges') : t('loadouts.addToLoadout')}
           </Button>
         </div>
       </DialogContent>
@@ -132,9 +122,10 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
    LoadoutsScreen — top-level screen component
    ============================================================ */
 /**
- * @param {{ search: string, tweaks: object }} props
+ * @param {{ search: string }} props
  */
-export function LoadoutsScreen({ search: globalSearch, tweaks }) {
+export function LoadoutsScreen({ search: globalSearch, loading }) {
+  const { t } = useTranslation();
   const [tax] = useTaxonomy();
   const [selected,      setSelected]      = useState('LDT_001');
   const [browserSearch, setBrowserSearch] = useState('');
@@ -143,15 +134,16 @@ export function LoadoutsScreen({ search: globalSearch, tweaks }) {
   const filtered = search
     ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.id).toLowerCase().includes(search))
     : DATA.loadouts;
-  const showInspector = tweaks.showInspector !== false;
+
 
   return (
     <>
       <LeftPanel
-        title="Loadout Templates"
-        headerActions={<IconBtn icon="plus" title="New loadout"/>}
+        title={t('loadouts.title')}
+        headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')}/>}
         search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder="Filter loadouts…"
+        searchPlaceholder={t('loadouts.filterPlaceholder')}
+        loading={loading}
       >
         {filtered.map(l => {
           const sel = l.id === selected;
@@ -162,9 +154,9 @@ export function LoadoutsScreen({ search: globalSearch, tweaks }) {
                   <div className="truncate text-sm font-medium">{l.name}</div>
                   <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
                   <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                    <span>{l.items.length} items</span>
+                    <span>{l.items.length} {t('app.statusItems')}</span>
                     <span className="opacity-50">·</span>
-                    <span>{Object.keys(l.slots || {}).length} slots</span>
+                    <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
                   </div>
                 </div>
               </SidebarItem>
@@ -174,10 +166,15 @@ export function LoadoutsScreen({ search: globalSearch, tweaks }) {
       </LeftPanel>
 
       <main className="min-w-0 flex-1 overflow-auto">
-        {loadout && <LoadoutEditor key={loadout.id} loadout={loadout} taxonomy={tax}/>}
+        {loading
+          ? <ContentSkeleton/>
+          : DATA.loadouts.length === 0
+            ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}/>
+            : loadout && <LoadoutEditor key={loadout.id} loadout={loadout} taxonomy={tax}/>
+        }
       </main>
 
-      {showInspector && loadout && (
+      {loadout && (
         <CollapsibleAside storageKey="aside-inspector" width={340}>
           <SlotMapping loadout={loadout} taxonomy={tax}/>
         </CollapsibleAside>
@@ -194,26 +191,85 @@ export function LoadoutsScreen({ search: globalSearch, tweaks }) {
  * @param {{ loadout: Loadout, taxonomy: object }} props
  */
 function LoadoutEditor({ loadout, taxonomy }) {
-  const [draft, setDraft] = useState(() => ({ ...loadout }));
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(() => ({
+    ...loadout,
+    behaviour: loadout.behaviour ?? {
+      applyOnSpawn: true,
+      randomiseQty: false,
+      autoEquipPass: true,
+      dropOnDeath: 'Equipped only',
+    },
+  }));
 
   const [addModalOpen,  setAddModalOpen]  = useState(false);
-  const [editModalData, setEditModalData] = useState(null); // { item: LoadoutItem, idx: number } | null
+  const [editModalData, setEditModalData] = useState(null);
 
-  const addItem = (item) => setDraft(d => ({ ...d, items: [...d.items, item] }));
+  const set = (path, val) => setDraft(d => {
+    const next = structuredClone(d);
+    const keys = path.split('.');
+    let cur = next;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (cur[keys[i]] == null) cur[keys[i]] = {};
+      cur = cur[keys[i]];
+    }
+    cur[keys[keys.length - 1]] = val;
+    return next;
+  });
 
-  const updateItem = (idx, item) =>
-    setDraft(d => {
-      const items = [...d.items];
-      items[idx] = item;
-      return { ...d, items };
-    });
+  const addItem    = (item) => setDraft(d => ({ ...d, items: [...d.items, item] }));
+  const updateItem = (idx, item) => setDraft(d => { const items = [...d.items]; items[idx] = item; return { ...d, items }; });
+  const removeItem = (idx)  => setDraft(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
 
-  const removeItem = (idx) => setDraft(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
+  const renderField = (field) => {
+    if (field.id !== 'items') return null;
+    return (
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div/><div>{t('loadouts.colItemRef')}</div><div>{t('loadouts.colQty')}</div><div>{t('loadouts.colSlot')}</div><div/>
+        </div>
+        {draft.items.map((it, idx) => {
+          const src = DATA.itemByName[it.ref];
+          return (
+            <div key={idx} className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 rounded-lg border border-border bg-card p-2">
+              <div className="flex justify-center text-muted-foreground/60">
+                <Icon name="dragHandle" size={14}/>
+              </div>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
+                </div>
+              </div>
+              <div><TextField value={String(it.qty)} mono/></div>
+              <div>
+                {it.slot
+                  ? <Tag>{it.slot}</Tag>
+                  : <span className="text-xs text-muted-foreground">—</span>
+                }
+              </div>
+              <div className="flex items-center justify-end gap-1">
+                <IconBtn icon="cog" title={t('loadouts.editItemTip')} onClick={() => setEditModalData({ item: it, idx })}/>
+                <IconBtn icon="trash" tone="danger" title={t('loadouts.removeTip')} onClick={() => removeItem(idx)}/>
+              </div>
+            </div>
+          );
+        })}
+        <button
+          onClick={() => setAddModalOpen(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        >
+          <Icon name="plus" size={12}/> {t('loadouts.addToComposition')}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
         <div className="flex items-start gap-4">
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="layers" size={22}/>
@@ -225,80 +281,15 @@ function LoadoutEditor({ loadout, taxonomy }) {
         </div>
       </div>
 
-      <div className="space-y-4 p-6">
-        {/* Composition */}
-        <Section title="Composition" icon="list"
-          right={
-            <Button icon="plus" size="sm" variant="ghost" onClick={() => setAddModalOpen(true)}>
-              Add Item
-            </Button>
-          }
-        >
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <div/>
-              <div>Item Reference</div>
-              <div>Qty</div>
-              <div>Preferred Slot</div>
-              <div/>
-            </div>
+      <FormRenderer
+        schema={LOADOUT_SCHEMA}
+        draft={draft}
+        set={set}
+        taxonomy={taxonomy}
+        sectionIds={['identity', 'spawnBehaviour', 'composition']}
+        renderField={renderField}
+      />
 
-            {draft.items.map((it, idx) => {
-              const src = DATA.itemByName[it.ref];
-              return (
-                <div key={idx} className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 rounded-lg border border-border bg-card p-2">
-                  <div className="flex justify-center text-muted-foreground/60">
-                    <Icon name="dragHandle" size={14}/>
-                  </div>
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
-                      <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
-                    </div>
-                  </div>
-                  <div><TextField value={String(it.qty)} mono/></div>
-                  <div>
-                    {it.slot
-                      ? <Tag>{it.slot}</Tag>
-                      : <span className="text-xs text-muted-foreground">—</span>
-                    }
-                  </div>
-                  <div className="flex items-center justify-end gap-1">
-                    <IconBtn icon="cog" title="Edit item" onClick={() => setEditModalData({ item: it, idx })}/>
-                    <IconBtn icon="trash" tone="danger" title="Remove" onClick={() => removeItem(idx)}/>
-                  </div>
-                </div>
-              );
-            })}
-
-            <button
-              onClick={() => setAddModalOpen(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
-            >
-              <Icon name="plus" size={12}/> Add Item to Composition
-            </button>
-          </div>
-        </Section>
-
-        {/* Spawn Behaviour */}
-        <Section title="Spawn Behaviour" icon="bolt" compact>
-          <div className="grid grid-cols-2 gap-x-6">
-            <div>
-              <Row label="Apply on spawn"><Switch checked={true} onCheckedChange={() => {}}/></Row>
-              <Row label="Randomise qty"><Switch checked={false} onCheckedChange={() => {}}/></Row>
-            </div>
-            <div>
-              <Row label="Auto-equip pass"><Switch checked={true} onCheckedChange={() => {}}/></Row>
-              <Row label="Drop on death">
-                <Select value="Equipped only" options={DROP_ON_DEATH_OPTIONS}/>
-              </Row>
-            </div>
-          </div>
-        </Section>
-      </div>
-
-      {/* Modals */}
       <LoadoutItemModal
         open={addModalOpen}
         onOpenChange={setAddModalOpen}
@@ -321,15 +312,14 @@ function LoadoutEditor({ loadout, taxonomy }) {
    SlotMapping — inspector aside showing slot assignments
    ============================================================ */
 /**
- * Displays the loadout's slot-to-item mapping using attachment slots from taxonomy.
  * @param {{ loadout: Loadout, taxonomy: object }} props
  */
 function SlotMapping({ loadout, taxonomy }) {
+  const { t } = useTranslation();
   const slots = taxonomy.attachmentSlots ?? [];
-
   return (
     <div className="space-y-3 p-4 pt-10">
-      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">Slot Mapping</div>
+      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('loadouts.slotMapping')}</div>
       <div className="space-y-2">
         {slots.map(s => {
           const mapped = loadout.slots?.[s.name];
@@ -344,14 +334,14 @@ function SlotMapping({ loadout, taxonomy }) {
                 'flex h-8 items-center justify-between rounded-md border px-3 text-xs transition-colors',
                 item ? 'border-border bg-card hover:bg-accent/50' : 'border-dashed border-border bg-transparent text-muted-foreground',
               )}>
-                <span className="truncate">{item ? item.displayName : 'Empty'}</span>
+                <span className="truncate">{item ? item.displayName : t('loadouts.emptySlot')}</span>
                 <Icon name="chevDown" size={11} className="shrink-0 text-muted-foreground"/>
               </button>
             </div>
           );
         })}
         {slots.length === 0 && (
-          <div className="py-4 text-center text-xs text-muted-foreground">No attachment slots defined. Add them in Settings → Attachment Slots.</div>
+          <div className="py-4 text-center text-xs text-muted-foreground">{t('loadouts.noSlotsDefined')}</div>
         )}
       </div>
     </div>

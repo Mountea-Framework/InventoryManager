@@ -31,7 +31,7 @@
     --radius: 0.625rem;
   }
 
-  .dark, :root {
+  .dark {
     /* Nova dark — neutral base, yellow primary */
     --background: 0 0% 6.5%;
     --foreground: 0 0% 98%;
@@ -78,6 +78,13 @@ html, body {
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 10px; border: 2px solid hsl(var(--background)); }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent)); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Screen transition */
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen-enter { animation: screen-in 0.18s ease-out both; }
 
 /* Native form-control resets */
 input[type=number]::-webkit-inner-spin-button,
