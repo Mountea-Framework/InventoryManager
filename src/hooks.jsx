@@ -109,11 +109,13 @@ export const useTaxonomy = () => {
   return [tax, setTax];
 };
 
-export const useAutoSave = (draft, saveFn, delay = 1000) => {
+export const useAutoSave = (draft, saveFn, delay = 1000, onSaved) => {
   const [status, setStatus] = useState('idle');
   const timerRef   = useRef(null);
   const savedTimer = useRef(null);
   const isMounted  = useRef(false);
+  const onSavedRef = useRef(onSaved);
+  onSavedRef.current = onSaved;
 
   useEffect(() => {
     if (!isMounted.current) { isMounted.current = true; return; }
@@ -124,6 +126,7 @@ export const useAutoSave = (draft, saveFn, delay = 1000) => {
       await saveFn(draft);
       await loadData();
       setStatus('saved');
+      onSavedRef.current?.();
       savedTimer.current = setTimeout(() => setStatus('idle'), 2000);
     }, delay);
     return () => clearTimeout(timerRef.current);

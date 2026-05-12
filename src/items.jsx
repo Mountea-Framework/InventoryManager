@@ -108,6 +108,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
+  const [tick,          setTick]          = useState(0);
   const search = browserSearch || globalSearch;
   const item   = DATA.itemById[selected];
 
@@ -159,7 +160,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('items.newTip')}</Button>
               </EmptyState>
             : item
-              ? <ItemEditor key={item.guid} item={item} taxonomy={tax}/>
+              ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
               : <div className="p-10 text-sm text-muted-foreground">{t('items.selectPrompt')}</div>
         }
       </main>
@@ -198,10 +199,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
  * Resets when the selected item changes (parent uses key={item.guid}).
  * @param {{ item: Item, taxonomy: object }} props
  */
-function ItemEditor({ item, taxonomy }) {
+function ItemEditor({ item, taxonomy, onSaved }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(item);
-  const saveStatus = useAutoSave(draft, saveItem);
+  const saveStatus = useAutoSave(draft, saveItem, 1000, onSaved);
 
   const set = (path, val) => {
     if (path === 'category') {
