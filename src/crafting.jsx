@@ -23,7 +23,7 @@ import {
 /**
  * @typedef {{ ref: string, qty: number, icon: string, tone: number }} Ingredient
  * @typedef {{ id: string, title: string, required: boolean, ingredients: Ingredient[] }} RecipeGroup
- * @typedef {{ guid: string, name: string, tier: string, result: object, successChance: number, qtyMin: number, qtyMax: number, reqs: { level: number, station: string, duration: string }, groups: RecipeGroup[] }} Recipe
+ * @typedef {{ guid: string, name: string, result: object, successChance: number, qtyMin: number, qtyMax: number, reqs: { level: number, station: string, duration: string }, groups: RecipeGroup[] }} Recipe
  */
 
 /* ============================================================
@@ -68,7 +68,10 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
   const [query, setQuery] = useState('');
 
   const materials = useMemo(() =>
-    DATA.allItems.filter(it => it.tags?.some(t => t.startsWith('Item.Material'))),
+    DATA.allItems.filter(it =>
+      it.category?.toLowerCase() === 'material' ||
+      it.tags?.some(tag => tag.split('.').some(seg => seg.toLowerCase() === 'material'))
+    ),
     [],
   );
 
@@ -208,6 +211,15 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
     return next;
   });
 
+  const addGroup = () =>
+    setDraft(d => ({
+      ...d,
+      groups: [...d.groups, { id: crypto.randomUUID(), title: `Group ${d.groups.length + 1}`, required: true, ingredients: [] }],
+    }));
+
+  const removeGroup = (groupId) =>
+    setDraft(d => ({ ...d, groups: d.groups.filter(g => g.id !== groupId) }));
+
   const addIngredient = (groupId, ing) =>
     setDraft(d => ({
       ...d,
@@ -286,15 +298,25 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
 
       {/* Ingredient groups — rendered manually since each group is its own Section */}
       <div className="space-y-4 px-6 pb-6">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.sectionIngredients')}</span>
+          <Button icon="plus" size="sm" variant="ghost" onClick={addGroup}>{t('crafting.addGroup')}</Button>
+        </div>
+        {draft.groups.length === 0 && (
+          <div className="py-4 text-center text-xs italic text-muted-foreground">{t('crafting.noIngredients')}</div>
+        )}
         {draft.groups.map(g => (
           <Section
             key={g.id}
             title={g.title + (g.oneOf ? ' (one of)' : '')}
             icon={g.required ? 'tag' : 'sparkle'}
             right={
-              <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
-                {t('crafting.addIngredientTitle')}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
+                  {t('crafting.addIngredientTitle')}
+                </Button>
+                <IconBtn icon="trash" tone="danger" title={t('crafting.removeGroup')} onClick={() => removeGroup(g.id)}/>
+              </div>
             }
           >
             <div className="space-y-1.5">

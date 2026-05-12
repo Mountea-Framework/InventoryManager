@@ -411,13 +411,6 @@ export const createRecipeSchema = (t) => ({
           required: true,
           placeholder: t('crafting.placeholderName'),
         },
-        {
-          id: 'tier',
-          label: t('crafting.fieldTier'),
-          type: 'text',
-          placeholder: t('crafting.placeholderTier'),
-          tooltip: t('crafting.tipTier'),
-        },
       ],
     },
 
@@ -674,7 +667,6 @@ export const createRecipeDraft = () => ({
   guid:          newGuid(),
   name:          '',
   family:        'General',
-  tier:          '',
   result:        { itemRef: '', display: '' },
   qtyMin:        1,
   qtyMax:        1,
