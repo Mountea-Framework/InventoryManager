@@ -8,7 +8,7 @@ import {
   CommandList,
   CommandEmpty,
   CommandGroup,
-  CommandItem,
+  CommandItem as CommandItemBase,
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
@@ -21,6 +21,17 @@ import {
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
+import { Icon } from './ui.jsx';
+
+/** Wraps the shadcn CommandItem to render optional `icon` and `shortcut` props. */
+const CommandItem = React.forwardRef(({ icon, shortcut, children, ...props }, ref) => (
+  <CommandItemBase ref={ref} {...props}>
+    {icon && <Icon name={icon} size={14} className="shrink-0 text-muted-foreground"/>}
+    {children}
+    {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
+  </CommandItemBase>
+));
+CommandItem.displayName = 'CommandItem';
 
 export {
   Command,

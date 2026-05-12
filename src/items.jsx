@@ -269,6 +269,7 @@ function ItemInspector({ item }) {
     spawnActor: item.spawnActor, description: item.description, visuals: item.visuals,
     durability: item.durability, economy: item.economy, weight: item.weight,
     attachmentSlots: item.attachmentSlots, specialAffects: item.specialAffects,
+    itemActions: item.itemActions,
   };
 
   return (

@@ -13,12 +13,12 @@ import { exportAllData, bulkImport } from './store.js';
    Type definitions
    ============================================================ */
 /**
- * @typedef {{ id: string, title: string, tags: string[], subcategories: Subcategory[] }} Category
+ * @typedef {{ id: string, title: string, icon?: string, tags: string[], subcategories: Subcategory[] }} Category
  * @typedef {{ id: string, title: string, tags: string[] }} Subcategory
  * @typedef {{ id: string, title: string, tags: string[], color: string }} Rarity
  * @typedef {{ id: string, key: string, icon: string, tip: string }} ItemAction
  * @typedef {{ id: string, name: string, tags: string[] }} AttachmentSlot
- * @typedef {{ id: string, name: string, tag: string }} CraftingStation
+ * @typedef {{ id: string, name: string, icon?: string, tag: string }} CraftingStation
  * @typedef {{ categories: Category[], rarities: Rarity[], itemActions: ItemAction[], attachmentSlots: AttachmentSlot[], craftingStations: CraftingStation[] }} Taxonomy
  */
 
@@ -389,7 +389,7 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
         <CommandItem
           key={c.id}
           value={`${c.title} ${c.tags.join(' ')} ${c.subcategories.map(s => s.title).join(' ')}`}
-          icon="folder"
+          icon={c.icon || 'folder'}
           shortcut={`${c.subcategories.length} sub`}
           onSelect={() => push({ type: 'category', id: c.id })}
         >{c.title}</CommandItem>
@@ -425,6 +425,14 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
     >
       <FRow label={t('settings.title')}>
         <Input value={cat.title} onChange={e => update({ title: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+            <Icon name={cat.icon || 'folder'} size={16}/>
+          </div>
+          <Input value={cat.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="folder"/>
+        </div>
       </FRow>
       <FRow label={t('settings.tags')} hint={t('settings.tagsDesc')}>
         <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
@@ -722,7 +730,7 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
   const { t } = useTranslation();
   const addStation = () => {
     const id = newId('cs');
-    setTax({ ...tax, craftingStations: [...tax.craftingStations, { id, name: 'New Station', tag: 'Station.New' }] });
+    setTax({ ...tax, craftingStations: [...tax.craftingStations, { id, name: 'New Station', icon: 'cog', tag: 'Station.New' }] });
     push({ type: 'craftingStation', id });
   };
   return (
@@ -736,7 +744,7 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
         <CommandItem
           key={s.id}
           value={`${s.name} ${s.tag}`}
-          icon="hammer"
+          icon={s.icon || 'hammer'}
           shortcut={s.tag}
           onSelect={() => push({ type: 'craftingStation', id: s.id })}
         >{s.name}</CommandItem>
@@ -763,6 +771,14 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
     <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
       <FRow label={t('settings.stationName')} hint={t('settings.stationNameDesc')}>
         <Input value={station.name} onChange={e => update({ name: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+            <Icon name={station.icon || 'hammer'} size={16}/>
+          </div>
+          <Input value={station.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="hammer"/>
+        </div>
       </FRow>
       <FRow label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
         <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
