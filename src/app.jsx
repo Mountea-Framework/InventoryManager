@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   cn, Icon, Button, Input, Separator, Tooltip, TooltipProvider,
 } from './ui.jsx';
@@ -9,16 +10,23 @@ import { CraftingScreen } from './crafting.jsx';
 import { SettingsCommand } from './settings.jsx';
 import { loadData } from './store.js';
 
-function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings }) {
+function TopBar({ globalSearch, setGlobalSearch, openSettings }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  const screen = pathname.startsWith('/loadouts') ? 'loadouts'
+    : pathname.startsWith('/crafting') ? 'crafting'
+    : 'items';
+
   const tabs = [
-    { id: 'items',    label: t('nav.inventory'), tip: t('nav.inventoryTip') },
-    { id: 'loadouts', label: t('nav.loadouts'),  tip: t('nav.loadoutsTip') },
-    { id: 'crafting', label: t('nav.crafting'),  tip: t('nav.craftingTip') },
+    { id: 'items',    path: '/inventory', label: t('nav.inventory'), tip: t('nav.inventoryTip') },
+    { id: 'loadouts', path: '/loadouts',  label: t('nav.loadouts'),  tip: t('nav.loadoutsTip') },
+    { id: 'crafting', path: '/crafting',  label: t('nav.crafting'),  tip: t('nav.craftingTip') },
   ];
+
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* Brand mark */}
       <div className="flex items-center gap-2.5">
         <div className="leading-tight">
           <div className="text-sm font-semibold">{t('app.brand')}</div>
@@ -28,18 +36,17 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
 
       <Separator orientation="vertical" className="mx-2 h-6"/>
 
-      {/* Tabs (pill style on muted) */}
       <nav className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
         {tabs.map(tab => (
           <Tooltip key={tab.id} content={tab.tip}>
             <button
-              onClick={() => setScreen(tab.id)}
+              onClick={() => navigate(tab.path)}
               className={cn(
-                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium",
-                "ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium',
+                'ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 screen === tab.id
-                  ? "bg-background text-foreground shadow"
-                  : "hover:text-foreground/80",
+                  ? 'bg-background text-foreground shadow'
+                  : 'hover:text-foreground/80',
               )}
             >
               {tab.label}
@@ -50,7 +57,6 @@ function TopBar({ screen, setScreen, globalSearch, setGlobalSearch, openSettings
 
       <div className="flex-1"/>
 
-      {/* Search */}
       <div className="relative w-[280px]">
         <Icon name="search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
         <Input
@@ -101,19 +107,16 @@ function StatusBar({ counts }) {
 function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
-  const [screen, setScreen] = useState(() => localStorage.getItem('arch.screen') || 'items');
   const [globalSearch, setGlobalSearch] = useState('');
-  useEffect(() => { loadData().then(() => setReady(true)); }, []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => { localStorage.setItem('arch.screen', screen); }, [screen]);
+  useEffect(() => { loadData().then(() => setReady(true)); }, []);
 
   useEffect(() => {
     if (localStorage.getItem('arch.aside-migrated-v1')) return;
     ['aside-items', 'aside-loadouts', 'aside-crafting'].forEach(k => localStorage.removeItem(k));
     localStorage.setItem('arch.aside-migrated-v1', '1');
   }, []);
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -124,21 +127,24 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const ScreenComp = screen === 'items' ? ItemsScreen
-    : screen === 'loadouts' ? LoadoutsScreen
-    : CraftingScreen;
+  const screenProps = { search: globalSearch, loading: !ready };
 
   return (
     <TooltipProvider>
-      <div data-screen-label={screen} className="flex h-screen flex-col bg-background text-foreground">
-        <TopBar screen={screen} setScreen={setScreen} globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
-        <div key={screen} className="screen-enter flex min-h-0 flex-1">
-          <ScreenComp search={globalSearch} loading={!ready}/>
+      <div className="flex h-screen flex-col bg-background text-foreground">
+        <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
+        <div className="flex min-h-0 flex-1">
+          <Routes>
+            <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
+            <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>
+            <Route path="/loadouts"        element={<LoadoutsScreen {...screenProps}/>}/>
+            <Route path="/loadouts/:guid"  element={<LoadoutsScreen {...screenProps}/>}/>
+            <Route path="/crafting"        element={<CraftingScreen {...screenProps}/>}/>
+            <Route path="/crafting/:guid"  element={<CraftingScreen {...screenProps}/>}/>
+            <Route path="*"               element={<Navigate to="/inventory" replace/>}/>
+          </Routes>
         </div>
-        <SettingsCommand
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-        />
+        <SettingsCommand open={settingsOpen} onOpenChange={setSettingsOpen}/>
       </div>
     </TooltipProvider>
   );

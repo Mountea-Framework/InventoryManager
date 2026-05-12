@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside, IconBtn,
@@ -99,35 +100,45 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
  */
 export function ItemsScreen({ search: globalSearch, loading }) {
   const { t } = useTranslation();
+  const { guid } = useParams();
+  const navigate = useNavigate();
   const [tax] = useTaxonomy();
-  const firstGuid = DATA.allItems[0]?.guid;
-  const [selected,      setSelected]      = useState(firstGuid);
   const [expanded,      setExpanded]      = useState(() =>
     Object.fromEntries(Object.keys(DATA.items).map((cat, i) => [cat, i === 0]))
   );
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0);
+  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+
+  const selected = guid ?? DATA.allItems[0]?.guid ?? null;
+  const setSelected = (newGuid) => navigate(newGuid ? `/inventory/${newGuid}` : '/inventory');
+
+  useEffect(() => {
+    if (!guid && !loading) {
+      const first = DATA.allItems[0]?.guid;
+      if (first) navigate(`/inventory/${first}`, { replace: true });
+    }
+  }, [guid, loading]);
   const search = browserSearch || globalSearch;
   const item   = DATA.itemById[selected];
 
   const handleCreateItem = async (newItem) => {
     await saveItem(newItem);
     await loadData();
-    setSelected(newItem.guid);
+    navigate(`/inventory/${newItem.guid}`);
   };
 
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateItem(entity);
-    setSelected(newGuid);
+    navigate(`/inventory/${newGuid}`);
   };
   const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.displayName}.json`);
   const handleDeleteRequest = (entity) => setDeleteTarget(entity);
   const handleDeleteConfirm = async () => {
     await deleteItem(deleteTarget.guid);
     await loadData();
-    if (selected === deleteTarget.guid) setSelected(DATA.allItems[0]?.guid ?? null);
+    if (guid === deleteTarget.guid) navigate(`/inventory/${DATA.allItems[0]?.guid ?? ''}`);
     setDeleteTarget(null);
   };
 
@@ -257,6 +268,7 @@ function ItemEditor({ item, taxonomy, onSaved }) {
  */
 function ItemInspector({ item }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => it.ref === item.displayName));
   const usedInRecipes  = Object.values(DATA.recipes).flat().filter(r =>
     r.groups.some(g => g.ingredients.some(i => i.ref === item.displayName))
@@ -306,14 +318,18 @@ function ItemInspector({ item }) {
             ...usedInLoadouts.map(l => ({ kind: 'Loadout', name: l.name, guid: l.guid, icon: 'layers' })),
             ...usedInRecipes.map(r => ({ kind: 'Recipe',  name: r.name, guid: r.guid, icon: 'hammer' })),
           ].map((ref, i) => (
-            <div key={i} className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:bg-accent/50">
+            <button
+              key={i}
+              onClick={() => navigate(`/${ref.kind === 'Loadout' ? 'loadouts' : 'crafting'}/${ref.guid}`)}
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-accent/50"
+            >
               <Icon name={ref.icon} size={12} className="text-muted-foreground"/>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-medium">{ref.name}</div>
                 <div className="truncate font-mono text-[10px] text-muted-foreground">{ref.kind.toLowerCase()} · {ref.guid}</div>
               </div>
               <Icon name="arrowRight" size={12} className="text-muted-foreground"/>
-            </div>
+            </button>
           ))}
           {usedInLoadouts.length + usedInRecipes.length === 0 && (
             <div className="text-xs italic text-muted-foreground">{t('items.notReferenced')}</div>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Tooltip,
@@ -369,14 +370,25 @@ const RECIPE_FAMILY_ICONS = { Smithing: 'hammer', Alchemy: 'beaker' };
 
 export function CraftingScreen({ search: globalSearch, loading }) {
   const { t } = useTranslation();
+  const { guid } = useParams();
+  const navigate = useNavigate();
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useState(null);
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
   const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+
+  const selected = guid ?? null;
+  const setSelected = (newGuid) => navigate(newGuid ? `/crafting/${newGuid}` : '/crafting');
   const allRecipes = Object.values(DATA.recipes).flat();
   const recipe     = allRecipes.find(r => r.guid === selected);
+
+  useEffect(() => {
+    if (!guid && !loading) {
+      const first = allRecipes[0]?.guid;
+      if (first) navigate(`/crafting/${first}`, { replace: true });
+    }
+  }, [guid, loading]);
   const search     = (browserSearch || globalSearch || '').toLowerCase();
 
   const handleCreateRecipe = async (newRecipe) => {
@@ -394,7 +406,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
   const handleDeleteConfirm = async () => {
     await deleteRecipe(deleteTarget.guid);
     await loadData();
-    if (selected === deleteTarget.guid) setSelected(null);
+    if (guid === deleteTarget.guid) setSelected(null);
     setDeleteTarget(null);
   };
 

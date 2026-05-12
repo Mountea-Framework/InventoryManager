@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
@@ -131,13 +132,24 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
  */
 export function LoadoutsScreen({ search: globalSearch, loading }) {
   const { t } = useTranslation();
+  const { guid } = useParams();
+  const navigate = useNavigate();
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useState(DATA.loadouts[0]?.guid ?? null);
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
   const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+
+  const selected = guid ?? DATA.loadouts[0]?.guid ?? null;
+  const setSelected = (newGuid) => navigate(newGuid ? `/loadouts/${newGuid}` : '/loadouts');
   const loadout = DATA.loadouts.find(l => l.guid === selected);
+
+  useEffect(() => {
+    if (!guid && !loading) {
+      const first = DATA.loadouts[0]?.guid;
+      if (first) navigate(`/loadouts/${first}`, { replace: true });
+    }
+  }, [guid, loading]);
   const search  = (browserSearch || globalSearch || '').toLowerCase();
   const filtered = search
     ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.guid).toLowerCase().includes(search))
@@ -158,7 +170,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
   const handleDeleteConfirm = async () => {
     await deleteLoadout(deleteTarget.guid);
     await loadData();
-    if (selected === deleteTarget.guid) setSelected(DATA.loadouts[0]?.guid ?? null);
+    if (guid === deleteTarget.guid) setSelected(DATA.loadouts[0]?.guid ?? null);
     setDeleteTarget(null);
   };
 
