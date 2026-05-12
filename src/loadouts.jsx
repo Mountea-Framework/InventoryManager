@@ -176,9 +176,9 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
           return (
             <ContextMenu key={l.guid}>
               <ContextMenuTrigger asChild>
-                <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="block py-2.5">
-                  <Tooltip content={`${l.items.length} items · ${Object.keys(l.slots || {}).length} slots`} side="right">
-                    <div className="min-w-0 w-full">
+                <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="items-start py-2.5">
+                  <Tooltip content={l.tagline || `${l.items.length} ${t('app.statusItems')}`} side="right">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{l.name}</div>
                       <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
                       <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
