@@ -69,6 +69,7 @@
     "slotMapping": "Mapování slotů",
     "emptySlot": "Prázdný",
     "noSlotsDefined": "Žádné attachment slots. Přidejte je v Nastavení → Attachment slots.",
+    "inspector": "Inspektor",
     "empty": "Zatím žádné šablony loadoutů",
     "emptyDesc": "Vytvořte loadout pro definici vybavení postavy při spawnu."
   },

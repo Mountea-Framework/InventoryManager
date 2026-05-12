@@ -549,12 +549,6 @@ export const LOADOUT_SCHEMA = {
           placeholder: 'e.g. Endgame Warrior',
         },
         {
-          id: 'version',
-          label: 'Version',
-          type: 'text',
-          placeholder: 'e.g. v2.4',
-        },
-        {
           id: 'tagline',
           label: 'Tagline',
           type: 'text',
@@ -697,7 +691,6 @@ export const createRecipeDraft = () => ({
 export const createLoadoutDraft = () => ({
   guid:    newGuid(),
   name:    '',
-  version: 'v1.0',
   tagline: '',
   desc:    '',
   items:   [],

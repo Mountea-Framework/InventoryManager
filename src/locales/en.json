@@ -68,6 +68,7 @@
     "slotMapping": "Slot Mapping",
     "emptySlot": "Empty",
     "noSlotsDefined": "No attachment slots defined. Add them in Settings → Attachment Slots.",
+    "inspector": "Inspector",
     "empty": "No loadout templates yet",
     "emptyDesc": "Create a loadout to define what a character spawns with."
   },

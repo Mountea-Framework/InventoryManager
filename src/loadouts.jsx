@@ -10,7 +10,8 @@ import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
-import { LOADOUT_SCHEMA } from './form-schemas.js';
+import { LOADOUT_SCHEMA, createLoadoutDraft } from './form-schemas.js';
+import { EntityCreateSheet } from './entity-sheet.jsx';
 import {
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
   ContextMenuSeparator, ContextMenuTrigger,
@@ -21,7 +22,7 @@ import {
    ============================================================ */
 /**
  * @typedef {{ ref: string, qty: number, durability: number|null, autoEquip: boolean, slot: string|null }} LoadoutItem
- * @typedef {{ guid: string, name: string, version: string, desc: string, tagline: string, items: LoadoutItem[], slots: Object.<string,string|null> }} Loadout
+ * @typedef {{ guid: string, name: string, desc: string, tagline: string, items: LoadoutItem[], slots: Object.<string,string|null> }} Loadout
  */
 
 /* ============================================================
@@ -133,12 +134,20 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [selected,      setSelected]      = useState(DATA.loadouts[0]?.guid ?? null);
   const [browserSearch, setBrowserSearch] = useState('');
+  const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
+  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
   const loadout = DATA.loadouts.find(l => l.guid === selected);
   const search  = (browserSearch || globalSearch || '').toLowerCase();
   const filtered = search
     ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.guid).toLowerCase().includes(search))
     : DATA.loadouts;
+
+  const handleCreateLoadout = async (newLoadout) => {
+    await saveLoadout(newLoadout);
+    await loadData();
+    setSelected(newLoadout.guid);
+  };
 
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateLoadout(entity);
@@ -157,7 +166,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
     <>
       <LeftPanel
         title={t('loadouts.title')}
-        headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')}/>}
+        headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>}
         search={browserSearch} setSearch={setBrowserSearch}
         searchPlaceholder={t('loadouts.filterPlaceholder')}
         loading={loading}
@@ -206,16 +215,28 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         {loading
           ? <ContentSkeleton/>
           : DATA.loadouts.length === 0
-            ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}/>
-            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax}/>
+            ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}>
+                <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('loadouts.newTip')}</Button>
+              </EmptyState>
+            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
         }
       </main>
 
       {loadout && (
         <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <SlotMapping loadout={loadout} taxonomy={tax}/>
+          <LoadoutInspector loadout={loadout}/>
         </CollapsibleAside>
       )}
+
+      <EntityCreateSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        schema={LOADOUT_SCHEMA}
+        createDraft={createLoadoutDraft}
+        taxonomy={tax}
+        onSave={handleCreateLoadout}
+        sectionIds={['identity']}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteTarget}
@@ -234,7 +255,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
  * Editable loadout form. Resets when loadout changes (parent uses key={loadout.guid}).
  * @param {{ loadout: Loadout, taxonomy: object }} props
  */
-function LoadoutEditor({ loadout, taxonomy }) {
+function LoadoutEditor({ loadout, taxonomy, onSaved }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(() => ({
     ...loadout,
@@ -246,10 +267,12 @@ function LoadoutEditor({ loadout, taxonomy }) {
     },
   }));
 
-  const saveStatus = useAutoSave(draft, saveLoadout);
+  const saveStatus = useAutoSave(draft, saveLoadout, 1000, onSaved);
 
   const [addModalOpen,  setAddModalOpen]  = useState(false);
   const [editModalData, setEditModalData] = useState(null);
+  const [dragIdx,       setDragIdx]       = useState(null);
+  const [overIdx,       setOverIdx]       = useState(null);
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
@@ -267,49 +290,114 @@ function LoadoutEditor({ loadout, taxonomy }) {
   const updateItem = (idx, item) => setDraft(d => { const items = [...d.items]; items[idx] = item; return { ...d, items }; });
   const removeItem = (idx)  => setDraft(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
 
-  const renderField = (field) => {
-    if (field.id !== 'items') return null;
-    return (
-      <div className="space-y-1.5">
-        <div className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <div/><div>{t('loadouts.colItemRef')}</div><div>{t('loadouts.colQty')}</div><div>{t('loadouts.colSlot')}</div><div/>
-        </div>
-        {draft.items.map((it, idx) => {
-          const src = DATA.itemByName[it.ref];
-          return (
-            <div key={idx} className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 rounded-lg border border-border bg-card p-2">
-              <div className="flex justify-center text-muted-foreground/60">
-                <Icon name="dragHandle" size={14}/>
-              </div>
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
-                  <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
+  const handleDragStart = (idx) => setDragIdx(idx);
+  const handleDragOver  = (e, idx) => { e.preventDefault(); if (overIdx !== idx) setOverIdx(idx); };
+  const handleDrop      = (e, idx) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== idx) {
+      setDraft(d => {
+        const items = [...d.items];
+        const [moved] = items.splice(dragIdx, 1);
+        items.splice(idx, 0, moved);
+        return { ...d, items };
+      });
+    }
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setOverIdx(null); };
+
+  const renderField = (field, value, onChange) => {
+    if (field.id === 'items') {
+      return (
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div/><div>{t('loadouts.colItemRef')}</div><div>{t('loadouts.colQty')}</div><div>{t('loadouts.colSlot')}</div><div/>
+          </div>
+          {draft.items.map((it, idx) => {
+            const src = DATA.itemByName[it.ref];
+            return (
+              <div
+                key={idx}
+                draggable
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={e => handleDragOver(e, idx)}
+                onDrop={e => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'grid grid-cols-[28px_minmax(180px,2fr)_88px_minmax(110px,1fr)_72px] items-center gap-2 rounded-lg border border-border bg-card p-2 transition-opacity',
+                  dragIdx === idx && 'opacity-30',
+                  overIdx === idx && dragIdx !== idx && 'border-primary/60 bg-primary/5',
+                )}
+              >
+                <div className="flex cursor-grab items-center justify-center text-muted-foreground/60 active:cursor-grabbing">
+                  <Icon name="dragHandle" size={14}/>
+                </div>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
+                  </div>
+                </div>
+                <div><TextField value={String(it.qty)} mono/></div>
+                <div>
+                  {it.slot
+                    ? <Tag>{it.slot}</Tag>
+                    : <span className="text-xs text-muted-foreground">—</span>
+                  }
+                </div>
+                <div className="flex items-center justify-end gap-1">
+                  <IconBtn icon="cog" title={t('loadouts.editItemTip')} onClick={() => setEditModalData({ item: it, idx })}/>
+                  <IconBtn icon="trash" tone="danger" title={t('loadouts.removeTip')} onClick={() => removeItem(idx)}/>
                 </div>
               </div>
-              <div><TextField value={String(it.qty)} mono/></div>
-              <div>
-                {it.slot
-                  ? <Tag>{it.slot}</Tag>
-                  : <span className="text-xs text-muted-foreground">—</span>
-                }
+            );
+          })}
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+          >
+            <Icon name="plus" size={12}/> {t('loadouts.addToComposition')}
+          </button>
+        </div>
+      );
+    }
+
+    if (field.id === 'slots') {
+      const slots = taxonomy.attachmentSlots ?? [];
+      const itemOptions = [
+        { value: '', label: '— none —' },
+        ...draft.items.map(it => ({ value: it.ref, label: it.ref })),
+      ];
+      return (
+        <div className="space-y-2">
+          {slots.map(s => (
+            <div key={s.id} className="grid grid-cols-[130px_1fr] items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-foreground/80">
+                <Icon name="link" size={13} className="text-muted-foreground"/>
+                <span className="truncate">{s.name}</span>
               </div>
-              <div className="flex items-center justify-end gap-1">
-                <IconBtn icon="cog" title={t('loadouts.editItemTip')} onClick={() => setEditModalData({ item: it, idx })}/>
-                <IconBtn icon="trash" tone="danger" title={t('loadouts.removeTip')} onClick={() => removeItem(idx)}/>
-              </div>
+              <Select
+                value={(value ?? {})[s.name] ?? ''}
+                onChange={v => {
+                  const next = { ...(value ?? {}) };
+                  if (v) next[s.name] = v;
+                  else delete next[s.name];
+                  onChange(next);
+                }}
+                options={itemOptions}
+              />
             </div>
-          );
-        })}
-        <button
-          onClick={() => setAddModalOpen(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
-        >
-          <Icon name="plus" size={12}/> {t('loadouts.addToComposition')}
-        </button>
-      </div>
-    );
+          ))}
+          {slots.length === 0 && (
+            <div className="py-2 text-xs italic text-muted-foreground">{t('loadouts.noSlotsDefined')}</div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -336,7 +424,7 @@ function LoadoutEditor({ loadout, taxonomy }) {
         draft={draft}
         set={set}
         taxonomy={taxonomy}
-        sectionIds={['identity', 'spawnBehaviour', 'composition']}
+        sectionIds={['identity', 'spawnBehaviour', 'composition', 'slotMapping']}
         renderField={renderField}
       />
 
@@ -359,40 +447,41 @@ function LoadoutEditor({ loadout, taxonomy }) {
 }
 
 /* ============================================================
-   SlotMapping — inspector aside showing slot assignments
+   LoadoutInspector — right-panel JSON preview
    ============================================================ */
 /**
- * @param {{ loadout: Loadout, taxonomy: object }} props
+ * @param {{ loadout: Loadout }} props
  */
-function SlotMapping({ loadout, taxonomy }) {
+function LoadoutInspector({ loadout }) {
   const { t } = useTranslation();
-  const slots = taxonomy.attachmentSlots ?? [];
+  const preview = {
+    guid:      loadout.guid,
+    name:      loadout.name,
+    tagline:   loadout.tagline,
+    desc:      loadout.desc,
+    items:     loadout.items,
+    slots:     loadout.slots,
+    behaviour: loadout.behaviour,
+  };
   return (
-    <div className="space-y-3 p-4 pt-10">
-      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('loadouts.slotMapping')}</div>
-      <div className="space-y-2">
-        {slots.map(s => {
-          const mapped = loadout.slots?.[s.name];
-          const item   = mapped ? DATA.itemByName[mapped] : null;
-          return (
-            <div key={s.id} className="grid grid-cols-[110px_1fr] items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs text-foreground/80">
-                <Icon name="link" size={12} className="text-muted-foreground"/>
-                <span className="truncate">{s.name}</span>
-              </div>
-              <button className={cn(
-                'flex h-8 items-center justify-between rounded-md border px-3 text-xs transition-colors',
-                item ? 'border-border bg-card hover:bg-accent/50' : 'border-dashed border-border bg-transparent text-muted-foreground',
-              )}>
-                <span className="truncate">{item ? item.displayName : t('loadouts.emptySlot')}</span>
-                <Icon name="chevDown" size={11} className="shrink-0 text-muted-foreground"/>
-              </button>
+    <div className="space-y-5 p-4 pt-10">
+      <div>
+        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('loadouts.inspector')}</div>
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
+              <Icon name="layers" size={16}/>
             </div>
-          );
-        })}
-        {slots.length === 0 && (
-          <div className="py-4 text-center text-xs text-muted-foreground">{t('loadouts.noSlotsDefined')}</div>
-        )}
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{loadout.name}</div>
+              <div className="truncate font-mono text-[10.5px] text-muted-foreground">{loadout.guid}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('items.jsonPreview')}</div>
+        <pre className="overflow-x-auto rounded-md border border-border bg-card p-3 font-mono text-[10.5px] leading-relaxed text-foreground/80">{JSON.stringify(preview, null, 2)}</pre>
       </div>
     </div>
   );
