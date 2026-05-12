@@ -8,7 +8,7 @@ import {
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
-import { useTaxonomy } from './hooks.jsx';
+import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { LOADOUT_SCHEMA } from './form-schemas.js';
 import {
@@ -246,6 +246,8 @@ function LoadoutEditor({ loadout, taxonomy }) {
     },
   }));
 
+  const saveStatus = useAutoSave(draft, saveLoadout);
+
   const [addModalOpen,  setAddModalOpen]  = useState(false);
   const [editModalData, setEditModalData] = useState(null);
 
@@ -320,7 +322,11 @@ function LoadoutEditor({ loadout, taxonomy }) {
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
+              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
+              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
+            </div>
           </div>
         </div>
       </div>

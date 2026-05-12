@@ -15,7 +15,9 @@
     "statusLoadouts": "loadouts",
     "statusRecipes": "recipes",
     "statusSchema": "schema:",
-    "statusUnresolved": "unresolved refs"
+    "statusUnresolved": "unresolved refs",
+    "saving": "Saving…",
+    "saved": "Saved"
   },
   "nav": {
     "inventory": "Inventory",

@@ -16,7 +16,9 @@
     "statusLoadouts": "loadouty",
     "statusRecipes": "recepty",
     "statusSchema": "schéma:",
-    "statusUnresolved": "nevyřešené reference"
+    "statusUnresolved": "nevyřešené reference",
+    "saving": "Ukládání…",
+    "saved": "Uloženo"
   },
   "nav": {
     "inventory": "Inventory",

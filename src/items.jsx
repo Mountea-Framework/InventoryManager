@@ -7,7 +7,7 @@ import {
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem, exportEntityAsJson } from './store.js';
-import { useTaxonomy } from './hooks.jsx';
+import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { ITEM_SCHEMA, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
@@ -199,7 +199,9 @@ export function ItemsScreen({ search: globalSearch, loading }) {
  * @param {{ item: Item, taxonomy: object }} props
  */
 function ItemEditor({ item, taxonomy }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(item);
+  const saveStatus = useAutoSave(draft, saveItem);
 
   const set = (path, val) => {
     if (path === 'category') {
@@ -231,7 +233,11 @@ function ItemEditor({ item, taxonomy }) {
               <Badge variant="secondary">{draft.rarity}</Badge>
               <Badge variant="outline">{draft.category}{draft.subCategory ? ` · ${draft.subCategory}` : ''}</Badge>
             </div>
-            <div className="mt-1 truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
+              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
+              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
+            </div>
           </div>
         </div>
       </div>

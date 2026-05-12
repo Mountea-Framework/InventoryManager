@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { loadData } from './store.js';
 
 export const TAX_KEY = 'arch.taxonomy.v1';
 
@@ -106,4 +107,29 @@ export const useTaxonomy = () => {
   }, [tax]);
 
   return [tax, setTax];
+};
+
+export const useAutoSave = (draft, saveFn, delay = 1000) => {
+  const [status, setStatus] = useState('idle');
+  const timerRef   = useRef(null);
+  const savedTimer = useRef(null);
+  const isMounted  = useRef(false);
+
+  useEffect(() => {
+    if (!isMounted.current) { isMounted.current = true; return; }
+    setStatus('dirty');
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      setStatus('saving');
+      await saveFn(draft);
+      await loadData();
+      setStatus('saved');
+      savedTimer.current = setTimeout(() => setStatus('idle'), 2000);
+    }, delay);
+    return () => clearTimeout(timerRef.current);
+  }, [draft]);
+
+  useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(savedTimer.current); }, []);
+
+  return status;
 };
