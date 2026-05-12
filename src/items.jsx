@@ -3,14 +3,18 @@ import { useTranslation } from 'react-i18next';
 import {
   Icon, Badge, Button, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside, IconBtn,
-  ContentSkeleton, EmptyState,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
-import { DATA, saveItem, loadData } from './store.js';
+import { DATA, saveItem, loadData, deleteItem, duplicateItem, exportEntityAsJson } from './store.js';
 import { useTaxonomy } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { ITEM_SCHEMA, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -28,9 +32,10 @@ const shortGuid = (g) => g ? g.slice(0, 8) + '…' : '';
 
 /**
  * Expandable sidebar entry listing items within a category.
- * @param {{ category: string, items: Item[], expanded: object, setExpanded: Function, selected: string, setSelected: (guid: string) => void, search: string }} props
+ * @param {{ category: string, items: Item[], expanded: object, setExpanded: Function, selected: string, setSelected: (guid: string) => void, search: string, onDuplicate: Function, onExport: Function, onDeleteRequest: Function }} props
  */
-function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSelected, search, icon }) {
+function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSelected, search, icon, onDuplicate, onExport, onDeleteRequest }) {
+  const { t } = useTranslation();
   const isOpen = expanded[category] !== false;
   const filteredItems = search
     ? items.filter(i => (i.displayName + ' ' + i.guid + ' ' + (i.tags || []).join(' ')).toLowerCase().includes(search.toLowerCase()))
@@ -52,14 +57,34 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
         const isSel = selected === item.guid;
         const tip = item.description?.short || `${item.rarity} · ${item.category}`;
         return (
-          <Tooltip key={item.guid} content={tip} side="right">
-            <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
-              <div className="min-w-0 flex-1">
-                <div className="truncate">{item.displayName}</div>
-                <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
-              </div>
-            </SidebarItem>
-          </Tooltip>
+          <ContextMenu key={item.guid}>
+            <ContextMenuTrigger asChild>
+              <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
+                <Tooltip content={tip} side="right">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">{item.displayName}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
+                  </div>
+                </Tooltip>
+              </SidebarItem>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-44">
+              <ContextMenuGroup>
+                <ContextMenuItem onClick={() => onDuplicate(item)}>
+                  <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onExport(item)}>
+                  <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
+                </ContextMenuItem>
+              </ContextMenuGroup>
+              <ContextMenuSeparator/>
+              <ContextMenuGroup>
+                <ContextMenuItem variant="destructive" onClick={() => onDeleteRequest(item)}>
+                  <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
+                </ContextMenuItem>
+              </ContextMenuGroup>
+            </ContextMenuContent>
+          </ContextMenu>
         );
       })}
     </div>
@@ -82,14 +107,27 @@ export function ItemsScreen({ search: globalSearch, loading }) {
   );
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
+  const [deleteTarget,  setDeleteTarget]  = useState(null);
   const search = browserSearch || globalSearch;
   const item   = DATA.itemById[selected];
-
 
   const handleCreateItem = async (newItem) => {
     await saveItem(newItem);
     await loadData();
     setSelected(newItem.guid);
+  };
+
+  const handleDuplicate = async (entity) => {
+    const newGuid = await duplicateItem(entity);
+    setSelected(newGuid);
+  };
+  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.displayName}.json`);
+  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
+  const handleDeleteConfirm = async () => {
+    await deleteItem(deleteTarget.guid);
+    await loadData();
+    if (selected === deleteTarget.guid) setSelected(DATA.allItems[0]?.guid ?? null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -106,7 +144,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
             expanded={expanded} setExpanded={setExpanded}
             selected={selected} setSelected={setSelected}
             search={search}
-            icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}/>
+            icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}
+            onDuplicate={handleDuplicate}
+            onExport={handleExport}
+            onDeleteRequest={handleDeleteRequest}/>
         ))}
       </LeftPanel>
 
@@ -137,6 +178,13 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         taxonomy={tax}
         onSave={handleCreateItem}
         sectionIds={['identity', 'description', 'flags']}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        name={deleteTarget?.displayName ?? ''}
+        onConfirm={handleDeleteConfirm}
       />
     </>
   );
@@ -247,14 +295,14 @@ function ItemInspector({ item }) {
         </div>
         <div className="space-y-1.5">
           {[
-            ...usedInLoadouts.map(l => ({ kind: 'Loadout', name: l.name, id: l.id, icon: 'layers' })),
-            ...usedInRecipes.map(r => ({ kind: 'Recipe',  name: r.name, id: r.id, icon: 'hammer' })),
+            ...usedInLoadouts.map(l => ({ kind: 'Loadout', name: l.name, guid: l.guid, icon: 'layers' })),
+            ...usedInRecipes.map(r => ({ kind: 'Recipe',  name: r.name, guid: r.guid, icon: 'hammer' })),
           ].map((ref, i) => (
             <div key={i} className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2 transition-colors hover:bg-accent/50">
               <Icon name={ref.icon} size={12} className="text-muted-foreground"/>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-medium">{ref.name}</div>
-                <div className="truncate font-mono text-[10px] text-muted-foreground">{ref.kind.toLowerCase()} · {ref.id}</div>
+                <div className="truncate font-mono text-[10px] text-muted-foreground">{ref.kind.toLowerCase()} · {ref.guid}</div>
               </div>
               <Icon name="arrowRight" size={12} className="text-muted-foreground"/>
             </div>

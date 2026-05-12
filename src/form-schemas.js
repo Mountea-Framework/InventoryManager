@@ -82,12 +82,6 @@ export const ITEM_SCHEMA = {
       icon: 'tag',
       fields: [
         {
-          id: 'guid',
-          label: 'GUID',
-          type: 'readonly',
-          tooltip: 'Automatically generated on creation.',
-        },
-        {
           id: 'displayName',
           label: 'Display Name',
           type: 'text',
@@ -407,12 +401,6 @@ export const RECIPE_SCHEMA = {
       icon: 'tag',
       fields: [
         {
-          id: 'id',
-          label: 'Recipe ID',
-          type: 'readonly',
-          tooltip: 'Auto-generated. e.g. RECIPE_SMITH_042',
-        },
-        {
           id: 'name',
           label: 'Recipe Name',
           type: 'text',
@@ -554,12 +542,6 @@ export const LOADOUT_SCHEMA = {
       icon: 'tag',
       fields: [
         {
-          id: 'id',
-          label: 'Loadout ID',
-          type: 'readonly',
-          tooltip: 'Auto-generated. e.g. LDT_001',
-        },
-        {
           id: 'name',
           label: 'Loadout Name',
           type: 'text',
@@ -670,7 +652,6 @@ export const FORM_SCHEMAS = {
 
 const randomHex = (len) => Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 const newGuid = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
-const newId   = (prefix) => `${prefix}_${randomHex(6).toUpperCase()}`;
 
 /** @returns {object} blank item draft with a fresh GUID */
 export const createItemDraft = () => ({
@@ -699,9 +680,9 @@ export const createItemDraft = () => ({
   _ui: { icon: 'cube', thumbTone: 0, slot: null },
 });
 
-/** @returns {object} blank recipe draft with a fresh ID */
+/** @returns {object} blank recipe draft with a fresh GUID */
 export const createRecipeDraft = () => ({
-  id:            newId('RECIPE'),
+  guid:          newGuid(),
   name:          '',
   tier:          '',
   result:        { itemRef: '', display: '' },
@@ -712,9 +693,9 @@ export const createRecipeDraft = () => ({
   groups:        [],
 });
 
-/** @returns {object} blank loadout draft with a fresh ID */
+/** @returns {object} blank loadout draft with a fresh GUID */
 export const createLoadoutDraft = () => ({
-  id:      newId('LDT'),
+  guid:    newGuid(),
   name:    '',
   version: 'v1.0',
   tagline: '',

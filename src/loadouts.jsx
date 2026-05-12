@@ -4,20 +4,24 @@ import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
   Section, Row, TextField, Tag, IconBtn,
-  ContentSkeleton, EmptyState,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA } from './store.js';
+import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
 import { useTaxonomy } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { LOADOUT_SCHEMA } from './form-schemas.js';
+import {
+  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
    ============================================================ */
 /**
  * @typedef {{ ref: string, qty: number, durability: number|null, autoEquip: boolean, slot: string|null }} LoadoutItem
- * @typedef {{ id: string, name: string, version: string, desc: string, tagline: string, items: LoadoutItem[], slots: Object.<string,string|null> }} Loadout
+ * @typedef {{ guid: string, name: string, version: string, desc: string, tagline: string, items: LoadoutItem[], slots: Object.<string,string|null> }} Loadout
  */
 
 /* ============================================================
@@ -127,14 +131,27 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
 export function LoadoutsScreen({ search: globalSearch, loading }) {
   const { t } = useTranslation();
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useState('LDT_001');
+  const [selected,      setSelected]      = useState(DATA.loadouts[0]?.guid ?? null);
   const [browserSearch, setBrowserSearch] = useState('');
-  const loadout = DATA.loadouts.find(l => l.id === selected);
+  const [deleteTarget,  setDeleteTarget]  = useState(null);
+  const loadout = DATA.loadouts.find(l => l.guid === selected);
   const search  = (browserSearch || globalSearch || '').toLowerCase();
   const filtered = search
-    ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.id).toLowerCase().includes(search))
+    ? DATA.loadouts.filter(l => (l.name + ' ' + l.desc + ' ' + l.guid).toLowerCase().includes(search))
     : DATA.loadouts;
 
+  const handleDuplicate = async (entity) => {
+    const newGuid = await duplicateLoadout(entity);
+    setSelected(newGuid);
+  };
+  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.name}.json`);
+  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
+  const handleDeleteConfirm = async () => {
+    await deleteLoadout(deleteTarget.guid);
+    await loadData();
+    if (selected === deleteTarget.guid) setSelected(DATA.loadouts[0]?.guid ?? null);
+    setDeleteTarget(null);
+  };
 
   return (
     <>
@@ -146,21 +163,41 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         loading={loading}
       >
         {filtered.map(l => {
-          const sel = l.id === selected;
+          const sel = l.guid === selected;
           return (
-            <Tooltip key={l.id} content={`${l.items.length} items · ${Object.keys(l.slots || {}).length} slots`} side="right">
-              <SidebarItem selected={sel} onClick={() => setSelected(l.id)} className="block py-2.5">
-                <div className="min-w-0 w-full">
-                  <div className="truncate text-sm font-medium">{l.name}</div>
-                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
-                  <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                    <span>{l.items.length} {t('app.statusItems')}</span>
-                    <span className="opacity-50">·</span>
-                    <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
-                  </div>
-                </div>
-              </SidebarItem>
-            </Tooltip>
+            <ContextMenu key={l.guid}>
+              <ContextMenuTrigger asChild>
+                <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="block py-2.5">
+                  <Tooltip content={`${l.items.length} items · ${Object.keys(l.slots || {}).length} slots`} side="right">
+                    <div className="min-w-0 w-full">
+                      <div className="truncate text-sm font-medium">{l.name}</div>
+                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
+                      <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                        <span>{l.items.length} {t('app.statusItems')}</span>
+                        <span className="opacity-50">·</span>
+                        <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
+                      </div>
+                    </div>
+                  </Tooltip>
+                </SidebarItem>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-44">
+                <ContextMenuGroup>
+                  <ContextMenuItem onClick={() => handleDuplicate(l)}>
+                    <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => handleExport(l)}>
+                    <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
+                  </ContextMenuItem>
+                </ContextMenuGroup>
+                <ContextMenuSeparator/>
+                <ContextMenuGroup>
+                  <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(l)}>
+                    <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
+                  </ContextMenuItem>
+                </ContextMenuGroup>
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </LeftPanel>
@@ -170,7 +207,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
           ? <ContentSkeleton/>
           : DATA.loadouts.length === 0
             ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}/>
-            : loadout && <LoadoutEditor key={loadout.id} loadout={loadout} taxonomy={tax}/>
+            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax}/>
         }
       </main>
 
@@ -179,6 +216,13 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
           <SlotMapping loadout={loadout} taxonomy={tax}/>
         </CollapsibleAside>
       )}
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        name={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+      />
     </>
   );
 }
@@ -187,7 +231,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
    LoadoutEditor — main editor with local draft state
    ============================================================ */
 /**
- * Editable loadout form. Resets when loadout changes (parent uses key={loadout.id}).
+ * Editable loadout form. Resets when loadout changes (parent uses key={loadout.guid}).
  * @param {{ loadout: Loadout, taxonomy: object }} props
  */
 function LoadoutEditor({ loadout, taxonomy }) {
@@ -276,7 +320,7 @@ function LoadoutEditor({ loadout, taxonomy }) {
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 font-mono text-xs text-muted-foreground">id: {draft.id.toLowerCase()}</div>
+            <div className="mt-1 truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
           </div>
         </div>
       </div>

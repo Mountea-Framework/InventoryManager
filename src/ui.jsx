@@ -299,8 +299,8 @@ export const Thumb = ({ tone = 1, size = 36, icon }) => {
 /* ============================================================
    SidebarItem — left-panel row (forwardRef required for Tooltip asChild)
    ============================================================ */
-export const SidebarItem = forwardRef(({ selected, onClick, children, className = '' }, ref) => (
-  <button ref={ref} onClick={onClick}
+export const SidebarItem = forwardRef(({ selected, onClick, children, className = '', ...props }, ref) => (
+  <button ref={ref} onClick={onClick} {...props}
     className={cn(
       'flex w-full items-center gap-2 border-l-2 px-3 py-2 text-left transition-colors',
       selected
@@ -439,3 +439,37 @@ export const CardHeader  = ({ className = '', children }) => <div className={cn(
 export const CardTitle   = ({ className = '', children }) => <div className={cn('font-semibold leading-none tracking-tight', className)}>{children}</div>;
 export const CardContent = ({ className = '', children }) => <div className={cn('p-6 pt-0', className)}>{children}</div>;
 export const CardFooter  = ({ className = '', children }) => <div className={cn('flex items-center p-6 pt-0', className)}>{children}</div>;
+
+/* ============================================================
+   DeleteConfirmDialog — shared AlertDialog for destructive deletes
+   ============================================================ */
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+export function DeleteConfirmDialog({ open, onOpenChange, name, onConfirm }) {
+  const { t } = useTranslation();
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('common.deleteConfirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('common.deleteConfirmDesc', { name })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>{t('common.delete')}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

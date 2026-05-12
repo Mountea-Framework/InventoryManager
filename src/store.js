@@ -32,9 +32,45 @@ export const loadData = async () => {
 export const saveItem      = (item)    => db.items.put(item);
 export const deleteItem    = (guid)    => db.items.delete(guid);
 export const saveLoadout   = (loadout) => db.loadouts.put(loadout);
-export const deleteLoadout = (id)      => db.loadouts.delete(id);
+export const deleteLoadout = (guid)    => db.loadouts.delete(guid);
 export const saveRecipe    = (recipe)  => db.recipes.put(recipe);
-export const deleteRecipe  = (id)      => db.recipes.delete(id);
+export const deleteRecipe  = (guid)    => db.recipes.delete(guid);
+
+// ── Per-entity duplicate / export ────────────────────────────────────────────
+
+const randomHex = (n) => [...Array(n)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+const newGuid   = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
+
+export const duplicateItem = async (item) => {
+  const copy = { ...structuredClone(item), guid: newGuid(), displayName: item.displayName + ' (copy)' };
+  await saveItem(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const duplicateLoadout = async (loadout) => {
+  const copy = { ...structuredClone(loadout), guid: newGuid(), name: loadout.name + ' (copy)' };
+  await saveLoadout(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const duplicateRecipe = async (recipe) => {
+  const copy = { ...structuredClone(recipe), guid: newGuid(), name: recipe.name + ' (copy)' };
+  await saveRecipe(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const exportEntityAsJson = (entity, filename) => {
+  const blob = new Blob([JSON.stringify(entity, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 // ── Bulk export / import ─────────────────────────────────────────────────────
 

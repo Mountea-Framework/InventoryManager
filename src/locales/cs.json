@@ -163,5 +163,13 @@
   "ui": {
     "selectFile": "Vybrat soubor…",
     "filterPlaceholder": "Filtrovat…"
+  },
+  "common": {
+    "duplicate": "Duplikovat",
+    "export": "Exportovat",
+    "delete": "Smazat",
+    "cancel": "Zrušit",
+    "deleteConfirmTitle": "Smazat trvale?",
+    "deleteConfirmDesc": "\"{{name}}\" bude trvale odstraněno. Tuto akci nelze vrátit zpět."
   }
 }
