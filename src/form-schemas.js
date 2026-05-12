@@ -388,59 +388,63 @@ export const ITEM_SCHEMA = {
 /*  CRAFTING RECIPE FORM SCHEMA                                         */
 /* ------------------------------------------------------------------ */
 
-/** @type {FormSchema} */
-export const RECIPE_SCHEMA = {
+/**
+ * Factory — returns a localised RecipeSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createRecipeSchema = (t) => ({
   id: 'recipe',
-  title: 'Crafting Recipe',
+  title: t('crafting.formTitle'),
   icon: 'hammer',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('crafting.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
           id: 'name',
-          label: 'Recipe Name',
+          label: t('crafting.fieldName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Greatsword of Ash',
+          placeholder: t('crafting.placeholderName'),
         },
         {
           id: 'tier',
-          label: 'Tier / Grade',
+          label: t('crafting.fieldTier'),
           type: 'text',
-          placeholder: 'e.g. Tier 4',
-          tooltip: 'Display label for the recipe quality bracket.',
+          placeholder: t('crafting.placeholderTier'),
+          tooltip: t('crafting.tipTier'),
         },
       ],
     },
 
     {
       id: 'result',
-      title: 'Result',
+      title: t('crafting.sectionResult'),
       icon: 'sparkle',
       fields: [
         {
           id: 'result.itemRef',
-          label: 'Output Item',
+          label: t('crafting.fieldResultItem'),
           type: 'select',
           required: true,
           source: 'data.craftableItems',
-          placeholder: 'Select craftable item…',
-          tooltip: 'Only items with the Craftable flag are shown.',
+          placeholder: t('crafting.placeholderResultItem'),
+          tooltip: t('crafting.tipResultItem'),
         },
         {
           id: 'result.display',
-          label: 'Quality Label',
+          label: t('crafting.fieldQualityLabel'),
           type: 'text',
-          placeholder: 'e.g. Masterwork Grade',
-          tooltip: 'Short grade descriptor shown next to the result name.',
+          placeholder: t('crafting.placeholderQualityLabel'),
+          tooltip: t('crafting.tipQualityLabel'),
         },
         {
           id: 'qtyMin',
-          label: 'Min Output Qty',
+          label: t('crafting.fieldQtyMin'),
           type: 'number',
           min: 1,
           max: 9999,
@@ -448,16 +452,16 @@ export const RECIPE_SCHEMA = {
         },
         {
           id: 'qtyMax',
-          label: 'Max Output Qty',
+          label: t('crafting.fieldQtyMax'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Random roll between Min and Max on craft success.',
+          tooltip: t('crafting.tipQtyMax'),
         },
         {
           id: 'successChance',
-          label: 'Success Chance',
+          label: t('crafting.successChance'),
           type: 'number',
           min: 1,
           max: 100,
@@ -469,13 +473,13 @@ export const RECIPE_SCHEMA = {
 
     {
       id: 'requirements',
-      title: 'Requirements',
+      title: t('crafting.sectionRequirements'),
       icon: 'shield',
       compact: true,
       fields: [
         {
           id: 'reqs.level',
-          label: 'Required Level',
+          label: t('crafting.fieldLevel'),
           type: 'number',
           min: 0,
           max: 999,
@@ -483,162 +487,153 @@ export const RECIPE_SCHEMA = {
         },
         {
           id: 'reqs.station',
-          label: 'Crafting Station',
+          label: t('crafting.station'),
           type: 'select',
           options: [{ value: 'None', label: 'None' }],
           source: 'taxonomy.craftingStations',
-          tooltip: 'Station the player must be at to craft this recipe.',
+          tooltip: t('crafting.tipStation'),
         },
         {
           id: 'reqs.duration',
-          label: 'Craft Duration',
+          label: t('crafting.duration'),
           type: 'range',
           min: 1,
           max: 600,
           step: 1,
           unit: 's',
-          tooltip: 'Time in seconds the crafting animation takes.',
+          tooltip: t('crafting.tipDuration'),
         },
       ],
     },
 
     {
       id: 'ingredients',
-      title: 'Ingredient Groups',
+      title: t('crafting.sectionIngredients'),
       icon: 'list',
       fields: [
         {
           id: 'groups',
-          label: 'Groups',
+          label: t('crafting.fieldGroups'),
           type: 'group-list',
-          tooltip: 'Each group can be marked Required or Optional. Add groups to represent alternative material sets.',
+          tooltip: t('crafting.tipGroups'),
         },
       ],
     },
 
   ],
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  LOADOUT FORM SCHEMA                                                 */
 /* ------------------------------------------------------------------ */
 
-const DROP_ON_DEATH_OPTIONS = [
-  { value: 'None',          label: 'None' },
-  { value: 'Equipped only', label: 'Equipped only' },
-  { value: 'All items',     label: 'All items' },
-];
-
-/** @type {FormSchema} */
-export const LOADOUT_SCHEMA = {
+/**
+ * Factory — returns a localised LoadoutSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createLoadoutSchema = (t) => ({
   id: 'loadout',
-  title: 'Loadout Template',
+  title: t('loadouts.formTitle'),
   icon: 'layers',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('loadouts.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
           id: 'name',
-          label: 'Loadout Name',
+          label: t('loadouts.fieldName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Endgame Warrior',
+          placeholder: t('loadouts.placeholderName'),
         },
         {
           id: 'tagline',
-          label: 'Tagline',
+          label: t('loadouts.fieldTagline'),
           type: 'text',
-          placeholder: 'e.g. High-tier raid kit',
-          tooltip: 'One-line description shown in list previews.',
+          placeholder: t('loadouts.placeholderTagline'),
+          tooltip: t('loadouts.tipTagline'),
         },
         {
           id: 'desc',
-          label: 'Description',
+          label: t('loadouts.fieldDesc'),
           type: 'textarea',
-          placeholder: 'Detailed notes about this loadout intended use…',
+          placeholder: t('loadouts.placeholderDesc'),
         },
       ],
     },
 
     {
       id: 'spawnBehaviour',
-      title: 'Spawn Behaviour',
+      title: t('loadouts.sectionSpawnBehaviour'),
       icon: 'bolt',
       compact: true,
       fields: [
         {
           id: 'behaviour.applyOnSpawn',
-          label: 'Apply on Spawn',
+          label: t('loadouts.fieldApplyOnSpawn'),
           type: 'switch',
-          tooltip: 'Equip and add items immediately when the NPC/player spawns.',
+          tooltip: t('loadouts.tipApplyOnSpawn'),
         },
         {
           id: 'behaviour.randomiseQty',
-          label: 'Randomise Quantity',
+          label: t('loadouts.fieldRandomiseQty'),
           type: 'switch',
-          tooltip: 'Roll item quantities within their min/max range at spawn time.',
+          tooltip: t('loadouts.tipRandomiseQty'),
         },
         {
           id: 'behaviour.autoEquipPass',
-          label: 'Auto-Equip Pass',
+          label: t('loadouts.fieldAutoEquipPass'),
           type: 'switch',
-          tooltip: 'Run an auto-equip pass after all items are added.',
+          tooltip: t('loadouts.tipAutoEquipPass'),
         },
         {
           id: 'behaviour.dropOnDeath',
-          label: 'Drop on Death',
+          label: t('loadouts.fieldDropOnDeath'),
           type: 'select',
-          options: DROP_ON_DEATH_OPTIONS,
+          options: [
+            { value: 'None',          label: t('loadouts.dropOnDeathNone') },
+            { value: 'Equipped only', label: t('loadouts.dropOnDeathEquipped') },
+            { value: 'All items',     label: t('loadouts.dropOnDeathAll') },
+          ],
         },
       ],
     },
 
     {
       id: 'composition',
-      title: 'Composition',
+      title: t('loadouts.sectionComposition'),
       icon: 'list',
       fields: [
         {
           id: 'items',
-          label: 'Items',
+          label: t('loadouts.fieldItems'),
           type: 'item-list',
-          tooltip: 'Each entry defines which item to add, its quantity, starting durability, whether to auto-equip, and an optional preferred slot.',
+          tooltip: t('loadouts.tipItems'),
         },
       ],
     },
 
     {
       id: 'slotMapping',
-      title: 'Slot Mapping',
+      title: t('loadouts.slotMapping'),
       icon: 'link',
       fields: [
         {
           id: 'slots',
-          label: 'Slot Assignments',
+          label: t('loadouts.fieldSlotAssignments'),
           type: 'slot-map',
           source: 'taxonomy.attachmentSlots',
-          tooltip: 'Maps each attachment slot to a specific item in the Composition list.',
+          tooltip: t('loadouts.tipSlotAssignments'),
         },
       ],
     },
 
   ],
-};
-
-/* ------------------------------------------------------------------ */
-/*  Registry — look up schema by form id                               */
-/* ------------------------------------------------------------------ */
-
-/** @type {Record<string, FormSchema>} */
-export const FORM_SCHEMAS = {
-  item:    ITEM_SCHEMA,
-  recipe:  RECIPE_SCHEMA,
-  loadout: LOADOUT_SCHEMA,
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  createDraft — blank starting state for each entity type            */
@@ -678,6 +673,7 @@ export const createItemDraft = () => ({
 export const createRecipeDraft = () => ({
   guid:          newGuid(),
   name:          '',
+  family:        'General',
   tier:          '',
   result:        { itemRef: '', display: '' },
   qtyMin:        1,

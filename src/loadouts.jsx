@@ -10,7 +10,7 @@ import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
-import { LOADOUT_SCHEMA, createLoadoutDraft } from './form-schemas.js';
+import { createLoadoutSchema, createLoadoutDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
 import {
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
@@ -231,7 +231,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
       <EntityCreateSheet
         open={createOpen}
         onOpenChange={setCreateOpen}
-        schema={LOADOUT_SCHEMA}
+        schema={createLoadoutSchema(t)}
         createDraft={createLoadoutDraft}
         taxonomy={tax}
         onSave={handleCreateLoadout}
@@ -420,7 +420,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
       </div>
 
       <FormRenderer
-        schema={LOADOUT_SCHEMA}
+        schema={createLoadoutSchema(t)}
         draft={draft}
         set={set}
         taxonomy={taxonomy}

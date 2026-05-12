@@ -10,7 +10,8 @@ import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe, exportEntityAsJson } from './store.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
-import { RECIPE_SCHEMA } from './form-schemas.js';
+import { createRecipeSchema, createRecipeDraft } from './form-schemas.js';
+import { EntityCreateSheet } from './entity-sheet.jsx';
 import {
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
   ContextMenuSeparator, ContextMenuTrigger,
@@ -189,10 +190,10 @@ function RecipeInspector({ recipe }) {
  * Editable recipe form. Resets when the selected recipe changes (parent uses key={recipe.guid}).
  * @param {{ recipe: Recipe, taxonomy: object }} props
  */
-function RecipeEditor({ recipe, taxonomy }) {
+function RecipeEditor({ recipe, taxonomy, onSaved }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(recipe);
-  const saveStatus = useAutoSave(draft, saveRecipe);
+  const saveStatus = useAutoSave(draft, saveRecipe, 1000, onSaved);
   const [ingredientModalGroupId, setIngredientModalGroupId] = useState(null);
 
   const set = (path, val) => setDraft(d => {
@@ -275,7 +276,7 @@ function RecipeEditor({ recipe, taxonomy }) {
 
       {/* Schema-driven sections: identity, result, requirements */}
       <FormRenderer
-        schema={RECIPE_SCHEMA}
+        schema={createRecipeSchema(t)}
         draft={draft}
         set={set}
         taxonomy={taxonomy}
@@ -349,10 +350,18 @@ export function CraftingScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [selected,      setSelected]      = useState(null);
   const [browserSearch, setBrowserSearch] = useState('');
+  const [createOpen,    setCreateOpen]    = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState(null);
+  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
   const allRecipes = Object.values(DATA.recipes).flat();
   const recipe     = allRecipes.find(r => r.guid === selected);
   const search     = (browserSearch || globalSearch || '').toLowerCase();
+
+  const handleCreateRecipe = async (newRecipe) => {
+    await saveRecipe(newRecipe);
+    await loadData();
+    setSelected(newRecipe.guid);
+  };
 
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateRecipe(entity);
@@ -371,7 +380,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
     <>
       <LeftPanel
         title={t('crafting.title')}
-        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')}/>}
+        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>}
         search={browserSearch} setSearch={setBrowserSearch}
         searchPlaceholder={t('crafting.filterPlaceholder')}
         loading={loading}
@@ -426,8 +435,10 @@ export function CraftingScreen({ search: globalSearch, loading }) {
         {loading
           ? <ContentSkeleton/>
           : allRecipes.length === 0
-            ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}/>
-            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax}/>
+            ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}>
+                <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('crafting.newTip')}</Button>
+              </EmptyState>
+            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
         }
       </main>
 
@@ -436,6 +447,16 @@ export function CraftingScreen({ search: globalSearch, loading }) {
           <RecipeInspector recipe={recipe}/>
         </CollapsibleAside>
       )}
+
+      <EntityCreateSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        schema={createRecipeSchema(t)}
+        createDraft={createRecipeDraft}
+        taxonomy={tax}
+        onSave={handleCreateRecipe}
+        sectionIds={['identity']}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteTarget}
