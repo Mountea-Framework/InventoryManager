@@ -18,4 +18,4 @@ jobs:
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GH_PAGES_DEPLOY_TOKEN }}
-        publish_dir: ./path-to-your-static-files
+        publish_dir: ./dist
