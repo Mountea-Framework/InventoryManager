@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n.js';
 import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
+import { ITEM_FLAGS, flagsToBits, bitsToFlags } from './data.js';
+import { FlagsPicker } from './form-renderer.jsx';
 import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
@@ -16,7 +18,7 @@ import { exportAllData, bulkImport } from './store.js';
  * @typedef {{ id: string, title: string, icon?: string, tags: string[], subcategories: Subcategory[] }} Category
  * @typedef {{ id: string, title: string, tags: string[] }} Subcategory
  * @typedef {{ id: string, title: string, tags: string[], color: string }} Rarity
- * @typedef {{ id: string, key: string, icon: string, tip: string }} ItemAction
+ * @typedef {{ id: string, key: string, icon: string, tip: string, flags?: number }} ItemAction
  * @typedef {{ id: string, name: string, tags: string[] }} AttachmentSlot
  * @typedef {{ id: string, name: string, icon?: string, tag: string }} CraftingStation
  * @typedef {{ categories: Category[], rarities: Rarity[], itemActions: ItemAction[], attachmentSlots: AttachmentSlot[], craftingStations: CraftingStation[] }} Taxonomy
@@ -662,6 +664,9 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
       </FRow>
       <FRow label={t('settings.tooltip')} hint={t('settings.tooltipDesc')}>
         <Input value={action.tip} onChange={e => update({ tip: e.target.value })}/>
+      </FRow>
+      <FRow label={t('settings.behaviourFlags')} hint={t('settings.behaviourFlagsHint')}>
+        <FlagsPicker value={action.flags ?? 0} onChange={v => update({ flags: v })}/>
       </FRow>
     </TaxEditPage>
   );

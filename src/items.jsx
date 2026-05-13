@@ -248,6 +248,15 @@ function ItemEditor({ item, taxonomy, onSaved }) {
       });
       return;
     }
+    if (path === 'itemActions') {
+      setDraft(d => {
+        const actionFlags = (taxonomy.itemActions ?? [])
+          .filter(a => (val ?? []).includes(a.key))
+          .reduce((acc, a) => acc | (a.flags ?? 0), 0);
+        return { ...d, itemActions: val, flags: d.flags | actionFlags };
+      });
+      return;
+    }
     setDraft(d => {
       const next = structuredClone(d);
       const keys = path.split('.');

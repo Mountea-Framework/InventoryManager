@@ -222,7 +222,9 @@
     "deleteStation": "Delete station",
     "tagsDesc": "Gameplay / data tags applied to every item in this category.",
     "subcategoriesDefined": "defined · click to edit",
-    "inheritedFrom": "Inherits from"
+    "inheritedFrom": "Inherits from",
+    "behaviourFlags": "Behaviour Flags",
+    "behaviourFlagsHint": "Flags enabled on an item when this action is selected. True wins — any action that enables a flag will set it."
   },
   "ui": {
     "selectFile": "Select file…",

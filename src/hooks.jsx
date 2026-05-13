@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { loadData } from './store.js';
 
 export const TAX_KEY = 'arch.taxonomy.v1';
@@ -83,28 +83,46 @@ const mergeIcon = (storedList, defaultList) =>
     return (def?.icon && !item.icon) ? { ...item, icon: def.icon } : item;
   });
 
+// Module-level shared state so all useTaxonomy() instances stay in sync
+// when one (e.g. Settings) writes while another (e.g. Items) is mounted.
+const taxListeners = new Set();
+let cachedTax = null;
+
+function readTaxFromStorage() {
+  try {
+    const raw = localStorage.getItem(TAX_KEY);
+    if (raw) {
+      const stored = JSON.parse(raw);
+      return {
+        ...DEFAULT_TAXONOMY,
+        ...stored,
+        categories:       stored.categories       ? mergeIcon(stored.categories,       DEFAULT_TAXONOMY.categories)       : DEFAULT_TAXONOMY.categories,
+        itemActions:      stored.itemActions      ?? DEFAULT_TAXONOMY.itemActions,
+        attachmentSlots:  stored.attachmentSlots  ?? DEFAULT_TAXONOMY.attachmentSlots,
+        craftingStations: stored.craftingStations ? mergeIcon(stored.craftingStations, DEFAULT_TAXONOMY.craftingStations) : DEFAULT_TAXONOMY.craftingStations,
+      };
+    }
+  } catch {}
+  return DEFAULT_TAXONOMY;
+}
+
 export const useTaxonomy = () => {
-  const [tax, setTax] = useState(() => {
-    try {
-      const raw = localStorage.getItem(TAX_KEY);
-      if (raw) {
-        const stored = JSON.parse(raw);
-        return {
-          ...DEFAULT_TAXONOMY,
-          ...stored,
-          categories:       stored.categories       ? mergeIcon(stored.categories,       DEFAULT_TAXONOMY.categories)       : DEFAULT_TAXONOMY.categories,
-          itemActions:      stored.itemActions      ?? DEFAULT_TAXONOMY.itemActions,
-          attachmentSlots:  stored.attachmentSlots  ?? DEFAULT_TAXONOMY.attachmentSlots,
-          craftingStations: stored.craftingStations ? mergeIcon(stored.craftingStations, DEFAULT_TAXONOMY.craftingStations) : DEFAULT_TAXONOMY.craftingStations,
-        };
-      }
-    } catch {}
-    return DEFAULT_TAXONOMY;
+  const [tax, setTaxState] = useState(() => {
+    if (!cachedTax) cachedTax = readTaxFromStorage();
+    return cachedTax;
   });
 
+  const setTax = useCallback((value) => {
+    const next = typeof value === 'function' ? value(cachedTax) : value;
+    cachedTax = next;
+    try { localStorage.setItem(TAX_KEY, JSON.stringify(next)); } catch {}
+    taxListeners.forEach(l => l(next));
+  }, []);
+
   useEffect(() => {
-    try { localStorage.setItem(TAX_KEY, JSON.stringify(tax)); } catch {}
-  }, [tax]);
+    taxListeners.add(setTaxState);
+    return () => taxListeners.delete(setTaxState);
+  }, []);
 
   return [tax, setTax];
 };

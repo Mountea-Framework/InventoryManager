@@ -223,7 +223,9 @@
     "deleteStation": "Smazat stanici",
     "tagsDesc": "Herní / datové tagy aplikované na každý předmět v této kategorii.",
     "subcategoriesDefined": "definováno · kliknutím upravíte",
-    "inheritedFrom": "Zděděno z"
+    "inheritedFrom": "Zděděno z",
+    "behaviourFlags": "Příznaky chování",
+    "behaviourFlagsHint": "Příznaky aktivované na předmětu při výběru této akce. Platí pravda — jakákoli akce, která příznak povolí, ho nastaví."
   },
   "ui": {
     "selectFile": "Vybrat soubor…",
