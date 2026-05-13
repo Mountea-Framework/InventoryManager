@@ -343,9 +343,8 @@ export const ITEM_SCHEMA = {
         {
           id: 'attachmentSlots',
           label: 'Attachment Slots',
-          type: 'string-list',
+          type: 'chip-multi',
           source: 'taxonomy.attachmentSlots',
-          placeholder: 'e.g. Slot.Optic',
           tooltip: 'Slots available on this item for attaching other items.',
         },
       ],

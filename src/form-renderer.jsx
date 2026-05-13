@@ -101,6 +101,37 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
 }
 
 /**
+ * Generic multi-select chip grid for string option lists (e.g. attachment slots).
+ * @param {{ value: string[], onChange: (v: string[]) => void, options: string[] }} props
+ */
+function MultiChipField({ value = [], onChange, options = [] }) {
+  const selected = new Set(value);
+  const toggle = (opt) => {
+    const next = selected.has(opt) ? value.filter(v => v !== opt) : [...value, opt];
+    onChange?.(next);
+  };
+  if (options.length === 0)
+    return <span className="text-xs italic text-muted-foreground">No options defined in settings.</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(opt => {
+        const on = selected.has(opt);
+        return (
+          <button key={opt} type="button" onClick={() => toggle(opt)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-mono transition-colors',
+              on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+            )}>
+            {on && <Icon name="check" size={11} className="text-primary"/>}
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Multi-select action chip grid. Reads available actions from taxonomy (falls back to ITEM_ACTIONS).
  * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
  */
@@ -280,6 +311,10 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'flags':
       return <FlagsPicker value={value ?? 0} onChange={onChange}/>;
     case 'chip-multi':
+      if (field.source) {
+        const options = resolveOptions(field, taxonomy, draft);
+        return <MultiChipField value={value ?? []} onChange={onChange} options={options}/>;
+      }
       return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
     case 'range':
       return <RangeField field={field} value={value} onChange={onChange}/>;
