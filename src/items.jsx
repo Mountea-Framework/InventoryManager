@@ -10,7 +10,7 @@ import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem, exportEntityAsJson } from './store.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
-import { ITEM_SCHEMA, createItemDraft } from './form-schemas.js';
+import { createItemSchema, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
 import {
   ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
@@ -185,7 +185,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
       <EntityCreateSheet
         open={createOpen}
         onOpenChange={setCreateOpen}
-        schema={ITEM_SCHEMA}
+        schema={createItemSchema(t)}
         createDraft={createItemDraft}
         taxonomy={tax}
         onSave={handleCreateItem}
@@ -254,7 +254,7 @@ function ItemEditor({ item, taxonomy, onSaved }) {
         </div>
       </div>
 
-      <FormRenderer schema={ITEM_SCHEMA} draft={draft} set={set} taxonomy={taxonomy}/>
+      <FormRenderer schema={createItemSchema(t)} draft={draft} set={set} taxonomy={taxonomy}/>
     </div>
   );
 }

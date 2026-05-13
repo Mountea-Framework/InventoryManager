@@ -40,7 +40,21 @@
     "notReferenced": "Zatím nepoužito.",
     "jsonPreview": "Náhled JSON",
     "empty": "Zatím žádné šablony itemů",
-    "emptyDesc": "Vytvořte první šablonu itemu."
+    "emptyDesc": "Vytvořte první šablonu itemu.",
+    "formTitle": "Šablona itemu",
+    "sectionIdentity": "Identita",
+    "sectionDescription": "Popis",
+    "sectionFlagsAndLimits": "Příznaky a limity",
+    "sectionVisuals": "Vizuály",
+    "sectionSpawn": "Spawn",
+    "sectionDurability": "Odolnost",
+    "sectionEconomy": "Ekonomika",
+    "sectionWeight": "Váha",
+    "sectionTags": "Tagy",
+    "sectionAttachmentSlots": "Sloty",
+    "sectionSpecialAffects": "Speciální efekty",
+    "sectionItemActions": "Akce itemu",
+    "tipAttachmentSlots": "Sloty, které tento předmět nabízí pro připojení jiných předmětů (např. scope, zásobník, rukojeť)."
   },
   "loadouts": {
     "title": "Šablony loadoutů",

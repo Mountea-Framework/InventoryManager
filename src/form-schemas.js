@@ -69,16 +69,20 @@
 /*  ITEM FORM SCHEMA                                                    */
 /* ------------------------------------------------------------------ */
 
-/** @type {FormSchema} */
-export const ITEM_SCHEMA = {
+/**
+ * Factory — returns a localised ItemSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createItemSchema = (t) => ({
   id: 'item',
-  title: 'Item Template',
+  title: t('items.formTitle'),
   icon: 'cube',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('items.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
@@ -118,7 +122,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'description',
-      title: 'Description',
+      title: t('items.sectionDescription'),
       icon: 'eye',
       fields: [
         {
@@ -139,7 +143,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'flags',
-      title: 'Flags & Limits',
+      title: t('items.sectionFlagsAndLimits'),
       icon: 'layers',
       fields: [
         {
@@ -171,7 +175,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'visuals',
-      title: 'Visuals',
+      title: t('items.sectionVisuals'),
       icon: 'eye',
       fields: [
         {
@@ -203,7 +207,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'spawn',
-      title: 'Spawn',
+      title: t('items.sectionSpawn'),
       icon: 'bolt',
       compact: true,
       fields: [
@@ -219,7 +223,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'durability',
-      title: 'Durability',
+      title: t('items.sectionDurability'),
       icon: 'history',
       compact: true,
       fields: [
@@ -269,7 +273,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'economy',
-      title: 'Economy',
+      title: t('items.sectionEconomy'),
       icon: 'export',
       compact: true,
       fields: [
@@ -300,7 +304,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'weight',
-      title: 'Weight',
+      title: t('items.sectionWeight'),
       icon: 'layers',
       compact: true,
       fields: [
@@ -322,7 +326,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'tags',
-      title: 'Tags',
+      title: t('items.sectionTags'),
       icon: 'tag',
       fields: [
         {
@@ -337,22 +341,22 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'attachment',
-      title: 'Attachment Slots',
+      title: t('items.sectionAttachmentSlots'),
       icon: 'link',
       fields: [
         {
           id: 'attachmentSlots',
           label: 'Attachment Slots',
-          type: 'chip-multi',
-          source: 'taxonomy.attachmentSlots',
-          tooltip: 'Slots available on this item for attaching other items.',
+          type: 'tags',
+          placeholder: 'e.g. Slot.Scope',
+          tooltip: t('items.tipAttachmentSlots'),
         },
       ],
     },
 
     {
       id: 'specialAffects',
-      title: 'Special Affects',
+      title: t('items.sectionSpecialAffects'),
       icon: 'sparkle',
       fields: [
         {
@@ -367,7 +371,7 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'itemActions',
-      title: 'Item Actions',
+      title: t('items.sectionItemActions'),
       icon: 'play',
       fields: [
         {
@@ -381,7 +385,7 @@ export const ITEM_SCHEMA = {
     },
 
   ],
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  CRAFTING RECIPE FORM SCHEMA                                         */

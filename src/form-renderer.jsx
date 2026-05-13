@@ -102,28 +102,35 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
 
 /**
  * Generic multi-select chip grid for string option lists (e.g. attachment slots).
- * @param {{ value: string[], onChange: (v: string[]) => void, options: string[] }} props
+ * Accepts strings or option-like objects ({ value, label }).
+ * @param {{ value: string[], onChange: (v: string[]) => void, options: Array<string|{value:string,label?:string}> }} props
  */
 function MultiChipField({ value = [], onChange, options = [] }) {
+  const normalized = options.map((opt) => {
+    if (typeof opt === 'string') return { value: opt, label: opt };
+    if (opt && typeof opt === 'object') return { value: opt.value ?? '', label: opt.label ?? String(opt.value ?? '') };
+    return { value: '', label: '' };
+  }).filter(opt => !!opt.value);
+
   const selected = new Set(value);
-  const toggle = (opt) => {
-    const next = selected.has(opt) ? value.filter(v => v !== opt) : [...value, opt];
+  const toggle = (optValue) => {
+    const next = selected.has(optValue) ? value.filter(v => v !== optValue) : [...value, optValue];
     onChange?.(next);
   };
-  if (options.length === 0)
+  if (normalized.length === 0)
     return <span className="text-xs italic text-muted-foreground">No options defined in settings.</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {options.map(opt => {
-        const on = selected.has(opt);
+      {normalized.map(opt => {
+        const on = selected.has(opt.value);
         return (
-          <button key={opt} type="button" onClick={() => toggle(opt)}
+          <button key={opt.value} type="button" onClick={() => toggle(opt.value)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-mono transition-colors',
               on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
             )}>
             {on && <Icon name="check" size={11} className="text-primary"/>}
-            {opt}
+            {opt.label}
           </button>
         );
       })}
@@ -311,6 +318,8 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'flags':
       return <FlagsPicker value={value ?? 0} onChange={onChange}/>;
     case 'chip-multi':
+      if (field.source === 'taxonomy.itemActions')
+        return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
       if (field.source) {
         const options = resolveOptions(field, taxonomy, draft);
         return <MultiChipField value={value ?? []} onChange={onChange} options={options}/>;

@@ -39,7 +39,21 @@
     "notReferenced": "Not referenced yet.",
     "jsonPreview": "JSON Preview",
     "empty": "No item templates yet",
-    "emptyDesc": "Add your first item template to get started."
+    "emptyDesc": "Add your first item template to get started.",
+    "formTitle": "Item Template",
+    "sectionIdentity": "Identity",
+    "sectionDescription": "Description",
+    "sectionFlagsAndLimits": "Flags & Limits",
+    "sectionVisuals": "Visuals",
+    "sectionSpawn": "Spawn",
+    "sectionDurability": "Durability",
+    "sectionEconomy": "Economy",
+    "sectionWeight": "Weight",
+    "sectionTags": "Tags",
+    "sectionAttachmentSlots": "Attachment Slots",
+    "sectionSpecialAffects": "Special Affects",
+    "sectionItemActions": "Item Actions",
+    "tipAttachmentSlots": "Slots this item exposes for other items to attach into (e.g. scope, magazine, grip)."
   },
   "loadouts": {
     "title": "Loadout Templates",
