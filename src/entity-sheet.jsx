@@ -24,7 +24,7 @@ import { FormRenderer } from './form-renderer.jsx';
  * }} props
  */
 export function EntityCreateSheet({
-  open, onOpenChange, schema, createDraft, taxonomy, onSave, sectionIds,
+  open, onOpenChange, schema, createDraft, taxonomy, onSave, sectionIds, afterSet,
 }) {
   const [draft, setDraft] = useState(createDraft);
 
@@ -55,7 +55,7 @@ export function EntityCreateSheet({
         })
       );
 
-      return next;
+      return afterSet ? afterSet(next, path, val) : next;
     });
   };
 

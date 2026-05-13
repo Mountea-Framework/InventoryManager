@@ -8,7 +8,8 @@ import {
   ContentSkeleton, EmptyState, DeleteConfirmDialog,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe, exportEntityAsJson } from './store.js';
+import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
+import { exportRecipe } from './exporter.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { createRecipeSchema, createRecipeDraft } from './form-schemas.js';
@@ -401,7 +402,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateRecipe(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.name}.json`);
+  const handleExport        = (entity) => exportRecipe(entity, tax);
   const handleDeleteRequest = (entity) => setDeleteTarget(entity);
   const handleDeleteConfirm = async () => {
     await deleteRecipe(deleteTarget.guid);

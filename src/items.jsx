@@ -7,7 +7,8 @@ import {
   ContentSkeleton, EmptyState, DeleteConfirmDialog,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
-import { DATA, saveItem, loadData, deleteItem, duplicateItem, exportEntityAsJson } from './store.js';
+import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
+import { exportItem } from './exporter.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { createItemSchema, createItemDraft } from './form-schemas.js';
@@ -26,6 +27,29 @@ import {
 
 /** @param {string} g @returns {string} */
 const shortGuid = (g) => g ? g.slice(0, 8) + '…' : '';
+
+/**
+ * After setting `category` or `subCategory`, append that taxonomy entry's tags
+ * to the draft's `tags` array, skipping any already present.
+ * @param {object} draft
+ * @param {string} path
+ * @param {string} val
+ * @param {object} taxonomy
+ * @returns {object}
+ */
+function addCategoryTags(draft, path, val, taxonomy) {
+  let newTags = [];
+  if (path === 'category') {
+    newTags = taxonomy.categories?.find(c => c.title === val)?.tags ?? [];
+  } else if (path === 'subCategory') {
+    const cat = taxonomy.categories?.find(c => c.title === draft.category);
+    newTags = cat?.subcategories?.find(s => s.title === val)?.tags ?? [];
+  }
+  if (!newTags.length) return draft;
+  const existing = new Set(draft.tags ?? []);
+  const unique = newTags.filter(t => !existing.has(t));
+  return unique.length ? { ...draft, tags: [...(draft.tags ?? []), ...unique] } : draft;
+}
 
 /* ============================================================
    ItemTreeNode — sidebar category row
@@ -133,7 +157,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateItem(entity);
     navigate(`/inventory/${newGuid}`);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.displayName}.json`);
+  const handleExport        = (entity) => exportItem(entity, tax);
   const handleDeleteRequest = (entity) => setDeleteTarget(entity);
   const handleDeleteConfirm = async () => {
     await deleteItem(deleteTarget.guid);
@@ -190,6 +214,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         taxonomy={tax}
         onSave={handleCreateItem}
         sectionIds={['identity', 'description', 'flags']}
+        afterSet={(draft, path, val) => addCategoryTags(draft, path, val, tax)}
       />
 
       <DeleteConfirmDialog
@@ -217,7 +242,10 @@ function ItemEditor({ item, taxonomy, onSaved }) {
 
   const set = (path, val) => {
     if (path === 'category') {
-      setDraft(d => ({ ...d, category: val, subCategory: '' }));
+      setDraft(d => {
+        const base = { ...d, category: val, subCategory: '' };
+        return addCategoryTags(base, path, val, taxonomy);
+      });
       return;
     }
     setDraft(d => {
@@ -229,7 +257,7 @@ function ItemEditor({ item, taxonomy, onSaved }) {
         cur = cur[keys[i]];
       }
       cur[keys[keys.length - 1]] = val;
-      return next;
+      return addCategoryTags(next, path, val, taxonomy);
     });
   };
 

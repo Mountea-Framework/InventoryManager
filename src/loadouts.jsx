@@ -8,7 +8,8 @@ import {
   ContentSkeleton, EmptyState, DeleteConfirmDialog,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
+import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
+import { exportLoadout } from './exporter.js';
 import { useTaxonomy, useAutoSave } from './hooks.jsx';
 import { FormRenderer } from './form-renderer.jsx';
 import { createLoadoutSchema, createLoadoutDraft } from './form-schemas.js';
@@ -165,7 +166,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateLoadout(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.name}.json`);
+  const handleExport        = (entity) => exportLoadout(entity, tax);
   const handleDeleteRequest = (entity) => setDeleteTarget(entity);
   const handleDeleteConfirm = async () => {
     await deleteLoadout(deleteTarget.guid);
