@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
@@ -193,27 +193,34 @@ export function ItemsScreen({ search: globalSearch, loading }) {
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('items.title')}
-        headerActions={<IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('items.filterPlaceholder')}
-        loading={loading}
-      >
-        {Object.entries(DATA.items).map(([cat, arr]) => (
-          <ItemTreeNode key={cat} category={cat} items={arr}
-            expanded={expanded} setExpanded={setExpanded}
-            selected={selected} setSelected={setSelected}
-            search={search}
-            icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}
-            onDuplicate={handleDuplicate}
-            onExport={handleExport}
-            onDeleteRequest={handleDeleteRequest}/>
-        ))}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('items.title')}
+          headerActions={<IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>}
+          search={browserSearch} setSearch={setBrowserSearch}
+          searchPlaceholder={t('items.filterPlaceholder')}
+          loading={loading}
+        >
+          {Object.entries(DATA.items).map(([cat, arr]) => (
+            <ItemTreeNode key={cat} category={cat} items={arr}
+              expanded={expanded} setExpanded={setExpanded}
+              selected={selected} setSelected={setSelected}
+              search={search}
+              icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}
+              onDuplicate={handleDuplicate}
+              onExport={handleExport}
+              onDeleteRequest={handleDeleteRequest}/>
+          ))}
+        </ElementsSidebar>
+      }
+      inspectorSidebar={item && (
+        <InspectorSidebar>
+          <ItemInspector item={item}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : DATA.allItems.length === 0
@@ -224,13 +231,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
               ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
               : <div className="p-10 text-sm text-muted-foreground">{t('items.selectPrompt')}</div>
         }
-      </main>
-
-      {item && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <ItemInspector item={item}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -249,7 +250,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.displayName ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }
 
@@ -340,9 +341,8 @@ function ItemInspector({ item }) {
   };
 
   return (
-    <div className="space-y-5 p-4 pt-10">
+    <div className="space-y-5 p-4 pt-4">
       <div>
-        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('items.inspector')}</div>
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <Thumb size={40} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>

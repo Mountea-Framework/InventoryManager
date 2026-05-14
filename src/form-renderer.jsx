@@ -188,6 +188,61 @@ export function ItemActionsPicker({ value = [], onChange, taxonomy }) {
 }
 
 /**
+ * Multi-select chip grid for special affect blueprints defined in taxonomy.
+ * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
+ */
+export function SpecialAffectsPicker({ value = [], onChange, taxonomy }) {
+  const catalog = taxonomy?.specialAffects ?? [];
+  const enabled = new Set(value);
+
+  const toggle = (tag) => {
+    const next = enabled.has(tag) ? value.filter(t => t !== tag) : [...value, tag];
+    onChange?.(next);
+  };
+
+  if (catalog.length === 0)
+    return <span className="text-xs italic text-muted-foreground">No special affects defined. Add them in Settings.</span>;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
+        {catalog.map(a => {
+          const on = enabled.has(a.tag);
+          return (
+            <Tooltip key={a.tag} content={a.tag}>
+              <button type="button" onClick={() => toggle(a.tag)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
+                  on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+                )}>
+                <Icon name="sparkle" size={12} className={on ? 'text-primary' : ''}/>
+                <span className="truncate">{a.name}</span>
+                {on && <Icon name="check" size={11} className="text-primary"/>}
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <div className="rounded-md border border-border/60 bg-card/40 p-2.5">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active affects</div>
+          <div className="flex flex-wrap gap-1.5">
+            {value.map(tag => {
+              const af = catalog.find(a => a.tag === tag);
+              return (
+                <span key={tag} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10.5px] text-primary">
+                  {af?.name ?? tag}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Generic range slider for schema-driven forms.
  * @param {{ field: FieldSchema, value: string|number, onChange: (v: string|number) => void }} props
  */
@@ -320,6 +375,8 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'chip-multi':
       if (field.source === 'taxonomy.itemActions')
         return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+      if (field.source === 'taxonomy.specialAffects')
+        return <SpecialAffectsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
       if (field.source) {
         const options = resolveOptions(field, taxonomy, draft);
         return <MultiChipField value={value ?? []} onChange={onChange} options={options}/>;

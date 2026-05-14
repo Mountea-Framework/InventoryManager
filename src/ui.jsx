@@ -1,6 +1,11 @@
 import React, { useState, useRef, forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import {
+  Sidebar, SidebarContent, SidebarHeader as ShadcnSidebarHeader,
+  SidebarInput, SidebarInset, SidebarProvider, SidebarRail, SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
 /* ---------- shadcn component imports ---------- */
 import { Button as ShadcnButton } from '@/components/ui/button';
@@ -21,6 +26,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton as SkeletonPrim } from '@/components/ui/skeleton';
+
+export { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 
 /* ---------- re-exports of shadcn primitives (no changes needed at call sites) ---------- */
 export { cn }                      from '@/lib/utils';
@@ -408,62 +415,95 @@ export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
 }
 
 /* ============================================================
-   LeftPanel — sidebar container with title, search, action slots
+   ScreenLayout — dual-sidebar layout (left elements + right inspector)
    ============================================================ */
-export function LeftPanel({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {
-  const { t } = useTranslation();
-  const resolvedPlaceholder = searchPlaceholder ?? t('ui.filterPlaceholder');
+
+export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
+  const [leftOpen, setLeftOpen] = useState(() => {
+    try { return localStorage.getItem('arch.sidebar.elements') !== 'false'; } catch { return true; }
+  });
+  const [rightOpen, setRightOpen] = useState(() => {
+    try { return localStorage.getItem('arch.sidebar.inspector') === 'true'; } catch { return false; }
+  });
+
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-muted/20">
-      <div className="border-b border-border p-3 space-y-2">
-        <div className="flex items-center gap-1">
-          <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</span>
-          {headerActions}
-        </div>
-        <div className="relative">
-          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
-          <ShadcnInput placeholder={resolvedPlaceholder} value={search ?? ''}
-            onChange={e => setSearch?.(e.target.value)} className="h-8 pl-7 text-xs"/>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto py-2">
-        {loading ? <SidebarSkeleton/> : children}
-      </div>
-    </aside>
+    <SidebarProvider
+      open={leftOpen}
+      onOpenChange={v => { setLeftOpen(v); try { localStorage.setItem('arch.sidebar.elements', String(v)); } catch {} }}
+      style={{ '--sidebar-width': '300px' }}
+    >
+      {elementsSidebar}
+      <SidebarInset className="flex min-h-0 flex-col overflow-hidden p-0">
+        <SidebarProvider
+          open={rightOpen}
+          onOpenChange={v => { setRightOpen(v); try { localStorage.setItem('arch.sidebar.inspector', String(v)); } catch {} }}
+          style={{ '--sidebar-width': '340px' }}
+        >
+          <SidebarInset className="min-h-0 overflow-auto">
+            {children}
+          </SidebarInset>
+          {inspectorSidebar}
+        </SidebarProvider>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
 /* ============================================================
-   CollapsibleAside — collapsible right inspector panel
+   ElementsSidebar — left entity list sidebar (shadcn Sidebar)
    ============================================================ */
-export const CollapsibleAside = ({ storageKey, width, children }) => {
-  const [collapsed, setCollapsed] = React.useState(() => {
-    try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
-  });
-  const toggle = () => {
-    setCollapsed(c => {
-      const n = !c;
-      try { localStorage.setItem(storageKey, n ? '1' : '0'); } catch {}
-      return n;
-    });
-  };
-  if (collapsed) {
-    return (
-      <aside className="flex w-8 shrink-0 justify-center border-l border-border bg-muted/30 pt-3">
-        <Button variant="ghost" size="icon-sm" onClick={toggle} icon="chevLeft"/>
-      </aside>
-    );
-  }
+export function ElementsSidebar({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {
+  const { t } = useTranslation();
   return (
-    <aside className="relative shrink-0 overflow-auto border-l border-border bg-muted/20" style={{ width }}>
-      <button onClick={toggle}
-        className="absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground">
-        <Icon name="chevRight" size={12}/>
-      </button>
-      {children}
-    </aside>
+    <Sidebar collapsible="icon" side="left">
+      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-2">
+        <div className="flex items-center gap-1">
+          <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">{title}</span>
+          <div className="group-data-[state=collapsed]:hidden">{headerActions}</div>
+          <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
+        </div>
+        <div className="relative group-data-[state=collapsed]:hidden">
+          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
+          <SidebarInput
+            placeholder={searchPlaceholder ?? t('ui.filterPlaceholder')}
+            value={search ?? ''}
+            onChange={e => setSearch?.(e.target.value)}
+            className="pl-7 text-xs"
+          />
+        </div>
+      </ShadcnSidebarHeader>
+      <SidebarContent className="py-2 group-data-[state=collapsed]:hidden">
+        {loading ? <SidebarSkeleton/> : children}
+      </SidebarContent>
+      <SidebarRail/>
+    </Sidebar>
   );
-};
+}
+
+/* ============================================================
+   InspectorSidebar — right inspector sidebar (shadcn Sidebar)
+   ============================================================ */
+export function InspectorSidebar({ title, headerActions, children }) {
+  const { t } = useTranslation();
+  return (
+    <Sidebar collapsible="icon" side="right">
+      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-2">
+        <div className="flex items-center gap-1">
+          <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
+          <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">
+            {title ?? t('ui.inspector')}
+          </span>
+          <div className="group-data-[state=collapsed]:hidden">{headerActions}</div>
+        </div>
+        <div className="h-8 group-data-[state=collapsed]:hidden"/>
+      </ShadcnSidebarHeader>
+      <SidebarContent className="overflow-y-auto group-data-[state=collapsed]:hidden">
+        {children}
+      </SidebarContent>
+      <SidebarRail/>
+    </Sidebar>
+  );
+}
 
 /* ============================================================
    Card family — lightweight card primitives (shadcn card not installed)

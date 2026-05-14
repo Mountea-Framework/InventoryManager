@@ -21,7 +21,8 @@ import { exportAllData, bulkImport } from './store.js';
  * @typedef {{ id: string, key: string, icon: string, tip: string, flags?: number }} ItemAction
  * @typedef {{ id: string, name: string, tags: string[] }} AttachmentSlot
  * @typedef {{ id: string, name: string, icon?: string, tag: string }} CraftingStation
- * @typedef {{ categories: Category[], rarities: Rarity[], itemActions: ItemAction[], attachmentSlots: AttachmentSlot[], craftingStations: CraftingStation[] }} Taxonomy
+ * @typedef {{ id: string, name: string, tag: string }} SpecialAffect
+ * @typedef {{ categories: Category[], rarities: Rarity[], itemActions: ItemAction[], attachmentSlots: AttachmentSlot[], craftingStations: CraftingStation[], specialAffects: SpecialAffect[] }} Taxonomy
  */
 
 /* ============================================================
@@ -231,6 +232,8 @@ export function SettingsCommand({ open, onOpenChange }) {
       else if (p.type === 'attachmentSlot')   parts.push(tax.attachmentSlots.find(s => s.id === p.id)?.name || t('settings.attachmentSlots'));
       else if (p.type === 'craftingStations') parts.push(t('settings.craftingStations'));
       else if (p.type === 'craftingStation')  parts.push(tax.craftingStations.find(s => s.id === p.id)?.name || t('settings.craftingStations'));
+      else if (p.type === 'specialAffects')   parts.push(t('settings.specialAffects'));
+      else if (p.type === 'specialAffect')    parts.push((tax.specialAffects ?? []).find(a => a.id === p.id)?.name || t('settings.specialAffects'));
     }
     return parts;
   }, [stack, tax, t]);
@@ -252,6 +255,8 @@ export function SettingsCommand({ open, onOpenChange }) {
         {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
         {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
         {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id}/>}
+        {page.type === 'specialAffects'    && <SpecialAffectsPage      {...shared}/>}
+        {page.type === 'specialAffect'     && <SpecialAffectEditPage   {...shared} affectId={page.id}/>}
       </DialogContent>
     </Dialog>
   );
@@ -356,6 +361,7 @@ function RootPage({ push, close }) {
           <CommandItem value="item actions verbs player"         icon="cog"     shortcut="→" onSelect={() => push({ type: 'itemActions' })}>{t('settings.itemActions')}</CommandItem>
           <CommandItem value="attachment slots equipment"        icon="link"    shortcut="→" onSelect={() => push({ type: 'attachmentSlots' })}>{t('settings.attachmentSlots')}</CommandItem>
           <CommandItem value="crafting stations workbench forge" icon="hammer"  shortcut="→" onSelect={() => push({ type: 'craftingStations' })}>{t('settings.craftingStations')}</CommandItem>
+          <CommandItem value="special affects blueprints effects" icon="sparkle" shortcut="→" onSelect={() => push({ type: 'specialAffects' })}>{t('settings.specialAffects')}</CommandItem>
         </CommandGroup>
 
         <CommandSeparator/>
@@ -799,6 +805,64 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
       </FRow>
       <FRow label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
         <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
+      </FRow>
+    </TaxEditPage>
+  );
+}
+
+/* ============================================================
+   Special Affects
+   ============================================================ */
+function SpecialAffectsPage({ trail, onBack, onClose, tax, setTax, push }) {
+  const { t } = useTranslation();
+  const affects = tax.specialAffects ?? [];
+  const addAffect = () => {
+    const id = newId('sa');
+    setTax({ ...tax, specialAffects: [...affects, { id, name: 'New Affect', tag: 'Effect.New' }] });
+    push({ type: 'specialAffect', id });
+  };
+  return (
+    <TaxListPage
+      trail={trail} onBack={onBack} onClose={onClose}
+      placeholder={t('settings.searchSpecialAffects')}
+      heading={`${affects.length} ${t('settings.specialAffects').toLowerCase()}`}
+      onAdd={addAffect} addLabel={t('settings.newSpecialAffect')}
+    >
+      {affects.map(a => (
+        <CommandItem
+          key={a.id}
+          value={`${a.name} ${a.tag}`}
+          icon="sparkle"
+          shortcut={a.tag}
+          onSelect={() => push({ type: 'specialAffect', id: a.id })}
+        >{a.name}</CommandItem>
+      ))}
+    </TaxListPage>
+  );
+}
+
+function SpecialAffectEditPage({ trail, onBack, onClose, affectId, tax, setTax }) {
+  const { t } = useTranslation();
+  const affects = tax.specialAffects ?? [];
+  const affect = affects.find(a => a.id === affectId);
+  if (!affect) return null;
+
+  const update = (patch) =>
+    setTax({ ...tax, specialAffects: affects.map(a => a.id === affectId ? { ...a, ...patch } : a) });
+
+  const remove = () => {
+    if (!confirm(`${t('settings.deleteSpecialAffect')} "${affect.name}"?`)) return;
+    setTax({ ...tax, specialAffects: affects.filter(a => a.id !== affectId) });
+    onBack();
+  };
+
+  return (
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
+      <FRow label={t('settings.affectName')} hint={t('settings.affectNameDesc')}>
+        <Input value={affect.name} onChange={e => update({ name: e.target.value })} autoFocus/>
+      </FRow>
+      <FRow label={t('settings.affectTag')} hint={t('settings.affectTagDesc')}>
+        <Input value={affect.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
       </FRow>
     </TaxEditPage>
   );

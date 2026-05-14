@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
+  Section,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
@@ -407,61 +407,69 @@ export function CraftingScreen({ search: globalSearch, loading }) {
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('crafting.title')}
-        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('crafting.filterPlaceholder')}
-        loading={loading}
-      >
-        {Object.entries(DATA.recipes).map(([family, recipes]) => {
-          const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
-          const filtered = search ? recipes.filter(r => (r.name + ' ' + r.guid).toLowerCase().includes(search)) : recipes;
-          if (filtered.length === 0) return null;
-          return (
-            <div key={family} className="mb-1">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Icon name={icon} size={12}/>
-                <span className="flex-1">{family}</span>
-                <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('crafting.title')}
+          headerActions={<IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>}
+          search={browserSearch}
+          setSearch={setBrowserSearch}
+          searchPlaceholder={t('crafting.filterPlaceholder')}
+          loading={loading}
+        >
+          {Object.entries(DATA.recipes).map(([family, recipes]) => {
+            const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
+            const filtered = search ? recipes.filter(r => (r.name + ' ' + r.guid).toLowerCase().includes(search)) : recipes;
+            if (filtered.length === 0) return null;
+            return (
+              <div key={family} className="mb-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Icon name={icon} size={12}/>
+                  <span className="flex-1">{family}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
+                </div>
+                {filtered.map(r => (
+                  <ContextMenu key={r.guid}>
+                    <ContextMenuTrigger asChild>
+                      <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
+                        <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{r.name}</div>
+                            <div className="truncate font-mono text-[10px] text-muted-foreground">{r.guid}</div>
+                          </div>
+                        </Tooltip>
+                      </SidebarItem>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-44">
+                      <ContextMenuGroup>
+                        <ContextMenuItem onClick={() => handleDuplicate(r)}>
+                          <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleExport(r)}>
+                          <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
+                        </ContextMenuItem>
+                      </ContextMenuGroup>
+                      <ContextMenuSeparator/>
+                      <ContextMenuGroup>
+                        <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(r)}>
+                          <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
+                        </ContextMenuItem>
+                      </ContextMenuGroup>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
               </div>
-              {filtered.map(r => (
-                <ContextMenu key={r.guid}>
-                  <ContextMenuTrigger asChild>
-                    <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
-                      <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">{r.name}</div>
-                          <div className="truncate font-mono text-[10px] text-muted-foreground">{r.guid}</div>
-                        </div>
-                      </Tooltip>
-                    </SidebarItem>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-44">
-                    <ContextMenuGroup>
-                      <ContextMenuItem onClick={() => handleDuplicate(r)}>
-                        <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleExport(r)}>
-                        <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                      </ContextMenuItem>
-                    </ContextMenuGroup>
-                    <ContextMenuSeparator/>
-                    <ContextMenuGroup>
-                      <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(r)}>
-                        <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                      </ContextMenuItem>
-                    </ContextMenuGroup>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
-          );
-        })}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+            );
+          })}
+        </ElementsSidebar>
+      }
+      inspectorSidebar={recipe && (
+        <InspectorSidebar>
+          <RecipeInspector recipe={recipe}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : allRecipes.length === 0
@@ -470,13 +478,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
               </EmptyState>
             : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
         }
-      </main>
-
-      {recipe && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <RecipeInspector recipe={recipe}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -494,6 +496,6 @@ export function CraftingScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.name ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }

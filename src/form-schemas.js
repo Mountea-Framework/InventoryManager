@@ -361,10 +361,10 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'specialAffects',
-          label: 'Special Affect Blueprints',
-          type: 'string-list',
-          placeholder: '/Game/Blueprints/Affects/BP_MyEffect_C',
-          tooltip: 'Full asset paths to Blueprint Affect classes applied when this item is active.',
+          label: 'Special Affects',
+          type: 'chip-multi',
+          source: 'taxonomy.specialAffects',
+          tooltip: 'Affect blueprints applied when this item is active. Define affects in Settings → Special Affects.',
         },
       ],
     },

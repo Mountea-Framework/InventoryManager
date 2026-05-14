@@ -228,11 +228,20 @@
     "defaultFlags": "Default Flags",
     "defaultFlagsDesc": "Flags OR'd into every item when this category is selected. True wins — existing flags are never cleared.",
     "defaultItemActions": "Default Item Actions",
-    "defaultItemActionsDesc": "Actions added to every item when this category is selected. Their connected behaviour flags are applied automatically."
+    "defaultItemActionsDesc": "Actions added to every item when this category is selected. Their connected behaviour flags are applied automatically.",
+    "specialAffects": "Special Affects",
+    "searchSpecialAffects": "Search affects…",
+    "newSpecialAffect": "New affect…",
+    "deleteSpecialAffect": "Delete affect",
+    "affectName": "Name",
+    "affectNameDesc": "Display name shown in the item picker (e.g. Heal Over Time).",
+    "affectTag": "Tag",
+    "affectTagDesc": "Game tag identifier for this affect (e.g. Effect.HealOverTime)."
   },
   "ui": {
     "selectFile": "Select file…",
-    "filterPlaceholder": "Filter…"
+    "filterPlaceholder": "Filter…",
+    "inspector": "Inspector"
   },
   "common": {
     "duplicate": "Duplicate",

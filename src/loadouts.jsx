@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, Row, TextField, Tag, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
+  Section, Row, TextField, Tag,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
@@ -176,14 +176,15 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('loadouts.title')}
-        headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('loadouts.filterPlaceholder')}
-        loading={loading}
-      >
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('loadouts.title')}
+          headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>}
+          search={browserSearch} setSearch={setBrowserSearch}
+          searchPlaceholder={t('loadouts.filterPlaceholder')}
+          loading={loading}
+        >
         {filtered.map(l => {
           const sel = l.guid === selected;
           return (
@@ -222,9 +223,15 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
             </ContextMenu>
           );
         })}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+        </ElementsSidebar>
+      }
+      inspectorSidebar={loadout && (
+        <InspectorSidebar>
+          <LoadoutInspector loadout={loadout}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : DATA.loadouts.length === 0
@@ -233,13 +240,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
               </EmptyState>
             : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
         }
-      </main>
-
-      {loadout && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <LoadoutInspector loadout={loadout}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -257,7 +258,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.name ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }
 
@@ -472,9 +473,8 @@ function LoadoutInspector({ loadout }) {
     behaviour: loadout.behaviour,
   };
   return (
-    <div className="space-y-5 p-4 pt-10">
+    <div className="space-y-5 p-4 pt-4">
       <div>
-        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('loadouts.inspector')}</div>
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">

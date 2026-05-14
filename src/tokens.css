@@ -29,6 +29,14 @@
     --input: 0 0% 89.8%;
     --ring: 47.9 95.8% 53.1%;
     --radius: 0.625rem;
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 47.9 95.8% 53.1%;
+    --sidebar-primary-foreground: 26 83.3% 14.1%;
+    --sidebar-accent: 0 0% 93%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 89.8%;
+    --sidebar-ring: 47.9 95.8% 53.1%;
   }
 
   .dark {
@@ -53,6 +61,14 @@
     --input: 0 0% 16.5%;
     --ring: 47.9 95.8% 53.1%;
     --radius: 0.625rem;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 47.9 95.8% 53.1%;
+    --sidebar-primary-foreground: 26 83.3% 14.1%;
+    --sidebar-accent: 0 0% 14.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 16.5%;
+    --sidebar-ring: 47.9 95.8% 53.1%;
   }
 }
 
@@ -91,6 +107,9 @@ html, body {
 .screen-idle { opacity: 1; transform: none; }
 .screen-enter { animation: screen-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .screen-exit { animation: screen-out 0.16s cubic-bezier(0.4, 0, 1, 1) both; }
+
+/* Force Radix popper overlays (tooltips, selects, popovers) above sidebar stacking contexts */
+[data-radix-popper-content-wrapper] { z-index: 9999 !important; }
 
 /* Native form-control resets */
 input[type=number]::-webkit-inner-spin-button,

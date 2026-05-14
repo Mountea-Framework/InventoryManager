@@ -70,6 +70,7 @@ export const DEFAULT_TAXONOMY = {
     { id: 'cs-loom',        name: 'Loom',          icon: 'layers',  tag: 'Station.Loom' },
     { id: 'cs-arcane',      name: 'Arcane Table',  icon: 'sparkle', tag: 'Station.ArcaneTable' },
   ],
+  specialAffects: [],
 };
 
 /**
@@ -100,6 +101,7 @@ function readTaxFromStorage() {
         itemActions:      stored.itemActions      ?? DEFAULT_TAXONOMY.itemActions,
         attachmentSlots:  stored.attachmentSlots  ?? DEFAULT_TAXONOMY.attachmentSlots,
         craftingStations: stored.craftingStations ? mergeIcon(stored.craftingStations, DEFAULT_TAXONOMY.craftingStations) : DEFAULT_TAXONOMY.craftingStations,
+        specialAffects:   stored.specialAffects   ?? DEFAULT_TAXONOMY.specialAffects,
       };
     }
   } catch {}

@@ -229,11 +229,20 @@
     "defaultFlags": "Výchozí příznaky",
     "defaultFlagsDesc": "Příznaky sloučené (OR) do každého předmětu při výběru této kategorie. Platí pravda — existující příznaky nejsou nikdy odebrány.",
     "defaultItemActions": "Výchozí akce předmětů",
-    "defaultItemActionsDesc": "Akce přidané ke každému předmětu při výběru této kategorie. Jejich příznaky chování jsou aplikovány automaticky."
+    "defaultItemActionsDesc": "Akce přidané ke každému předmětu při výběru této kategorie. Jejich příznaky chování jsou aplikovány automaticky.",
+    "specialAffects": "Speciální efekty",
+    "searchSpecialAffects": "Hledat efekty…",
+    "newSpecialAffect": "Nový efekt…",
+    "deleteSpecialAffect": "Smazat efekt",
+    "affectName": "Název",
+    "affectNameDesc": "Zobrazovaný název v pickeru předmětů (např. Léčení v čase).",
+    "affectTag": "Tag",
+    "affectTagDesc": "Herní tag identifikující tento efekt (např. Effect.HealOverTime)."
   },
   "ui": {
     "selectFile": "Vybrat soubor…",
-    "filterPlaceholder": "Filtrovat…"
+    "filterPlaceholder": "Filtrovat…",
+    "inspector": "Inspektor"
   },
   "common": {
     "duplicate": "Duplikovat",
