@@ -224,7 +224,11 @@
     "subcategoriesDefined": "defined · click to edit",
     "inheritedFrom": "Inherits from",
     "behaviourFlags": "Behaviour Flags",
-    "behaviourFlagsHint": "Flags enabled on an item when this action is selected. True wins — any action that enables a flag will set it."
+    "behaviourFlagsHint": "Flags enabled on an item when this action is selected. True wins — any action that enables a flag will set it.",
+    "defaultFlags": "Default Flags",
+    "defaultFlagsDesc": "Flags OR'd into every item when this category is selected. True wins — existing flags are never cleared.",
+    "defaultItemActions": "Default Item Actions",
+    "defaultItemActionsDesc": "Actions added to every item when this category is selected. Their connected behaviour flags are applied automatically."
   },
   "ui": {
     "selectFile": "Select file…",

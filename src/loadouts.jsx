@@ -5,7 +5,7 @@ import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside,
   Section, Row, TextField, Tag, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
@@ -416,21 +416,16 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
+      <EntityHeader
+        title={draft.name}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="layers" size={22}/>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
-              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
-              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <FormRenderer
         schema={createLoadoutSchema(t)}

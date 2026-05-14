@@ -109,6 +109,14 @@ function App() {
   const [ready, setReady] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const location = useLocation();
+  const [displayLocation, setDisplayLocation] = useState(location);
+  const [screenClass, setScreenClass] = useState('screen-idle');
+  const sectionFromPath = (path) => {
+    if (path.startsWith('/loadouts')) return 'loadouts';
+    if (path.startsWith('/crafting')) return 'crafting';
+    return 'inventory';
+  };
 
   useEffect(() => { loadData().then(() => setReady(true)); }, []);
 
@@ -127,6 +135,29 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    if (location.pathname === displayLocation.pathname) return;
+    const nextSection = sectionFromPath(location.pathname);
+    const currentSection = sectionFromPath(displayLocation.pathname);
+    if (nextSection === currentSection) {
+      setDisplayLocation(location);
+      setScreenClass('screen-idle');
+      return;
+    }
+    setScreenClass('screen-exit');
+    const exitTimer = setTimeout(() => {
+      setDisplayLocation(location);
+      setScreenClass('screen-enter');
+    }, 160);
+    const enterTimer = setTimeout(() => {
+      setScreenClass('screen-idle');
+    }, 320);
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(enterTimer);
+    };
+  }, [location, displayLocation]);
+
   const screenProps = { search: globalSearch, loading: !ready };
 
   return (
@@ -134,15 +165,17 @@ function App() {
       <div className="flex h-screen flex-col bg-background text-foreground">
         <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
         <div className="flex min-h-0 flex-1">
-          <Routes>
-            <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
-            <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>
-            <Route path="/loadouts"        element={<LoadoutsScreen {...screenProps}/>}/>
-            <Route path="/loadouts/:guid"  element={<LoadoutsScreen {...screenProps}/>}/>
-            <Route path="/crafting"        element={<CraftingScreen {...screenProps}/>}/>
-            <Route path="/crafting/:guid"  element={<CraftingScreen {...screenProps}/>}/>
-            <Route path="*"               element={<Navigate to="/inventory" replace/>}/>
-          </Routes>
+          <div className={cn('flex min-h-0 flex-1', screenClass)}>
+            <Routes location={displayLocation}>
+              <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
+              <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>
+              <Route path="/loadouts"        element={<LoadoutsScreen {...screenProps}/>}/>
+              <Route path="/loadouts/:guid"  element={<LoadoutsScreen {...screenProps}/>}/>
+              <Route path="/crafting"        element={<CraftingScreen {...screenProps}/>}/>
+              <Route path="/crafting/:guid"  element={<CraftingScreen {...screenProps}/>}/>
+              <Route path="*"               element={<Navigate to="/inventory" replace/>}/>
+            </Routes>
+          </div>
         </div>
         <SettingsCommand open={settingsOpen} onOpenChange={setSettingsOpen}/>
       </div>

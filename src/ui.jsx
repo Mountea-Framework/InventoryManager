@@ -374,6 +374,40 @@ export function EmptyState({ icon = 'sparkle', title, description, children }) {
 }
 
 /* ============================================================
+   EntityHeader — sticky top-of-editor header shared by all screens
+   ============================================================ */
+/**
+ * @param {{
+ *   title: string,
+ *   guid: string,
+ *   saveStatus: 'idle'|'dirty'|'saving'|'saved',
+ *   thumb: React.ReactNode,
+ *   badges?: React.ReactNode,
+ * }} props
+ */
+export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
+  const { t } = useTranslation();
+  return (
+    <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-5">
+      <div className="flex items-start gap-4">
+        {thumb}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-2.5">
+            <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
+            {badges}
+          </div>
+          <div className="mt-1 flex items-center gap-3">
+            <div className="truncate font-mono text-xs text-muted-foreground">guid: {guid}</div>
+            {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
+            {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
    LeftPanel — sidebar container with title, search, action slots
    ============================================================ */
 export function LeftPanel({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {

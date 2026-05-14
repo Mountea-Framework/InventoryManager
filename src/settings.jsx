@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from './i18n.js';
 import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
 import { ITEM_FLAGS, flagsToBits, bitsToFlags } from './data.js';
-import { FlagsPicker } from './form-renderer.jsx';
+import { FlagsPicker, ItemActionsPicker } from './form-renderer.jsx';
 import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
@@ -439,6 +439,12 @@ function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, pus
       <FRow label={t('settings.tags')} hint={t('settings.tagsDesc')}>
         <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
       </FRow>
+      <FRow label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')}>
+        <FlagsPicker value={cat.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
+      </FRow>
+      <FRow label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')}>
+        <ItemActionsPicker value={cat.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
+      </FRow>
       <FRow label={t('settings.subcategories')} hint={`${cat.subcategories.length} ${t('settings.subcategoriesDefined')}`}>
         <div className="rounded-md border border-border bg-card/40">
           {cat.subcategories.length === 0 && (
@@ -506,6 +512,12 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
       </FRow>
       <FRow label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${cat.tags.join(', ') || '—'}`}>
         <TagsField value={sub.tags} onChange={tags => update({ tags })}/>
+      </FRow>
+      <FRow label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')}>
+        <FlagsPicker value={sub.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
+      </FRow>
+      <FRow label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')}>
+        <ItemActionsPicker value={sub.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
       </FRow>
     </TaxEditPage>
   );

@@ -142,7 +142,7 @@ function MultiChipField({ value = [], onChange, options = [] }) {
  * Multi-select action chip grid. Reads available actions from taxonomy (falls back to ITEM_ACTIONS).
  * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
  */
-function ItemActionsPicker({ value = [], onChange, taxonomy }) {
+export function ItemActionsPicker({ value = [], onChange, taxonomy }) {
   const catalog = taxonomy?.itemActions ?? ITEM_ACTIONS;
   const enabled = new Set(value);
 

@@ -225,7 +225,11 @@
     "subcategoriesDefined": "definováno · kliknutím upravíte",
     "inheritedFrom": "Zděděno z",
     "behaviourFlags": "Příznaky chování",
-    "behaviourFlagsHint": "Příznaky aktivované na předmětu při výběru této akce. Platí pravda — jakákoli akce, která příznak povolí, ho nastaví."
+    "behaviourFlagsHint": "Příznaky aktivované na předmětu při výběru této akce. Platí pravda — jakákoli akce, která příznak povolí, ho nastaví.",
+    "defaultFlags": "Výchozí příznaky",
+    "defaultFlagsDesc": "Příznaky sloučené (OR) do každého předmětu při výběru této kategorie. Platí pravda — existující příznaky nejsou nikdy odebrány.",
+    "defaultItemActions": "Výchozí akce předmětů",
+    "defaultItemActionsDesc": "Akce přidané ke každému předmětu při výběru této kategorie. Jejich příznaky chování jsou aplikovány automaticky."
   },
   "ui": {
     "selectFile": "Vybrat soubor…",

@@ -74,17 +74,23 @@ html, body {
 .font-mono, code, pre, kbd { font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar { width: 6px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 10px; border: 2px solid hsl(var(--background)); }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent)); }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* Screen transition */
 @keyframes screen-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(4px) scale(0.992); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.screen-enter { animation: screen-in 0.18s ease-out both; }
+@keyframes screen-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.972); }
+}
+.screen-idle { opacity: 1; transform: none; }
+.screen-enter { animation: screen-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.screen-exit { animation: screen-out 0.16s cubic-bezier(0.4, 0, 1, 1) both; }
 
 /* Native form-control resets */
 input[type=number]::-webkit-inner-spin-button,

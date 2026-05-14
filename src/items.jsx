@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
   Thumb, SidebarItem, LeftPanel, CollapsibleAside, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
@@ -29,26 +29,52 @@ import {
 const shortGuid = (g) => g ? g.slice(0, 8) + '…' : '';
 
 /**
- * After setting `category` or `subCategory`, append that taxonomy entry's tags
- * to the draft's `tags` array, skipping any already present.
- * @param {object} draft
- * @param {string} path
- * @param {string} val
- * @param {object} taxonomy
- * @returns {object}
+ * When `category` or `subCategory` changes, merge that taxonomy entry's tags,
+ * defaultFlags, and defaultItemActions into the draft (true-wins, additive only).
+ * Item-action flags are resolved inline to avoid a second setState cycle.
  */
-function addCategoryTags(draft, path, val, taxonomy) {
+function applyCategoryDefaults(draft, path, val, taxonomy) {
   let newTags = [];
+  let catFlags = 0;
+  let catActions = [];
+
   if (path === 'category') {
-    newTags = taxonomy.categories?.find(c => c.title === val)?.tags ?? [];
+    const cat = taxonomy.categories?.find(c => c.title === val);
+    newTags    = cat?.tags               ?? [];
+    catFlags   = cat?.defaultFlags       ?? 0;
+    catActions = cat?.defaultItemActions ?? [];
   } else if (path === 'subCategory') {
     const cat = taxonomy.categories?.find(c => c.title === draft.category);
-    newTags = cat?.subcategories?.find(s => s.title === val)?.tags ?? [];
+    const sub = cat?.subcategories?.find(s => s.title === val);
+    newTags    = sub?.tags               ?? [];
+    catFlags   = sub?.defaultFlags       ?? 0;
+    catActions = sub?.defaultItemActions ?? [];
   }
-  if (!newTags.length) return draft;
-  const existing = new Set(draft.tags ?? []);
-  const unique = newTags.filter(t => !existing.has(t));
-  return unique.length ? { ...draft, tags: [...(draft.tags ?? []), ...unique] } : draft;
+
+  let result = draft;
+
+  if (newTags.length) {
+    const existing = new Set(result.tags ?? []);
+    const unique = newTags.filter(t => !existing.has(t));
+    if (unique.length) result = { ...result, tags: [...(result.tags ?? []), ...unique] };
+  }
+
+  if (catFlags) {
+    result = { ...result, flags: (result.flags ?? 0) | catFlags };
+  }
+
+  if (catActions.length) {
+    const existingSet = new Set(result.itemActions ?? []);
+    const toAdd = catActions.filter(k => !existingSet.has(k));
+    if (toAdd.length) {
+      const actionFlags = (taxonomy.itemActions ?? [])
+        .filter(a => toAdd.includes(a.key))
+        .reduce((acc, a) => acc | (a.flags ?? 0), 0);
+      result = { ...result, itemActions: [...(result.itemActions ?? []), ...toAdd], flags: (result.flags ?? 0) | actionFlags };
+    }
+  }
+
+  return result;
 }
 
 /* ============================================================
@@ -214,7 +240,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         taxonomy={tax}
         onSave={handleCreateItem}
         sectionIds={['identity', 'description', 'flags']}
-        afterSet={(draft, path, val) => addCategoryTags(draft, path, val, tax)}
+        afterSet={(draft, path, val) => applyCategoryDefaults(draft, path, val, tax)}
       />
 
       <DeleteConfirmDialog
@@ -244,7 +270,7 @@ function ItemEditor({ item, taxonomy, onSaved }) {
     if (path === 'category') {
       setDraft(d => {
         const base = { ...d, category: val, subCategory: '' };
-        return addCategoryTags(base, path, val, taxonomy);
+        return applyCategoryDefaults(base, path, val, taxonomy);
       });
       return;
     }
@@ -266,30 +292,22 @@ function ItemEditor({ item, taxonomy, onSaved }) {
         cur = cur[keys[i]];
       }
       cur[keys[keys.length - 1]] = val;
-      return addCategoryTags(next, path, val, taxonomy);
+      return applyCategoryDefaults(next, path, val, taxonomy);
     });
   };
 
   return (
     <div>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
-          <Thumb size={52} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h1 className="truncate text-lg font-semibold tracking-tight">{draft.displayName}</h1>
-              <Badge variant="secondary">{draft.rarity}</Badge>
-              <Badge variant="outline">{draft.category}{draft.subCategory ? ` · ${draft.subCategory}` : ''}</Badge>
-            </div>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
-              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
-              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+      <EntityHeader
+        title={draft.displayName}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={<Thumb size={52} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>}
+        badges={<>
+          <Badge variant="secondary">{draft.rarity}</Badge>
+          <Badge variant="outline">{draft.category}{draft.subCategory ? ` · ${draft.subCategory}` : ''}</Badge>
+        </>}
+      />
 
       <FormRenderer schema={createItemSchema(t)} draft={draft} set={set} taxonomy={taxonomy}/>
     </div>
