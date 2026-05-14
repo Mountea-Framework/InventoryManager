@@ -236,7 +236,12 @@
     "affectName": "Name",
     "affectNameDesc": "Display name shown in the item picker (e.g. Heal Over Time).",
     "affectTag": "Tag",
-    "affectTagDesc": "Game tag identifier for this affect (e.g. Effect.HealOverTime)."
+    "affectTagDesc": "Game tag identifier for this affect (e.g. Effect.HealOverTime).",
+    "save": "Save",
+    "unsavedChanges": "Unsaved changes",
+    "valRequired": "Required",
+    "valUnique": "Must be unique",
+    "valAtLeastOneTag": "Add at least one tag"
   },
   "ui": {
     "selectFile": "Select file…",

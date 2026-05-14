@@ -237,7 +237,12 @@
     "affectName": "Název",
     "affectNameDesc": "Zobrazovaný název v pickeru předmětů (např. Léčení v čase).",
     "affectTag": "Tag",
-    "affectTagDesc": "Herní tag identifikující tento efekt (např. Effect.HealOverTime)."
+    "affectTagDesc": "Herní tag identifikující tento efekt (např. Effect.HealOverTime).",
+    "save": "Uložit",
+    "unsavedChanges": "Neuložené změny",
+    "valRequired": "Povinné",
+    "valUnique": "Musí být jedinečný",
+    "valAtLeastOneTag": "Přidejte alespoň jeden tag"
   },
   "ui": {
     "selectFile": "Vybrat soubor…",

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n.js';
-import { cn, Icon, Button, Input, Label, Select, Tag } from './ui.jsx';
-import { ITEM_FLAGS, flagsToBits, bitsToFlags } from './data.js';
+import { cn, Icon, Button, Input, Select, Tag, Section, Row } from './ui.jsx';
 import { FlagsPicker, ItemActionsPicker } from './form-renderer.jsx';
 import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
@@ -42,9 +41,9 @@ const newId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
    Shared sub-components
    ============================================================ */
 /**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, right?: React.ReactNode }} props
+ * @param {{ trail: string[], onBack: () => void, onClose: () => void, onNavigate?: (i: number) => void, right?: React.ReactNode }} props
  */
-function PageHeader({ trail, onBack, onClose, right }) {
+function PageHeader({ trail, onBack, onClose, onNavigate, right }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
@@ -56,12 +55,24 @@ function PageHeader({ trail, onBack, onClose, right }) {
         <Icon name="chevLeft" size={14}/>
       </button>
       <div className="flex flex-1 items-center gap-1.5 text-sm font-medium">
-        {trail.map((item, i) => (
-          <React.Fragment key={i}>
-            {i > 0 && <Icon name="chevRight" size={12} className="text-muted-foreground/60"/>}
-            <span className={i === trail.length - 1 ? 'text-foreground' : 'text-muted-foreground'}>{item}</span>
-          </React.Fragment>
-        ))}
+        {trail.map((item, i) => {
+          const isLast = i === trail.length - 1;
+          return (
+            <React.Fragment key={i}>
+              {i > 0 && <Icon name="chevRight" size={12} className="text-muted-foreground/60"/>}
+              {isLast || !onNavigate ? (
+                <span className={isLast ? 'text-foreground' : 'text-muted-foreground'}>{item}</span>
+              ) : (
+                <button
+                  onClick={() => onNavigate(i)}
+                  className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                >
+                  {item}
+                </button>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
       {right}
       <button
@@ -131,26 +142,18 @@ const TagsField = ({ value = [], onChange, placeholder }) => {
   );
 };
 
-/** @param {{ label: string, hint?: string, children: React.ReactNode }} props */
-const FRow = ({ label, hint, children }) => (
-  <div className="space-y-1.5">
-    <Label className="text-xs uppercase tracking-wider text-muted-foreground">{label}</Label>
-    {children}
-    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
-  </div>
-);
 
 /* ============================================================
    TaxListPage / TaxEditPage shells
    ============================================================ */
 /**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
+ * @param {{ trail: string[], onBack: () => void, onClose: () => void, onNavigate?: (i: number) => void, placeholder: string, heading: string, onAdd: () => void, addLabel: string, children: React.ReactNode }} props
  */
-function TaxListPage({ trail, onBack, onClose, placeholder, heading, onAdd, addLabel, children }) {
+function TaxListPage({ trail, onBack, onClose, onNavigate, placeholder, heading, onAdd, addLabel, children }) {
   const { t } = useTranslation();
   return (
     <div className="flex h-full flex-col">
-      <PageHeader trail={trail} onBack={onBack} onClose={onClose}/>
+      <PageHeader trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}/>
       <Command className="flex-1 h-auto min-h-0">
         <CommandInput placeholder={placeholder}/>
         <CommandList className="flex-1 max-h-none">
@@ -175,14 +178,14 @@ function TaxListPage({ trail, onBack, onClose, placeholder, heading, onAdd, addL
 }
 
 /**
- * @param {{ trail: string[], onBack: () => void, onClose: () => void, onDelete: () => void, footerHint?: React.ReactNode, children: React.ReactNode }} props
+ * @param {{ trail: string[], onBack: () => void, onClose: () => void, onNavigate?: (i: number) => void, onDelete: () => void, onSave: () => void, isDirty: boolean, children: React.ReactNode }} props
  */
-function TaxEditPage({ trail, onBack, onClose, onDelete, footerHint, children }) {
+function TaxEditPage({ trail, onBack, onClose, onNavigate, onDelete, onSave, isDirty, children }) {
   const { t } = useTranslation();
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        trail={trail} onBack={onBack} onClose={onClose}
+        trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
         right={onDelete && (
           <Button variant="ghost" size="sm" onClick={onDelete}
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -194,7 +197,12 @@ function TaxEditPage({ trail, onBack, onClose, onDelete, footerHint, children })
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {children}
       </div>
-      <Footer hint={footerHint ?? t('settings.savedAuto')}/>
+      <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2">
+        <span className="text-[11px] text-muted-foreground">
+          {isDirty ? `● ${t('settings.unsavedChanges')}` : ''}
+        </span>
+        <Button size="sm" onClick={onSave}>{t('settings.save')}</Button>
+      </div>
     </div>
   );
 }
@@ -238,25 +246,26 @@ export function SettingsCommand({ open, onOpenChange }) {
     return parts;
   }, [stack, tax, t]);
 
-  const shared = { trail, onBack: pop, onClose: close, tax, setTax, push };
+  const navigateTo = (i) => setStack(s => s.slice(0, i + 1));
+  const shared = { trail, onBack: pop, onClose: close, onNavigate: navigateTo, tax, setTax, push };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[620px] w-[92vw] max-w-[900px] flex-col overflow-hidden p-0 [&>button]:hidden">
         {page.type === 'root'              && <RootPage push={push} close={close}/>}
         {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
-        {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id}/>}
+        {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id} initialData={page.defaults}/>}
         {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
         {page.type === 'rarities'          && <RaritiesPage        {...shared}/>}
-        {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id}/>}
+        {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id} initialData={page.defaults}/>}
         {page.type === 'itemActions'       && <ItemActionsPage     {...shared}/>}
-        {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id}/>}
+        {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id} initialData={page.defaults}/>}
         {page.type === 'attachmentSlots'   && <AttachmentSlotsPage    {...shared}/>}
-        {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id}/>}
+        {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id} initialData={page.defaults}/>}
         {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
-        {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id}/>}
+        {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id} initialData={page.defaults}/>}
         {page.type === 'specialAffects'    && <SpecialAffectsPage      {...shared}/>}
-        {page.type === 'specialAffect'     && <SpecialAffectEditPage   {...shared} affectId={page.id}/>}
+        {page.type === 'specialAffect'     && <SpecialAffectEditPage   {...shared} affectId={page.id} initialData={page.defaults}/>}
       </DialogContent>
     </Dialog>
   );
@@ -379,16 +388,15 @@ function RootPage({ push, close }) {
 /* ============================================================
    Categories
    ============================================================ */
-function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
+function CategoriesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const addCategory = () => {
     const id = newId('cat');
-    setTax({ ...tax, categories: [...tax.categories, { id, title: 'New Category', tags: [], subcategories: [] }] });
-    push({ type: 'category', id });
+    push({ type: 'category', id, defaults: { id, title: 'New Category', tags: [], subcategories: [] } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchCategories')}
       heading={`${tax.categories.length} ${t('settings.categories').toLowerCase()}`}
       onAdd={addCategory} addLabel={t('settings.newCategory')}
@@ -406,100 +414,164 @@ function CategoriesPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function CategoryEditPage({ trail, onBack, onClose, categoryId, tax, setTax, push }) {
+function CategoryEditPage({ trail, onBack, onClose, onNavigate, categoryId, tax, setTax, push, initialData = null }) {
   const { t } = useTranslation();
-  const cat = tax.categories.find(c => c.id === categoryId);
-  if (!cat) return null;
+  const source = tax.categories.find(c => c.id === categoryId) ?? initialData ?? null;
+  const isNew = !tax.categories.some(c => c.id === categoryId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, categories: tax.categories.map(c => c.id === categoryId ? { ...c, ...patch } : c) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [categoryId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.title?.trim()) errs.title = t('settings.valRequired');
+    else if (tax.categories.some(c => c.id !== categoryId && c.title.trim().toLowerCase() === d.title.trim().toLowerCase()))
+      errs.title = t('settings.valUnique');
+    if (!d.tags?.length) errs.tags = t('settings.valAtLeastOneTag');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, categories: [...tax.categories, draft] });
+      } else {
+        setTax({ ...tax, categories: tax.categories.map(c => c.id === categoryId ? draft : c) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteCategory')} "${cat.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteCategory')} "${source.title}"?`)) return;
     setTax({ ...tax, categories: tax.categories.filter(c => c.id !== categoryId) });
     onBack();
   };
 
   const addSub = () => {
     const id = newId('sub');
-    update({ subcategories: [...cat.subcategories, { id, title: 'New Subcategory', tags: [] }] });
+    // Save current draft first, then add subcategory
+    const updatedCat = { ...draft, subcategories: [...(draft.subcategories ?? []), { id, title: 'New Subcategory', tags: [] }] };
+    setTax({ ...tax, categories: tax.categories.map(c => c.id === categoryId ? updatedCat : c) });
     push({ type: 'subcategory', catId: categoryId, id });
   };
 
   return (
     <TaxEditPage
-      trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
-      footerHint={<><kbd className="rounded border border-border bg-background px-1">esc</kbd> {t('settings.back').toLowerCase()} <span className="mx-1">·</span> {t('settings.savedAuto')}</>}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove}
+      onSave={handleSave} isDirty={isDirty}
     >
-      <FRow label={t('settings.title')}>
-        <Input value={cat.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
-            <Icon name={cat.icon || 'folder'} size={16}/>
+      <Section title="Identity" icon="tag">
+        <Row label={t('settings.title')}>
+          <Input
+            value={draft.title}
+            onChange={e => update({ title: e.target.value })}
+            autoFocus
+            className={cn(errors.title ? 'border-destructive' : '')}
+          />
+          {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
+        </Row>
+        <Row label={t('settings.icon')} hint={t('settings.iconDesc')}>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+              <Icon name={draft.icon || 'folder'} size={16}/>
+            </div>
+            <Input value={draft.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="folder"/>
           </div>
-          <Input value={cat.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="folder"/>
-        </div>
-      </FRow>
-      <FRow label={t('settings.tags')} hint={t('settings.tagsDesc')}>
-        <TagsField value={cat.tags} onChange={tags => update({ tags })}/>
-      </FRow>
-      <FRow label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')}>
-        <FlagsPicker value={cat.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
-      </FRow>
-      <FRow label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')}>
-        <ItemActionsPicker value={cat.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
-      </FRow>
-      <FRow label={t('settings.subcategories')} hint={`${cat.subcategories.length} ${t('settings.subcategoriesDefined')}`}>
-        <div className="rounded-md border border-border bg-card/40">
-          {cat.subcategories.length === 0 && (
-            <div className="px-3 py-6 text-center text-xs text-muted-foreground">{t('settings.noSubcategories')}</div>
-          )}
-          {cat.subcategories.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => push({ type: 'subcategory', catId: categoryId, id: s.id })}
-              className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-                i > 0 && 'border-t border-border/60',
-              )}
-            >
-              <Icon name="folderOpen" size={14} className="text-muted-foreground"/>
-              <span className="flex-1">{s.title}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} {s.tags.length === 1 ? t('settings.tags').replace(/s$/, '') : t('settings.tags').toLowerCase()}</span>
-              <Icon name="chevRight" size={12} className="text-muted-foreground"/>
-            </button>
-          ))}
-        </div>
-        <div className="mt-2">
-          <Button variant="outline" size="sm" onClick={addSub}>
-            <Icon name="plus" size={13}/> {t('settings.addSubcategory')}
-          </Button>
-        </div>
-      </FRow>
+        </Row>
+      </Section>
+      <Section title="Defaults" icon="cog">
+        <Row label={t('settings.tags')} hint={t('settings.tagsDesc')} stack>
+          <TagsField
+            value={draft.tags}
+            onChange={tags => update({ tags })}
+          />
+          {errors.tags && <p className="mt-1 text-xs text-destructive">{errors.tags}</p>}
+        </Row>
+        <Row label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')} stack>
+          <FlagsPicker value={draft.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
+        </Row>
+        <Row label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')} stack>
+          <ItemActionsPicker value={draft.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
+        </Row>
+      </Section>
+      <Section title="Subcategories" icon="folderOpen">
+        <Row label={t('settings.subcategories')} hint={`${(draft.subcategories ?? []).length} ${t('settings.subcategoriesDefined')}`} stack>
+          <div className="rounded-md border border-border bg-card/40">
+            {(draft.subcategories ?? []).length === 0 && (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">{t('settings.noSubcategories')}</div>
+            )}
+            {(draft.subcategories ?? []).map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => push({ type: 'subcategory', catId: categoryId, id: s.id })}
+                className={cn(
+                  'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                  i > 0 && 'border-t border-border/60',
+                )}
+              >
+                <Icon name="folderOpen" size={14} className="text-muted-foreground"/>
+                <span className="flex-1">{s.title}</span>
+                <span className="font-mono text-[10.5px] text-muted-foreground">{s.tags.length} {s.tags.length === 1 ? t('settings.tags').replace(/s$/, '') : t('settings.tags').toLowerCase()}</span>
+                <Icon name="chevRight" size={12} className="text-muted-foreground"/>
+              </button>
+            ))}
+          </div>
+          <div className="mt-2">
+            <Button variant="outline" size="sm" onClick={addSub} disabled={isNew} title={isNew ? t('settings.saveCategoryFirst') : undefined}>
+              <Icon name="plus" size={13}/> {t('settings.addSubcategory')}
+            </Button>
+          </div>
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
 
-function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId, tax, setTax }) {
+function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId, onNavigate, tax, setTax }) {
   const { t } = useTranslation();
   const cat = tax.categories.find(c => c.id === categoryId);
-  const sub = cat?.subcategories.find(s => s.id === subcategoryId);
-  if (!cat || !sub) return null;
+  const source = cat?.subcategories.find(s => s.id === subcategoryId);
+  const [draft, setDraft] = useState(source ?? {});
 
-  const update = (patch) =>
+  useEffect(() => {
+    setDraft(source ?? {});
+  }, [subcategoryId]);
+
+  if (!draft || !source || !cat) return null;
+
+  const update = (patch) => setDraft(d => ({ ...d, ...patch }));
+
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
     setTax({
       ...tax,
       categories: tax.categories.map(c =>
         c.id !== categoryId ? c : {
           ...c,
-          subcategories: c.subcategories.map(s => s.id === subcategoryId ? { ...s, ...patch } : s),
+          subcategories: c.subcategories.map(s => s.id === subcategoryId ? draft : s),
         }),
     });
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteSubcategory')} "${sub.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteSubcategory')} "${source.title}"?`)) return;
     setTax({
       ...tax,
       categories: tax.categories.map(c =>
@@ -510,21 +582,25 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
 
   return (
     <TaxEditPage
-      trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}
-      footerHint={<>{t('settings.inheritedFrom').toLowerCase().replace('inherits from', 'parent')}: <span className="text-foreground/80">{cat.title}</span> <span className="mx-1">·</span> {t('settings.savedAuto')}</>}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove}
+      onSave={handleSave} isDirty={isDirty}
     >
-      <FRow label={t('settings.title')}>
-        <Input value={sub.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${cat.tags.join(', ') || '—'}`}>
-        <TagsField value={sub.tags} onChange={tags => update({ tags })}/>
-      </FRow>
-      <FRow label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')}>
-        <FlagsPicker value={sub.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
-      </FRow>
-      <FRow label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')}>
-        <ItemActionsPicker value={sub.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
-      </FRow>
+      <Section title="Identity" icon="tag">
+        <Row label={t('settings.title')}>
+          <Input value={draft.title} onChange={e => update({ title: e.target.value })} autoFocus/>
+        </Row>
+        <Row label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${cat.tags.join(', ') || '—'}`} stack>
+          <TagsField value={draft.tags} onChange={tags => update({ tags })}/>
+        </Row>
+      </Section>
+      <Section title="Defaults" icon="cog">
+        <Row label={t('settings.defaultFlags')} hint={t('settings.defaultFlagsDesc')} stack>
+          <FlagsPicker value={draft.defaultFlags ?? 0} onChange={v => update({ defaultFlags: v })}/>
+        </Row>
+        <Row label={t('settings.defaultItemActions')} hint={t('settings.defaultItemActionsDesc')} stack>
+          <ItemActionsPicker value={draft.defaultItemActions ?? []} onChange={v => update({ defaultItemActions: v })} taxonomy={tax}/>
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
@@ -532,16 +608,15 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
 /* ============================================================
    Rarities
    ============================================================ */
-function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
+function RaritiesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const addRarity = () => {
     const id = newId('rar');
-    setTax({ ...tax, rarities: [...tax.rarities, { id, title: 'New Rarity', tags: [], color: '#9ca3af' }] });
-    push({ type: 'rarity', id });
+    push({ type: 'rarity', id, defaults: { id, title: 'New Rarity', tags: [], color: '#9ca3af' } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchRarities')}
       heading={`${tax.rarities.length} ${t('settings.rarities').toLowerCase()}`}
       onAdd={addRarity} addLabel={t('settings.newRarity')}
@@ -561,62 +636,108 @@ function RaritiesPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
+function RarityEditPage({ trail, onBack, onClose, rarityId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const r = tax.rarities.find(r => r.id === rarityId);
-  if (!r) return null;
+  const source = tax.rarities.find(r => r.id === rarityId) ?? initialData ?? null;
+  const isNew = !tax.rarities.some(r => r.id === rarityId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, rarities: tax.rarities.map(x => x.id === rarityId ? { ...x, ...patch } : x) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [rarityId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.title?.trim()) errs.title = t('settings.valRequired');
+    else if (tax.rarities.some(r => r.id !== rarityId && r.title.trim().toLowerCase() === d.title.trim().toLowerCase()))
+      errs.title = t('settings.valUnique');
+    if (!d.tags?.length) errs.tags = t('settings.valAtLeastOneTag');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, rarities: [...tax.rarities, draft] });
+      } else {
+        setTax({ ...tax, rarities: tax.rarities.map(x => x.id === rarityId ? draft : x) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteRarity')} "${r.title}"?`)) return;
+    if (!confirm(`${t('settings.deleteRarity')} "${source.title}"?`)) return;
     setTax({ ...tax, rarities: tax.rarities.filter(x => x.id !== rarityId) });
     onBack();
   };
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label={t('settings.title')}>
-        <Input value={r.title} onChange={e => update({ title: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.tags')}>
-        <TagsField value={r.tags} onChange={tags => update({ tags })}/>
-      </FRow>
-      <FRow label={t('settings.colour')} hint={t('settings.colourDesc')}>
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ background: r.color }}/>
-          <input type="color" value={r.color} onChange={e => update({ color: e.target.value })}
-            className="h-10 w-14 cursor-pointer rounded-md border border-input bg-transparent"/>
-          <input value={r.color} onChange={e => update({ color: e.target.value })}
-            className="h-10 flex-1 rounded-md border border-input bg-transparent px-3 font-mono text-xs uppercase outline-none focus:ring-1 focus:ring-ring text-foreground"/>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {RARITY_SWATCHES.map(c => (
-            <button key={c} onClick={() => update({ color: c })} title={c}
-              className={cn(
-                'h-6 w-6 rounded-md border transition-transform hover:scale-110',
-                r.color.toLowerCase() === c.toLowerCase()
-                  ? 'border-foreground ring-2 ring-ring ring-offset-2 ring-offset-popover'
-                  : 'border-border',
-              )}
-              style={{ background: c }}/>
-          ))}
-        </div>
-      </FRow>
-      <div className="rounded-md border border-border bg-card/40 p-3">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('settings.preview')}</div>
-        <div className="flex items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
-            style={{ borderColor: r.color, color: r.color, background: `${r.color}1a` }}
-          >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: r.color }}/>
-            {r.title || 'Rarity'}
-          </span>
-          <span className="font-mono text-[10.5px] text-muted-foreground">{r.tags[0] || 'no.tag'}</span>
-        </div>
-      </div>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+      <Section title="Identity" icon="sparkle">
+        <Row label={t('settings.title')}>
+          <Input
+            value={draft.title}
+            onChange={e => update({ title: e.target.value })}
+            autoFocus
+            className={cn(errors.title ? 'border-destructive' : '')}
+          />
+          {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
+        </Row>
+        <Row label={t('settings.tags')} stack>
+          <TagsField value={draft.tags} onChange={tags => update({ tags })}/>
+          {errors.tags && <p className="mt-1 text-xs text-destructive">{errors.tags}</p>}
+        </Row>
+      </Section>
+      <Section title="Colour" icon="eye">
+        <Row label={t('settings.colour')} hint={t('settings.colourDesc')} stack>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 shrink-0 rounded-md border border-border" style={{ background: draft.color }}/>
+            <input type="color" value={draft.color} onChange={e => update({ color: e.target.value })}
+              className="h-10 w-14 cursor-pointer rounded-md border border-input bg-transparent"/>
+            <input value={draft.color} onChange={e => update({ color: e.target.value })}
+              className="h-10 flex-1 rounded-md border border-input bg-transparent px-3 font-mono text-xs uppercase outline-none focus:ring-1 focus:ring-ring text-foreground"/>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {RARITY_SWATCHES.map(c => (
+              <button key={c} onClick={() => update({ color: c })} title={c}
+                className={cn(
+                  'h-6 w-6 rounded-md border transition-transform hover:scale-110',
+                  draft.color.toLowerCase() === c.toLowerCase()
+                    ? 'border-foreground ring-2 ring-ring ring-offset-2 ring-offset-popover'
+                    : 'border-border',
+                )}
+                style={{ background: c }}/>
+            ))}
+          </div>
+          <div className="mt-2 rounded-md border border-border bg-card/40 p-3">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('settings.preview')}</div>
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
+                style={{ borderColor: draft.color, color: draft.color, background: `${draft.color}1a` }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: draft.color }}/>
+                {draft.title || 'Rarity'}
+              </span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{draft.tags[0] || 'no.tag'}</span>
+            </div>
+          </div>
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
@@ -624,16 +745,15 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, tax, setTax }) {
 /* ============================================================
    Item Actions
    ============================================================ */
-function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
+function ItemActionsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const addAction = () => {
     const id = newId('ia');
-    setTax({ ...tax, itemActions: [...tax.itemActions, { id, key: 'NewAction', icon: 'tag', tip: '' }] });
-    push({ type: 'itemAction', id });
+    push({ type: 'itemAction', id, defaults: { id, key: 'NewAction', icon: 'tag', tip: '' } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchActions')}
       heading={`${tax.itemActions.length} ${t('settings.itemActions').toLowerCase()}`}
       onAdd={addAction} addLabel={t('settings.newAction')}
@@ -653,39 +773,83 @@ function ItemActionsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
+function ItemActionEditPage({ trail, onBack, onClose, actionId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const action = tax.itemActions.find(a => a.id === actionId);
-  if (!action) return null;
+  const source = tax.itemActions.find(a => a.id === actionId) ?? initialData ?? null;
+  const isNew = !tax.itemActions.some(a => a.id === actionId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, itemActions: tax.itemActions.map(a => a.id === actionId ? { ...a, ...patch } : a) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [actionId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.key?.trim()) errs.key = t('settings.valRequired');
+    else if (tax.itemActions.some(a => a.id !== actionId && a.key.trim().toLowerCase() === d.key.trim().toLowerCase()))
+      errs.key = t('settings.valUnique');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, itemActions: [...tax.itemActions, draft] });
+      } else {
+        setTax({ ...tax, itemActions: tax.itemActions.map(a => a.id === actionId ? draft : a) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteAction')} "${action.key}"?`)) return;
+    if (!confirm(`${t('settings.deleteAction')} "${source.key}"?`)) return;
     setTax({ ...tax, itemActions: tax.itemActions.filter(a => a.id !== actionId) });
     onBack();
   };
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label={t('settings.actionKey')} hint={t('settings.actionKeyDesc')}>
-        <Input value={action.key} onChange={e => update({ key: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
-            <Icon name={action.icon} size={16}/>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+      <Section title="Identity" icon="tag">
+        <Row label={t('settings.actionKey')} hint={t('settings.actionKeyDesc')}>
+          <Input
+            value={draft.key}
+            onChange={e => update({ key: e.target.value })}
+            autoFocus
+            className={cn(errors.key ? 'border-destructive' : '')}
+          />
+          {errors.key && <p className="mt-1 text-xs text-destructive">{errors.key}</p>}
+        </Row>
+        <Row label={t('settings.icon')} hint={t('settings.iconDesc')}>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+              <Icon name={draft.icon} size={16}/>
+            </div>
+            <Input value={draft.icon} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs"/>
           </div>
-          <Input value={action.icon} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs"/>
-        </div>
-      </FRow>
-      <FRow label={t('settings.tooltip')} hint={t('settings.tooltipDesc')}>
-        <Input value={action.tip} onChange={e => update({ tip: e.target.value })}/>
-      </FRow>
-      <FRow label={t('settings.behaviourFlags')} hint={t('settings.behaviourFlagsHint')}>
-        <FlagsPicker value={action.flags ?? 0} onChange={v => update({ flags: v })}/>
-      </FRow>
+        </Row>
+        <Row label={t('settings.tooltip')} hint={t('settings.tooltipDesc')}>
+          <Input value={draft.tip} onChange={e => update({ tip: e.target.value })}/>
+        </Row>
+      </Section>
+      <Section title="Behaviour" icon="cog">
+        <Row label={t('settings.behaviourFlags')} hint={t('settings.behaviourFlagsHint')} stack>
+          <FlagsPicker value={draft.flags ?? 0} onChange={v => update({ flags: v })}/>
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
@@ -693,16 +857,15 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, tax, setTax }) {
 /* ============================================================
    Attachment Slots
    ============================================================ */
-function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
+function AttachmentSlotsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const addSlot = () => {
     const id = newId('as');
-    setTax({ ...tax, attachmentSlots: [...tax.attachmentSlots, { id, name: 'New Slot', tags: [] }] });
-    push({ type: 'attachmentSlot', id });
+    push({ type: 'attachmentSlot', id, defaults: { id, name: 'New Slot', tags: [] } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchSlots')}
       heading={`${tax.attachmentSlots.length} ${t('settings.attachmentSlots').toLowerCase()}`}
       onAdd={addSlot} addLabel={t('settings.newSlot')}
@@ -720,28 +883,72 @@ function AttachmentSlotsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax }) {
+function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const slot = tax.attachmentSlots.find(s => s.id === slotId);
-  if (!slot) return null;
+  const source = tax.attachmentSlots.find(s => s.id === slotId) ?? initialData ?? null;
+  const isNew = !tax.attachmentSlots.some(s => s.id === slotId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, attachmentSlots: tax.attachmentSlots.map(s => s.id === slotId ? { ...s, ...patch } : s) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [slotId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.name?.trim()) errs.name = t('settings.valRequired');
+    else if (tax.attachmentSlots.some(s => s.id !== slotId && s.name.trim().toLowerCase() === d.name.trim().toLowerCase()))
+      errs.name = t('settings.valUnique');
+    if (!d.tags?.length) errs.tags = t('settings.valAtLeastOneTag');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, attachmentSlots: [...tax.attachmentSlots, draft] });
+      } else {
+        setTax({ ...tax, attachmentSlots: tax.attachmentSlots.map(s => s.id === slotId ? draft : s) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteSlot')} "${slot.name}"?`)) return;
+    if (!confirm(`${t('settings.deleteSlot')} "${source.name}"?`)) return;
     setTax({ ...tax, attachmentSlots: tax.attachmentSlots.filter(s => s.id !== slotId) });
     onBack();
   };
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label={t('settings.slotName')} hint={t('settings.slotNameDesc')}>
-        <Input value={slot.name} onChange={e => update({ name: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.tags')} hint={t('settings.slotTagsDesc')}>
-        <TagsField value={slot.tags} onChange={tags => update({ tags })}/>
-      </FRow>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+      <Section title="Identity" icon="link">
+        <Row label={t('settings.slotName')} hint={t('settings.slotNameDesc')}>
+          <Input
+            value={draft.name}
+            onChange={e => update({ name: e.target.value })}
+            autoFocus
+            className={cn(errors.name ? 'border-destructive' : '')}
+          />
+          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
+        </Row>
+        <Row label={t('settings.tags')} hint={t('settings.slotTagsDesc')} stack>
+          <TagsField value={draft.tags} onChange={tags => update({ tags })}/>
+          {errors.tags && <p className="mt-1 text-xs text-destructive">{errors.tags}</p>}
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
@@ -749,16 +956,15 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, tax, setTax })
 /* ============================================================
    Crafting Stations
    ============================================================ */
-function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
+function CraftingStationsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const addStation = () => {
     const id = newId('cs');
-    setTax({ ...tax, craftingStations: [...tax.craftingStations, { id, name: 'New Station', icon: 'cog', tag: 'Station.New' }] });
-    push({ type: 'craftingStation', id });
+    push({ type: 'craftingStation', id, defaults: { id, name: 'New Station', icon: 'cog', tag: 'Station.New' } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchStations')}
       heading={`${tax.craftingStations.length} ${t('settings.craftingStations').toLowerCase()}`}
       onAdd={addStation} addLabel={t('settings.newStation')}
@@ -776,36 +982,84 @@ function CraftingStationsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTax }) {
+function CraftingStationEditPage({ trail, onBack, onClose, stationId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const station = tax.craftingStations.find(s => s.id === stationId);
-  if (!station) return null;
+  const source = tax.craftingStations.find(s => s.id === stationId) ?? initialData ?? null;
+  const isNew = !tax.craftingStations.some(s => s.id === stationId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, craftingStations: tax.craftingStations.map(s => s.id === stationId ? { ...s, ...patch } : s) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [stationId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.name?.trim()) errs.name = t('settings.valRequired');
+    else if (tax.craftingStations.some(s => s.id !== stationId && s.name.trim().toLowerCase() === d.name.trim().toLowerCase()))
+      errs.name = t('settings.valUnique');
+    if (!d.tag?.trim()) errs.tag = t('settings.valRequired');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, craftingStations: [...tax.craftingStations, draft] });
+      } else {
+        setTax({ ...tax, craftingStations: tax.craftingStations.map(s => s.id === stationId ? draft : s) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteStation')} "${station.name}"?`)) return;
+    if (!confirm(`${t('settings.deleteStation')} "${source.name}"?`)) return;
     setTax({ ...tax, craftingStations: tax.craftingStations.filter(s => s.id !== stationId) });
     onBack();
   };
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label={t('settings.stationName')} hint={t('settings.stationNameDesc')}>
-        <Input value={station.name} onChange={e => update({ name: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.icon')} hint={t('settings.iconDesc')}>
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
-            <Icon name={station.icon || 'hammer'} size={16}/>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+      <Section title="Identity" icon="hammer">
+        <Row label={t('settings.stationName')} hint={t('settings.stationNameDesc')}>
+          <Input
+            value={draft.name}
+            onChange={e => update({ name: e.target.value })}
+            autoFocus
+            className={cn(errors.name ? 'border-destructive' : '')}
+          />
+          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
+        </Row>
+        <Row label={t('settings.icon')} hint={t('settings.iconDesc')}>
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card/40 text-muted-foreground">
+              <Icon name={draft.icon || 'hammer'} size={16}/>
+            </div>
+            <Input value={draft.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="hammer"/>
           </div>
-          <Input value={station.icon || ''} onChange={e => update({ icon: e.target.value })} className="flex-1 font-mono text-xs" placeholder="hammer"/>
-        </div>
-      </FRow>
-      <FRow label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
-        <Input value={station.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
-      </FRow>
+        </Row>
+        <Row label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
+          <Input
+            value={draft.tag}
+            onChange={e => update({ tag: e.target.value })}
+            className={cn('font-mono text-xs', errors.tag ? 'border-destructive' : '')}
+          />
+          {errors.tag && <p className="mt-1 text-xs text-destructive">{errors.tag}</p>}
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
@@ -813,17 +1067,16 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, tax, setTa
 /* ============================================================
    Special Affects
    ============================================================ */
-function SpecialAffectsPage({ trail, onBack, onClose, tax, setTax, push }) {
+function SpecialAffectsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const { t } = useTranslation();
   const affects = tax.specialAffects ?? [];
   const addAffect = () => {
     const id = newId('sa');
-    setTax({ ...tax, specialAffects: [...affects, { id, name: 'New Affect', tag: 'Effect.New' }] });
-    push({ type: 'specialAffect', id });
+    push({ type: 'specialAffect', id, defaults: { id, name: 'New Affect', tag: 'Effect.New' } });
   };
   return (
     <TaxListPage
-      trail={trail} onBack={onBack} onClose={onClose}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
       placeholder={t('settings.searchSpecialAffects')}
       heading={`${affects.length} ${t('settings.specialAffects').toLowerCase()}`}
       onAdd={addAffect} addLabel={t('settings.newSpecialAffect')}
@@ -841,29 +1094,77 @@ function SpecialAffectsPage({ trail, onBack, onClose, tax, setTax, push }) {
   );
 }
 
-function SpecialAffectEditPage({ trail, onBack, onClose, affectId, tax, setTax }) {
+function SpecialAffectEditPage({ trail, onBack, onClose, affectId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
   const affects = tax.specialAffects ?? [];
-  const affect = affects.find(a => a.id === affectId);
-  if (!affect) return null;
+  const source = affects.find(a => a.id === affectId) ?? initialData ?? null;
+  const isNew = !affects.some(a => a.id === affectId);
+  const [draft, setDraft] = useState(source ?? {});
+  const [errors, setErrors] = useState({});
 
-  const update = (patch) =>
-    setTax({ ...tax, specialAffects: affects.map(a => a.id === affectId ? { ...a, ...patch } : a) });
+  useEffect(() => {
+    setDraft(source ?? {});
+    setErrors({});
+  }, [affectId]);
+
+  if (!draft) return null;
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.name?.trim()) errs.name = t('settings.valRequired');
+    else if ((tax.specialAffects ?? []).some(a => a.id !== affectId && a.name.trim().toLowerCase() === d.name.trim().toLowerCase()))
+      errs.name = t('settings.valUnique');
+    if (!d.tag?.trim()) errs.tag = t('settings.valRequired');
+    return errs;
+  };
+
+  const update = (patch) => setDraft(d => {
+    const next = { ...d, ...patch };
+    setErrors(validate(next));
+    return next;
+  });
+
+  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
+
+  const handleSave = () => {
+    const errs = validate(draft);
+    setErrors(errs);
+    if (!Object.keys(errs).length) {
+      if (isNew) {
+        setTax({ ...tax, specialAffects: [...(tax.specialAffects ?? []), draft] });
+      } else {
+        setTax({ ...tax, specialAffects: (tax.specialAffects ?? []).map(a => a.id === affectId ? draft : a) });
+      }
+    }
+  };
 
   const remove = () => {
-    if (!confirm(`${t('settings.deleteSpecialAffect')} "${affect.name}"?`)) return;
+    if (!confirm(`${t('settings.deleteSpecialAffect')} "${source.name}"?`)) return;
     setTax({ ...tax, specialAffects: affects.filter(a => a.id !== affectId) });
     onBack();
   };
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onDelete={remove}>
-      <FRow label={t('settings.affectName')} hint={t('settings.affectNameDesc')}>
-        <Input value={affect.name} onChange={e => update({ name: e.target.value })} autoFocus/>
-      </FRow>
-      <FRow label={t('settings.affectTag')} hint={t('settings.affectTagDesc')}>
-        <Input value={affect.tag} onChange={e => update({ tag: e.target.value })} className="font-mono text-xs"/>
-      </FRow>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+      <Section title="Identity" icon="sparkle">
+        <Row label={t('settings.affectName')} hint={t('settings.affectNameDesc')}>
+          <Input
+            value={draft.name}
+            onChange={e => update({ name: e.target.value })}
+            autoFocus
+            className={cn(errors.name ? 'border-destructive' : '')}
+          />
+          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
+        </Row>
+        <Row label={t('settings.affectTag')} hint={t('settings.affectTagDesc')}>
+          <Input
+            value={draft.tag}
+            onChange={e => update({ tag: e.target.value })}
+            className={cn('font-mono text-xs', errors.tag ? 'border-destructive' : '')}
+          />
+          {errors.tag && <p className="mt-1 text-xs text-destructive">{errors.tag}</p>}
+        </Row>
+      </Section>
     </TaxEditPage>
   );
 }
