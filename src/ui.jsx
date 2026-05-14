@@ -209,12 +209,12 @@ export const Row = ({ label, hint, tooltip, children, stack = false }) => {
       <div>{children}</div>
     </div>
   ) : (
-    <div className="grid grid-cols-[180px_1fr] items-center gap-3 py-1.5">
-      <div>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-1.5">
+      <div className="w-[180px] shrink-0">
         {labelEl}
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 grow basis-[200px]">{children}</div>
     </div>
   );
 };

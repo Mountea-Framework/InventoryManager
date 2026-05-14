@@ -106,7 +106,12 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
       </button>
       {isOpen && filteredItems.map(item => {
         const isSel = selected === item.guid;
-        const tip = item.description?.short || `${item.rarity} · ${item.category}`;
+        const tip = (
+          <span className="flex flex-col gap-0.5">
+            <span>{item.description?.short || `${item.rarity} · ${item.category}`}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{item.guid}</span>
+          </span>
+        );
         return (
           <ContextMenu key={item.guid}>
             <ContextMenuTrigger asChild>
