@@ -129,6 +129,23 @@ export const useTaxonomy = () => {
   return [tax, setTax];
 };
 
+export function useEntityActions({ deleteEntity, afterDelete }) {
+  const [tick,         setTick]         = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
+  const handleDeleteConfirm = async () => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    await deleteEntity(target.guid);
+    await loadData();
+    afterDelete(target.guid);
+  };
+  const onSaved = () => setTick(t => t + 1);
+
+  return { tick, deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved };
+}
+
 export const useAutoSave = (draft, saveFn, delay = 1000, onSaved) => {
   const [status, setStatus] = useState('idle');
   const timerRef   = useRef(null);

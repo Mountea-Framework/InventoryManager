@@ -5,6 +5,7 @@ import {
 } from './components/ui/sheet.jsx';
 import { Button, Icon } from './ui.jsx';
 import { FormRenderer } from './form-renderer.jsx';
+import { getPath, setPath } from './utils.js';
 
 /**
  * Reusable right-panel Sheet for creating a new entity driven by a FormSchema.
@@ -35,31 +36,15 @@ export function EntityCreateSheet({
   const set = (path, val) => {
     setDraft(d => {
       const next = structuredClone(d);
-
-      const writePath = (obj, p, v) => {
-        const keys = p.split('.');
-        let cur = obj;
-        for (let i = 0; i < keys.length - 1; i++) {
-          if (cur[keys[i]] == null) cur[keys[i]] = {};
-          cur = cur[keys[i]];
-        }
-        cur[keys[keys.length - 1]] = v;
-      };
-
-      writePath(next, path, val);
-
-      // Clear any fields whose options depend on this field
+      setPath(next, path, val);
       schema.sections.forEach(s =>
         s.fields.forEach(f => {
-          if (f.dependsOn === path) writePath(next, f.id, '');
+          if (f.dependsOn === path) setPath(next, f.id, '');
         })
       );
-
       return afterSet ? afterSet(next, path, val) : next;
     });
   };
-
-  const getPath = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj);
 
   const activeSections = sectionIds
     ? schema.sections.filter(s => sectionIds.includes(s.id))

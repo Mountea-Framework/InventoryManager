@@ -243,7 +243,7 @@ export const TextField = ({ value, onChange, placeholder, mono = false, suffix, 
 /* ============================================================
    FilePicker — text field + folder button file picker
    ============================================================ */
-export const FilePicker = ({ value = '', onChange, accept, placeholder, className = '' }) => {
+export const FilePicker = ({ value = '', onChange, onFilePicked, accept, placeholder, className = '' }) => {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t('ui.selectFile');
   const inputRef = useRef(null);
@@ -261,7 +261,11 @@ export const FilePicker = ({ value = '', onChange, accept, placeholder, classNam
       </div>
       <Button variant="outline" size="icon" onClick={() => inputRef.current?.click()} icon="folder"/>
       <input ref={inputRef} type="file" accept={accept} className="sr-only"
-        onChange={e => { const f = e.target.files?.[0]; if (f) onChange?.(f.name); e.target.value = ''; }}/>
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) { onFilePicked ? onFilePicked(f) : onChange?.(f.name); }
+          e.target.value = '';
+        }}/>
     </div>
   );
 };
@@ -527,6 +531,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+/* ============================================================
+   EntityContextMenu — shared right-click menu for entity rows
+   ============================================================ */
+import {
+  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+
+export function EntityContextMenu({
+  children,
+  onDuplicate, canDuplicate = true,
+  onExport,    canExport    = true,
+  onDelete,    canDelete    = true,
+}) {
+  const { t } = useTranslation();
+  const showDuplicate = canDuplicate && !!onDuplicate;
+  const showExport    = canExport    && !!onExport;
+  const showDelete    = canDelete    && !!onDelete;
+  const hasTopGroup   = showDuplicate || showExport;
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        {hasTopGroup && (
+          <ContextMenuGroup>
+            {showDuplicate && <ContextMenuItem onClick={onDuplicate}><Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}</ContextMenuItem>}
+            {showExport    && <ContextMenuItem onClick={onExport}><Icon name="export" size={14} className="mr-2"/>{t('common.export')}</ContextMenuItem>}
+          </ContextMenuGroup>
+        )}
+        {hasTopGroup && showDelete && <ContextMenuSeparator/>}
+        {showDelete && (
+          <ContextMenuGroup>
+            <ContextMenuItem variant="destructive" onClick={onDelete}><Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}</ContextMenuItem>
+          </ContextMenuGroup>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
 
 export function DeleteConfirmDialog({ open, onOpenChange, name, onConfirm }) {
   const { t } = useTranslation();

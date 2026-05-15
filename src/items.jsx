@@ -4,19 +4,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
   Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
 import { exportItem } from './exporter.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createItemSchema, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -108,39 +105,29 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
         const isSel = selected === item.guid;
         const tip = (
           <span className="flex flex-col gap-0.5">
-            <span>{item.description?.short || `${item.rarity} · ${item.category}`}</span>
+            {item.description?.short && (
+              <span>{item.description.short}</span>
+            )}
+            <span className="font-mono text-[11px]">{`${item.rarity} · ${item.category}`}</span>
             <span className="font-mono text-[10px] text-muted-foreground">{item.guid}</span>
           </span>
         );
+
         return (
-          <ContextMenu key={item.guid}>
-            <ContextMenuTrigger asChild>
-              <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
-                <Tooltip content={tip} side="right">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate">{item.displayName}</div>
-                    <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
-                  </div>
-                </Tooltip>
-              </SidebarItem>
-            </ContextMenuTrigger>
-            <ContextMenuContent className="w-44">
-              <ContextMenuGroup>
-                <ContextMenuItem onClick={() => onDuplicate(item)}>
-                  <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => onExport(item)}>
-                  <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                </ContextMenuItem>
-              </ContextMenuGroup>
-              <ContextMenuSeparator/>
-              <ContextMenuGroup>
-                <ContextMenuItem variant="destructive" onClick={() => onDeleteRequest(item)}>
-                  <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                </ContextMenuItem>
-              </ContextMenuGroup>
-            </ContextMenuContent>
-          </ContextMenu>
+          <EntityContextMenu key={item.guid}
+            onDuplicate={() => onDuplicate(item)}
+            onExport={() => onExport(item)}
+            onDelete={() => onDeleteRequest(item)}
+          >
+            <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
+              <Tooltip content={tip} side="right">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate">{item.displayName}</div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
+                </div>
+              </Tooltip>
+            </SidebarItem>
+          </EntityContextMenu>
         );
       })}
     </div>
@@ -163,8 +150,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
   );
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteItem,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) navigate(`/inventory/${DATA.allItems[0]?.guid ?? ''}`); },
+  });
 
   const selected = guid ?? DATA.allItems[0]?.guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/inventory/${newGuid}` : '/inventory');
@@ -188,14 +177,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateItem(entity);
     navigate(`/inventory/${newGuid}`);
   };
-  const handleExport        = (entity) => exportItem(entity, tax);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteItem(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) navigate(`/inventory/${DATA.allItems[0]?.guid ?? ''}`);
-    setDeleteTarget(null);
-  };
+  const handleExport = (entity) => exportItem(entity, tax);
 
   return (
     <ScreenLayout
@@ -233,7 +215,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('items.newTip')}</Button>
               </EmptyState>
             : item
-              ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+              ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={onSaved}/>
               : <div className="p-10 text-sm text-muted-foreground">{t('items.selectPrompt')}</div>
         }
       </div>
@@ -291,13 +273,7 @@ function ItemEditor({ item, taxonomy, onSaved }) {
     }
     setDraft(d => {
       const next = structuredClone(d);
-      const keys = path.split('.');
-      let cur = next;
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (cur[keys[i]] == null) cur[keys[i]] = {};
-        cur = cur[keys[i]];
-      }
-      cur[keys[keys.length - 1]] = val;
+      setPath(next, path, val);
       return applyCategoryDefaults(next, path, val, taxonomy);
     });
   };

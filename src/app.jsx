@@ -8,9 +8,11 @@ import { ItemsScreen }   from './items.jsx';
 import { LoadoutsScreen } from './loadouts.jsx';
 import { CraftingScreen } from './crafting.jsx';
 import { SettingsCommand } from './settings.jsx';
-import { loadData } from './store.js';
+import { loadData, exportAllData } from './store.js';
+import { TAX_KEY } from './hooks.jsx';
+import { SCHEMA_VERSION } from './db.js';
 
-function TopBar({ globalSearch, setGlobalSearch, openSettings }) {
+function TopBar({ globalSearch, setGlobalSearch, openSettings, onSaveWorkspace }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -71,10 +73,10 @@ function TopBar({ globalSearch, setGlobalSearch, openSettings }) {
       </div>
 
       <Tooltip content={t('app.saveWorkspace')}>
-        <Button variant="ghost" size="icon-sm" icon="save"/>
+        <Button variant="ghost" size="icon-sm" icon="save" onClick={onSaveWorkspace}/>
       </Tooltip>
       <Tooltip content={t('app.exportData')}>
-        <Button variant="ghost" size="icon-sm" icon="export"/>
+        <Button variant="ghost" size="icon-sm" icon="export" disabled/>
       </Tooltip>
       <Tooltip content={t('app.settingsTip')}>
         <Button variant="ghost" size="icon-sm" icon="cog" onClick={openSettings}/>
@@ -94,12 +96,7 @@ function StatusBar({ counts }) {
       <span>{t('app.statusBranch')} <span className="text-foreground/80">{t('app.statusMain')}</span></span>
       <span>{t('app.statusRefs')} <span className="text-foreground/80">{counts.items} {t('app.statusItems')} · {counts.loadouts} {t('app.statusLoadouts')} · {counts.recipes} {t('app.statusRecipes')}</span></span>
       <div className="flex-1"/>
-      <span>{t('app.statusSchema')} <span className="text-foreground/80">v2.6.0</span></span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"/>
-        3 {t('app.statusUnresolved')}
-      </span>
-      <span>LN 1, COL 1</span>
+      <span>{t('app.statusSchema')} <span className="text-foreground/80">{SCHEMA_VERSION}</span></span>
     </footer>
   );
 }
@@ -158,12 +155,26 @@ function App() {
     };
   }, [location, displayLocation]);
 
+  const saveWorkspace = async () => {
+    try {
+      const data = await exportAllData();
+      const blob = new Blob([JSON.stringify({
+        ...data,
+        taxonomy: JSON.parse(localStorage.getItem(TAX_KEY) || 'null'),
+      }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'mountea-workspace.json'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { console.error(e); }
+  };
+
   const screenProps = { search: globalSearch, loading: !ready };
 
   return (
     <TooltipProvider>
       <div className="flex h-screen flex-col bg-background text-foreground">
-        <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)}/>
+        <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onSaveWorkspace={saveWorkspace}/>
         <div className="flex min-h-0 flex-1">
           <div className={cn('flex min-h-0 flex-1', screenClass)}>
             <Routes location={displayLocation}>

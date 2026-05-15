@@ -5,19 +5,16 @@ import {
   cn, Icon, Button, Select, Tooltip,
   Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
   Section,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
 import { exportRecipe } from './exporter.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createRecipeSchema, createRecipeDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -203,13 +200,7 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
-    const keys = path.split('.');
-    let cur = next;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
-    }
-    cur[keys[keys.length - 1]] = val;
+    setPath(next, path, val);
     return next;
   });
 
@@ -371,8 +362,10 @@ export function CraftingScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteRecipe,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) setSelected(null); },
+  });
 
   const selected = guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/crafting/${newGuid}` : '/crafting');
@@ -397,14 +390,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateRecipe(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportRecipe(entity, tax);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteRecipe(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) setSelected(null);
-    setDeleteTarget(null);
-  };
+  const handleExport = (entity) => exportRecipe(entity, tax);
 
   return (
     <ScreenLayout
@@ -429,34 +415,20 @@ export function CraftingScreen({ search: globalSearch, loading }) {
                   <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
                 </div>
                 {filtered.map(r => (
-                  <ContextMenu key={r.guid}>
-                    <ContextMenuTrigger asChild>
-                      <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
-                        <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">{r.name}</div>
-                            <div className="truncate font-mono text-[10px] text-muted-foreground">{r.guid}</div>
-                          </div>
-                        </Tooltip>
-                      </SidebarItem>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-44">
-                      <ContextMenuGroup>
-                        <ContextMenuItem onClick={() => handleDuplicate(r)}>
-                          <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                        </ContextMenuItem>
-                        <ContextMenuItem onClick={() => handleExport(r)}>
-                          <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                        </ContextMenuItem>
-                      </ContextMenuGroup>
-                      <ContextMenuSeparator/>
-                      <ContextMenuGroup>
-                        <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(r)}>
-                          <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                        </ContextMenuItem>
-                      </ContextMenuGroup>
-                    </ContextMenuContent>
-                  </ContextMenu>
+                  <EntityContextMenu key={r.guid}
+                    onDuplicate={() => handleDuplicate(r)}
+                    onExport={() => handleExport(r)}
+                    onDelete={() => handleDeleteRequest(r)}
+                  >
+                    <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
+                      <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{r.name}</div>
+                          <div className="truncate font-mono text-[10px] text-muted-foreground">{r.guid}</div>
+                        </div>
+                      </Tooltip>
+                    </SidebarItem>
+                  </EntityContextMenu>
                 ))}
               </div>
             );
@@ -476,7 +448,7 @@ export function CraftingScreen({ search: globalSearch, loading }) {
             ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}>
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('crafting.newTip')}</Button>
               </EmptyState>
-            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={onSaved}/>
         }
       </div>
 

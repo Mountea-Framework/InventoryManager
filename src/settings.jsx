@@ -347,7 +347,6 @@ function RootPage({ push, close }) {
                   const code = LANG_CODES[v] ?? 'en';
                   localStorage.setItem('arch.lang', code);
                   i18n.changeLanguage(code);
-                  setTweak('language', v);
                 }}
                 options={LANGUAGES.filter(l => l in LANG_CODES).map(l => ({ value: l, label: l }))}
               />
@@ -414,28 +413,17 @@ function CategoriesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   );
 }
 
-function CategoryEditPage({ trail, onBack, onClose, onNavigate, categoryId, tax, setTax, push, initialData = null }) {
-  const { t } = useTranslation();
-  const source = tax.categories.find(c => c.id === categoryId) ?? initialData ?? null;
-  const isNew = !tax.categories.some(c => c.id === categoryId);
+function useTaxonomyEdit({ id, collection, tax, setTax, onBack, validate, blank = null }) {
+  const items = tax[collection] ?? [];
+  const source = items.find(x => x.id === id) ?? blank ?? null;
+  const isNew = !items.some(x => x.id === id);
   const [draft, setDraft] = useState(source ?? {});
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     setDraft(source ?? {});
     setErrors({});
-  }, [categoryId]);
-
-  if (!draft) return null;
-
-  const validate = (d) => {
-    const errs = {};
-    if (!d.title?.trim()) errs.title = t('settings.valRequired');
-    else if (tax.categories.some(c => c.id !== categoryId && c.title.trim().toLowerCase() === d.title.trim().toLowerCase()))
-      errs.title = t('settings.valUnique');
-    if (!d.tags?.length) errs.tags = t('settings.valAtLeastOneTag');
-    return errs;
-  };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (patch) => setDraft(d => {
     const next = { ...d, ...patch };
@@ -448,20 +436,41 @@ function CategoryEditPage({ trail, onBack, onClose, onNavigate, categoryId, tax,
   const handleSave = () => {
     const errs = validate(draft);
     setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, categories: [...tax.categories, draft] });
-      } else {
-        setTax({ ...tax, categories: tax.categories.map(c => c.id === categoryId ? draft : c) });
-      }
-    }
+    if (Object.keys(errs).length) return;
+    setTax(prev => ({
+      ...prev,
+      [collection]: isNew
+        ? [...(prev[collection] ?? []), draft]
+        : (prev[collection] ?? []).map(x => x.id === id ? draft : x),
+    }));
   };
 
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteCategory')} "${source.title}"?`)) return;
-    setTax({ ...tax, categories: tax.categories.filter(c => c.id !== categoryId) });
+  const remove = (confirmMsg) => {
+    if (!confirm(confirmMsg)) return;
+    setTax(prev => ({ ...prev, [collection]: (prev[collection] ?? []).filter(x => x.id !== id) }));
     onBack();
   };
+
+  return { source, isNew, draft, errors, update, isDirty, handleSave, remove };
+}
+
+function CategoryEditPage({ trail, onBack, onClose, onNavigate, categoryId, tax, setTax, push, initialData = null }) {
+  const { t } = useTranslation();
+
+  const validate = (d) => {
+    const errs = {};
+    if (!d.title?.trim()) errs.title = t('settings.valRequired');
+    else if (tax.categories.some(c => c.id !== categoryId && c.title.trim().toLowerCase() === d.title.trim().toLowerCase()))
+      errs.title = t('settings.valUnique');
+    if (!d.tags?.length) errs.tags = t('settings.valAtLeastOneTag');
+    return errs;
+  };
+
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: categoryId, collection: 'categories', tax, setTax, onBack, validate, blank: initialData,
+  });
+
+  if (!draft) return null;
 
   const addSub = () => {
     const id = newId('sub');
@@ -473,7 +482,8 @@ function CategoryEditPage({ trail, onBack, onClose, onNavigate, categoryId, tax,
 
   return (
     <TaxEditPage
-      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove}
+      trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteCategory')} "${source?.title}"?`)}
       onSave={handleSave} isDirty={isDirty}
     >
       <Section title="Identity" icon="tag">
@@ -638,17 +648,6 @@ function RaritiesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
 
 function RarityEditPage({ trail, onBack, onClose, rarityId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const source = tax.rarities.find(r => r.id === rarityId) ?? initialData ?? null;
-  const isNew = !tax.rarities.some(r => r.id === rarityId);
-  const [draft, setDraft] = useState(source ?? {});
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    setDraft(source ?? {});
-    setErrors({});
-  }, [rarityId]);
-
-  if (!draft) return null;
 
   const validate = (d) => {
     const errs = {};
@@ -659,34 +658,16 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, onNavigate, tax, set
     return errs;
   };
 
-  const update = (patch) => setDraft(d => {
-    const next = { ...d, ...patch };
-    setErrors(validate(next));
-    return next;
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: rarityId, collection: 'rarities', tax, setTax, onBack, validate, blank: initialData,
   });
 
-  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
-
-  const handleSave = () => {
-    const errs = validate(draft);
-    setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, rarities: [...tax.rarities, draft] });
-      } else {
-        setTax({ ...tax, rarities: tax.rarities.map(x => x.id === rarityId ? draft : x) });
-      }
-    }
-  };
-
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteRarity')} "${source.title}"?`)) return;
-    setTax({ ...tax, rarities: tax.rarities.filter(x => x.id !== rarityId) });
-    onBack();
-  };
+  if (!draft) return null;
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteRarity')} "${source?.title}"?`)}
+      onSave={handleSave} isDirty={isDirty}>
       <Section title="Identity" icon="sparkle">
         <Row label={t('settings.title')}>
           <Input
@@ -775,17 +756,6 @@ function ItemActionsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
 
 function ItemActionEditPage({ trail, onBack, onClose, actionId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const source = tax.itemActions.find(a => a.id === actionId) ?? initialData ?? null;
-  const isNew = !tax.itemActions.some(a => a.id === actionId);
-  const [draft, setDraft] = useState(source ?? {});
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    setDraft(source ?? {});
-    setErrors({});
-  }, [actionId]);
-
-  if (!draft) return null;
 
   const validate = (d) => {
     const errs = {};
@@ -795,34 +765,16 @@ function ItemActionEditPage({ trail, onBack, onClose, actionId, onNavigate, tax,
     return errs;
   };
 
-  const update = (patch) => setDraft(d => {
-    const next = { ...d, ...patch };
-    setErrors(validate(next));
-    return next;
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: actionId, collection: 'itemActions', tax, setTax, onBack, validate, blank: initialData,
   });
 
-  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
-
-  const handleSave = () => {
-    const errs = validate(draft);
-    setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, itemActions: [...tax.itemActions, draft] });
-      } else {
-        setTax({ ...tax, itemActions: tax.itemActions.map(a => a.id === actionId ? draft : a) });
-      }
-    }
-  };
-
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteAction')} "${source.key}"?`)) return;
-    setTax({ ...tax, itemActions: tax.itemActions.filter(a => a.id !== actionId) });
-    onBack();
-  };
+  if (!draft) return null;
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteAction')} "${source?.key}"?`)}
+      onSave={handleSave} isDirty={isDirty}>
       <Section title="Identity" icon="tag">
         <Row label={t('settings.actionKey')} hint={t('settings.actionKeyDesc')}>
           <Input
@@ -885,17 +837,6 @@ function AttachmentSlotsPage({ trail, onBack, onClose, onNavigate, tax, push }) 
 
 function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const source = tax.attachmentSlots.find(s => s.id === slotId) ?? initialData ?? null;
-  const isNew = !tax.attachmentSlots.some(s => s.id === slotId);
-  const [draft, setDraft] = useState(source ?? {});
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    setDraft(source ?? {});
-    setErrors({});
-  }, [slotId]);
-
-  if (!draft) return null;
 
   const validate = (d) => {
     const errs = {};
@@ -906,34 +847,16 @@ function AttachmentSlotEditPage({ trail, onBack, onClose, slotId, onNavigate, ta
     return errs;
   };
 
-  const update = (patch) => setDraft(d => {
-    const next = { ...d, ...patch };
-    setErrors(validate(next));
-    return next;
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: slotId, collection: 'attachmentSlots', tax, setTax, onBack, validate, blank: initialData,
   });
 
-  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
-
-  const handleSave = () => {
-    const errs = validate(draft);
-    setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, attachmentSlots: [...tax.attachmentSlots, draft] });
-      } else {
-        setTax({ ...tax, attachmentSlots: tax.attachmentSlots.map(s => s.id === slotId ? draft : s) });
-      }
-    }
-  };
-
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteSlot')} "${source.name}"?`)) return;
-    setTax({ ...tax, attachmentSlots: tax.attachmentSlots.filter(s => s.id !== slotId) });
-    onBack();
-  };
+  if (!draft) return null;
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteSlot')} "${source?.name}"?`)}
+      onSave={handleSave} isDirty={isDirty}>
       <Section title="Identity" icon="link">
         <Row label={t('settings.slotName')} hint={t('settings.slotNameDesc')}>
           <Input
@@ -984,17 +907,6 @@ function CraftingStationsPage({ trail, onBack, onClose, onNavigate, tax, push })
 
 function CraftingStationEditPage({ trail, onBack, onClose, stationId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const source = tax.craftingStations.find(s => s.id === stationId) ?? initialData ?? null;
-  const isNew = !tax.craftingStations.some(s => s.id === stationId);
-  const [draft, setDraft] = useState(source ?? {});
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    setDraft(source ?? {});
-    setErrors({});
-  }, [stationId]);
-
-  if (!draft) return null;
 
   const validate = (d) => {
     const errs = {};
@@ -1005,34 +917,16 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, onNavigate
     return errs;
   };
 
-  const update = (patch) => setDraft(d => {
-    const next = { ...d, ...patch };
-    setErrors(validate(next));
-    return next;
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: stationId, collection: 'craftingStations', tax, setTax, onBack, validate, blank: initialData,
   });
 
-  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
-
-  const handleSave = () => {
-    const errs = validate(draft);
-    setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, craftingStations: [...tax.craftingStations, draft] });
-      } else {
-        setTax({ ...tax, craftingStations: tax.craftingStations.map(s => s.id === stationId ? draft : s) });
-      }
-    }
-  };
-
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteStation')} "${source.name}"?`)) return;
-    setTax({ ...tax, craftingStations: tax.craftingStations.filter(s => s.id !== stationId) });
-    onBack();
-  };
+  if (!draft) return null;
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteStation')} "${source?.name}"?`)}
+      onSave={handleSave} isDirty={isDirty}>
       <Section title="Identity" icon="hammer">
         <Row label={t('settings.stationName')} hint={t('settings.stationNameDesc')}>
           <Input
@@ -1096,18 +990,6 @@ function SpecialAffectsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
 
 function SpecialAffectEditPage({ trail, onBack, onClose, affectId, onNavigate, tax, setTax, initialData = null }) {
   const { t } = useTranslation();
-  const affects = tax.specialAffects ?? [];
-  const source = affects.find(a => a.id === affectId) ?? initialData ?? null;
-  const isNew = !affects.some(a => a.id === affectId);
-  const [draft, setDraft] = useState(source ?? {});
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    setDraft(source ?? {});
-    setErrors({});
-  }, [affectId]);
-
-  if (!draft) return null;
 
   const validate = (d) => {
     const errs = {};
@@ -1118,34 +1000,16 @@ function SpecialAffectEditPage({ trail, onBack, onClose, affectId, onNavigate, t
     return errs;
   };
 
-  const update = (patch) => setDraft(d => {
-    const next = { ...d, ...patch };
-    setErrors(validate(next));
-    return next;
+  const { source, isNew, draft, errors, update, isDirty, handleSave, remove } = useTaxonomyEdit({
+    id: affectId, collection: 'specialAffects', tax, setTax, onBack, validate, blank: initialData,
   });
 
-  const isDirty = isNew || JSON.stringify(draft) !== JSON.stringify(source);
-
-  const handleSave = () => {
-    const errs = validate(draft);
-    setErrors(errs);
-    if (!Object.keys(errs).length) {
-      if (isNew) {
-        setTax({ ...tax, specialAffects: [...(tax.specialAffects ?? []), draft] });
-      } else {
-        setTax({ ...tax, specialAffects: (tax.specialAffects ?? []).map(a => a.id === affectId ? draft : a) });
-      }
-    }
-  };
-
-  const remove = () => {
-    if (!confirm(`${t('settings.deleteSpecialAffect')} "${source.name}"?`)) return;
-    setTax({ ...tax, specialAffects: affects.filter(a => a.id !== affectId) });
-    onBack();
-  };
+  if (!draft) return null;
 
   return (
-    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate} onDelete={remove} onSave={handleSave} isDirty={isDirty}>
+    <TaxEditPage trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
+      onDelete={() => remove(`${t('settings.deleteSpecialAffect')} "${source?.name}"?`)}
+      onSave={handleSave} isDirty={isDirty}>
       <Section title="Identity" icon="sparkle">
         <Row label={t('settings.affectName')} hint={t('settings.affectNameDesc')}>
           <Input

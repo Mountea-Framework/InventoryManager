@@ -5,19 +5,16 @@ import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
   Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
   Section, Row, TextField, Tag,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
 import { exportLoadout } from './exporter.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createLoadoutSchema, createLoadoutDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -138,8 +135,10 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteLoadout,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) setSelected(DATA.loadouts[0]?.guid ?? null); },
+  });
 
   const selected = guid ?? DATA.loadouts[0]?.guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/loadouts/${newGuid}` : '/loadouts');
@@ -166,14 +165,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
     const newGuid = await duplicateLoadout(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportLoadout(entity, tax);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteLoadout(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) setSelected(DATA.loadouts[0]?.guid ?? null);
-    setDeleteTarget(null);
-  };
+  const handleExport = (entity) => exportLoadout(entity, tax);
 
   return (
     <ScreenLayout
@@ -188,39 +180,25 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         {filtered.map(l => {
           const sel = l.guid === selected;
           return (
-            <ContextMenu key={l.guid}>
-              <ContextMenuTrigger asChild>
-                <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="items-start py-2.5">
-                  <Tooltip content={l.tagline || `${l.items.length} ${t('app.statusItems')}`} side="right">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{l.name}</div>
-                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
-                      <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                        <span>{l.items.length} {t('app.statusItems')}</span>
-                        <span className="opacity-50">·</span>
-                        <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
-                      </div>
+            <EntityContextMenu key={l.guid}
+              onDuplicate={() => handleDuplicate(l)}
+              onExport={() => handleExport(l)}
+              onDelete={() => handleDeleteRequest(l)}
+            >
+              <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="items-start py-2.5">
+                <Tooltip content={l.tagline || `${l.items.length} ${t('app.statusItems')}`} side="right">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{l.name}</div>
+                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
+                    <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                      <span>{l.items.length} {t('app.statusItems')}</span>
+                      <span className="opacity-50">·</span>
+                      <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
                     </div>
-                  </Tooltip>
-                </SidebarItem>
-              </ContextMenuTrigger>
-              <ContextMenuContent className="w-44">
-                <ContextMenuGroup>
-                  <ContextMenuItem onClick={() => handleDuplicate(l)}>
-                    <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleExport(l)}>
-                    <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                  </ContextMenuItem>
-                </ContextMenuGroup>
-                <ContextMenuSeparator/>
-                <ContextMenuGroup>
-                  <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(l)}>
-                    <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                  </ContextMenuItem>
-                </ContextMenuGroup>
-              </ContextMenuContent>
-            </ContextMenu>
+                  </div>
+                </Tooltip>
+              </SidebarItem>
+            </EntityContextMenu>
           );
         })}
         </ElementsSidebar>
@@ -238,7 +216,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
             ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}>
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('loadouts.newTip')}</Button>
               </EmptyState>
-            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={onSaved}/>
         }
       </div>
 
@@ -290,13 +268,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
-    const keys = path.split('.');
-    let cur = next;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
-    }
-    cur[keys[keys.length - 1]] = val;
+    setPath(next, path, val);
     return next;
   });
 

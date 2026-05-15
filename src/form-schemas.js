@@ -21,6 +21,8 @@
  *  readonly      →  plain text display     (non-editable, e.g. guid)
  */
 
+import { newGuid } from './utils.js';
+
 /** @typedef {'text'|'textarea'|'number'|'select'|'switch'|'flags'|'tags'|'string-list'|'file'|'chip-multi'|'range'|'item-list'|'group-list'|'slot-map'|'readonly'} FieldType */
 
 /**
@@ -635,8 +637,6 @@ export const createLoadoutSchema = (t) => ({
 /*  createDraft — blank starting state for each entity type            */
 /* ------------------------------------------------------------------ */
 
-const randomHex = (len) => Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-const newGuid = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
 
 /** @returns {object} blank item draft with a fresh GUID */
 export const createItemDraft = () => ({

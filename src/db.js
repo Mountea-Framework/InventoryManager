@@ -17,4 +17,6 @@ db.version(2).stores({
   files:    'key',
 });
 
+export const SCHEMA_VERSION = 'v2';
+
 export default db;

@@ -4,6 +4,8 @@ import {
   Section, Row, TextField, Textarea, FilePicker,
 } from './ui.jsx';
 import { ITEM_FLAGS, ITEM_ACTIONS, bitsToFlags, flagsToBits } from './data.js';
+import { getPath } from './utils.js';
+import { saveFile } from './store.js';
 
 /**
  * @typedef {import('./form-schemas.js').FieldSchema} FieldSchema
@@ -286,8 +288,6 @@ function RangeField({ field, value, onChange }) {
    Internals
    ============================================================ */
 
-/** @param {object} obj @param {string} path @returns {*} */
-const getPath = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj);
 
 /** Field types that need a stacked (full-width) Row layout. */
 const STACK_TYPES = new Set(['textarea', 'flags', 'tags', 'string-list', 'chip-multi', 'file', 'item-list', 'group-list', 'slot-map']);
@@ -363,7 +363,13 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'switch':
       return <Switch checked={!!value} onCheckedChange={onChange}/>;
     case 'file':
-      return <FilePicker value={value ?? ''} onChange={onChange} accept={field.accept} placeholder={field.placeholder}/>;
+      return <FilePicker
+        value={value ?? ''}
+        onChange={onChange}
+        onFilePicked={async (file) => { await saveFile(file.name, file); onChange(file.name); }}
+        accept={field.accept}
+        placeholder={field.placeholder}
+      />;
     case 'tags':
       return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder}/>;
     case 'string-list': {
