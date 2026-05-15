@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,6 +10,7 @@ import {
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
 import { exportRecipe } from './exporter.js';
+import { importRecipes } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
@@ -386,18 +387,36 @@ export function CraftingScreen({ search: globalSearch, loading }) {
     setSelected(newRecipe.guid);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateRecipe(entity);
     setSelected(newGuid);
   };
   const handleExport = (entity) => exportRecipe(entity, tax);
 
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importRecipes(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
+  };
+
   return (
     <ScreenLayout
       elementsSidebar={
         <ElementsSidebar
           title={t('crafting.title')}
-          headerActions={<IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>}
+          headerActions={<>
+            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
           search={browserSearch}
           setSearch={setBrowserSearch}
           searchPlaceholder={t('crafting.filterPlaceholder')}

@@ -253,6 +253,7 @@
     "export": "Exportovat",
     "delete": "Smazat",
     "cancel": "Zrušit",
+    "import": "Importovat",
     "deleteConfirmTitle": "Smazat trvale?",
     "deleteConfirmDesc": "\"{{name}}\" bude trvale odstraněno. Tuto akci nelze vrátit zpět."
   }

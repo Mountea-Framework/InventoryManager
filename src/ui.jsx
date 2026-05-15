@@ -99,6 +99,7 @@ export const Icon = ({ name, size = 16, className = '' }) => {
     dup: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
     pin: <path d="M12 3v8l5 3v2H7v-2l5-3V3m-2 0h4"/>,
     target: <><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></>,
+    import: <><path d="M12 17v-14m0 0-4 4m4-4 4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
   };
   return <svg {...p}>{paths[name] || null}</svg>;
 };
@@ -464,7 +465,7 @@ export function ElementsSidebar({ title, headerActions, search, setSearch, searc
       <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-2">
         <div className="flex items-center gap-1">
           <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">{title}</span>
-          <div className="group-data-[state=collapsed]:hidden">{headerActions}</div>
+          <div className="group-data-[state=collapsed]:hidden flex items-center gap-2">{headerActions}</div>
           <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
         </div>
         <div className="relative group-data-[state=collapsed]:hidden">
@@ -559,7 +560,7 @@ export function EntityContextMenu({
         {hasTopGroup && (
           <ContextMenuGroup>
             {showDuplicate && <ContextMenuItem onClick={onDuplicate}><Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}</ContextMenuItem>}
-            {showExport    && <ContextMenuItem onClick={onExport}><Icon name="export" size={14} className="mr-2"/>{t('common.export')}</ContextMenuItem>}
+            {showExport    && <ContextMenuItem onClick={onExport}><Icon name="import" size={14} className="mr-2"/>{t('common.export')}</ContextMenuItem>}
           </ContextMenuGroup>
         )}
         {hasTopGroup && showDelete && <ContextMenuSeparator/>}

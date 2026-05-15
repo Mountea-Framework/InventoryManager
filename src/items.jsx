@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -9,6 +9,7 @@ import {
 import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
 import { exportItem } from './exporter.js';
+import { importItems } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
@@ -173,18 +174,36 @@ export function ItemsScreen({ search: globalSearch, loading }) {
     navigate(`/inventory/${newItem.guid}`);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateItem(entity);
     navigate(`/inventory/${newGuid}`);
   };
   const handleExport = (entity) => exportItem(entity, tax);
 
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importItems(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
+  };
+
   return (
     <ScreenLayout
       elementsSidebar={
         <ElementsSidebar
           title={t('items.title')}
-          headerActions={<IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>}
+          headerActions={<>
+            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>
+            <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
+          </>}
           search={browserSearch} setSearch={setBrowserSearch}
           searchPlaceholder={t('items.filterPlaceholder')}
           loading={loading}

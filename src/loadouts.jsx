@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,6 +10,7 @@ import {
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
 import { exportLoadout } from './exporter.js';
+import { importLoadouts } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
@@ -161,18 +162,36 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
     setSelected(newLoadout.guid);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateLoadout(entity);
     setSelected(newGuid);
   };
   const handleExport = (entity) => exportLoadout(entity, tax);
 
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importLoadouts(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
+  };
+
   return (
     <ScreenLayout
       elementsSidebar={
         <ElementsSidebar
           title={t('loadouts.title')}
-          headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>}
+          headerActions={<>
+            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
+            <IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>
+            <input ref={importRef} type="file" accept=".mntealoadout,.mntealoadouts" multiple hidden onChange={handleImport}/>
+          </>}
           search={browserSearch} setSearch={setBrowserSearch}
           searchPlaceholder={t('loadouts.filterPlaceholder')}
           loading={loading}
