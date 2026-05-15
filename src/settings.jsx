@@ -7,10 +7,14 @@ import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
 } from './command.jsx';
+import {
+  Drawer, DrawerContent,
+} from '@/components/ui/drawer';
 import JSZip from 'jszip';
 import { useTaxonomy, TAX_KEY } from './hooks.jsx';
 import { bulkImport, saveFile } from './store.js';
 import { exportWorkspace } from './exporter.js';
+import { useIsMobile } from './hooks/use-mobile.jsx';
 
 /* ============================================================
    Type definitions
@@ -47,6 +51,7 @@ const newId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
  */
 function PageHeader({ trail, onBack, onClose, onNavigate, right }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   return (
     <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
       <button
@@ -56,25 +61,29 @@ function PageHeader({ trail, onBack, onClose, onNavigate, right }) {
       >
         <Icon name="chevLeft" size={14}/>
       </button>
-      <div className="flex flex-1 items-center gap-1.5 text-sm font-medium">
-        {trail.map((item, i) => {
-          const isLast = i === trail.length - 1;
-          return (
-            <React.Fragment key={i}>
-              {i > 0 && <Icon name="chevRight" size={12} className="text-muted-foreground/60"/>}
-              {isLast || !onNavigate ? (
-                <span className={isLast ? 'text-foreground' : 'text-muted-foreground'}>{item}</span>
-              ) : (
-                <button
-                  onClick={() => onNavigate(i)}
-                  className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
-                >
-                  {item}
-                </button>
-              )}
-            </React.Fragment>
-          );
-        })}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
+        {isMobile ? (
+          <span className="truncate text-foreground">{trail[trail.length - 1]}</span>
+        ) : (
+          trail.map((item, i) => {
+            const isLast = i === trail.length - 1;
+            return (
+              <React.Fragment key={i}>
+                {i > 0 && <Icon name="chevRight" size={12} className="shrink-0 text-muted-foreground/60"/>}
+                {isLast || !onNavigate ? (
+                  <span className={cn('truncate', isLast ? 'text-foreground' : 'text-muted-foreground')}>{item}</span>
+                ) : (
+                  <button
+                    onClick={() => onNavigate(i)}
+                    className="shrink-0 text-muted-foreground hover:text-foreground hover:underline transition-colors"
+                  >
+                    {item}
+                  </button>
+                )}
+              </React.Fragment>
+            );
+          })
+        )}
       </div>
       {right}
       <button
@@ -91,6 +100,8 @@ function PageHeader({ trail, onBack, onClose, onNavigate, right }) {
 /** @param {{ hint?: React.ReactNode }} props */
 function Footer({ hint }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  if (isMobile) return null;
   return (
     <div className="flex items-center justify-between border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
       <span className="inline-flex items-center gap-1.5 font-mono">
@@ -184,15 +195,17 @@ function TaxListPage({ trail, onBack, onClose, onNavigate, placeholder, heading,
  */
 function TaxEditPage({ trail, onBack, onClose, onNavigate, onDelete, onSave, isDirty, children }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   return (
     <div className="flex h-full flex-col">
       <PageHeader
         trail={trail} onBack={onBack} onClose={onClose} onNavigate={onNavigate}
         right={onDelete && (
-          <Button variant="ghost" size="sm" onClick={onDelete}
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          <Button variant="ghost" size={isMobile ? 'icon-sm' : 'sm'} onClick={onDelete}
+            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
-            <Icon name="trash" size={13}/> {t('settings.delete')}
+            <Icon name="trash" size={13}/>
+            {!isMobile && <span>{t('settings.delete')}</span>}
           </Button>
         )}
       />
@@ -217,6 +230,7 @@ function TaxEditPage({ trail, onBack, onClose, onNavigate, onDelete, onSave, isD
  */
 export function SettingsCommand({ open, onOpenChange }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [stack, setStack] = useState([{ type: 'root' }]);
   const page  = stack[stack.length - 1];
   const push  = (p) => setStack(s => [...s, p]);
@@ -251,23 +265,41 @@ export function SettingsCommand({ open, onOpenChange }) {
   const navigateTo = (i) => setStack(s => s.slice(0, i + 1));
   const shared = { trail, onBack: pop, onClose: close, onNavigate: navigateTo, tax, setTax, push };
 
+  const content = (
+    <>
+      {page.type === 'root'              && <RootPage push={push} close={close}/>}
+      {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
+      {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id} initialData={page.defaults}/>}
+      {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
+      {page.type === 'rarities'          && <RaritiesPage        {...shared}/>}
+      {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id} initialData={page.defaults}/>}
+      {page.type === 'itemActions'       && <ItemActionsPage     {...shared}/>}
+      {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id} initialData={page.defaults}/>}
+      {page.type === 'attachmentSlots'   && <AttachmentSlotsPage    {...shared}/>}
+      {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id} initialData={page.defaults}/>}
+      {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
+      {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id} initialData={page.defaults}/>}
+      {page.type === 'specialAffects'    && <SpecialAffectsPage      {...shared}/>}
+      {page.type === 'specialAffect'     && <SpecialAffectEditPage   {...shared} affectId={page.id} initialData={page.defaults}/>}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="flex h-[90dvh] flex-col overflow-hidden p-0">
+          <div className="flex min-h-0 flex-1 flex-col">
+            {content}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[620px] w-[92vw] max-w-[900px] flex-col overflow-hidden p-0 [&>button]:hidden">
-        {page.type === 'root'              && <RootPage push={push} close={close}/>}
-        {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
-        {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id} initialData={page.defaults}/>}
-        {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
-        {page.type === 'rarities'          && <RaritiesPage        {...shared}/>}
-        {page.type === 'rarity'            && <RarityEditPage      {...shared} rarityId={page.id} initialData={page.defaults}/>}
-        {page.type === 'itemActions'       && <ItemActionsPage     {...shared}/>}
-        {page.type === 'itemAction'        && <ItemActionEditPage  {...shared} actionId={page.id} initialData={page.defaults}/>}
-        {page.type === 'attachmentSlots'   && <AttachmentSlotsPage    {...shared}/>}
-        {page.type === 'attachmentSlot'    && <AttachmentSlotEditPage {...shared} slotId={page.id} initialData={page.defaults}/>}
-        {page.type === 'craftingStations'  && <CraftingStationsPage   {...shared}/>}
-        {page.type === 'craftingStation'   && <CraftingStationEditPage {...shared} stationId={page.id} initialData={page.defaults}/>}
-        {page.type === 'specialAffects'    && <SpecialAffectsPage      {...shared}/>}
-        {page.type === 'specialAffect'     && <SpecialAffectEditPage   {...shared} affectId={page.id} initialData={page.defaults}/>}
+        {content}
       </DialogContent>
     </Dialog>
   );

@@ -30,7 +30,7 @@ export function FlagsPicker({ value, onChange }) {
   const flags = bitsToFlags(value || 0);
   const toggle = (key) => onChange?.(flagsToBits({ ...flags, [key]: !flags[key] }));
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
       {ITEM_FLAGS.map(f => {
         const on = !!flags[f.key];
         return (
@@ -157,7 +157,7 @@ export function ItemActionsPicker({ value = [], onChange, taxonomy }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {catalog.map(a => {
           const on = enabled.has(a.key);
           return (
@@ -467,7 +467,7 @@ export function FormRenderer({ schema, draft, set, taxonomy, renderField, sectio
     : schema.sections;
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-3 md:p-6">
       {sections.map(section => (
         <SectionRenderer
           key={section.id}

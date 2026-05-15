@@ -204,6 +204,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
             <Tooltip content={t('items.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
             <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
           </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('items.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
+          </>}
           search={browserSearch} setSearch={setBrowserSearch}
           searchPlaceholder={t('items.filterPlaceholder')}
           loading={loading}

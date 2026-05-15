@@ -417,6 +417,10 @@ export function CraftingScreen({ search: globalSearch, loading }) {
             <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
             <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
           </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
           search={browserSearch}
           setSearch={setBrowserSearch}
           searchPlaceholder={t('crafting.filterPlaceholder')}

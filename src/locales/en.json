@@ -3,6 +3,7 @@
     "brand": "Mountea",
     "brandSub": "Inventory",
     "loading": "Loading…",
+    "search": "Search…",
     "searchPlaceholder": "Search templates, tags, refs…",
     "exportWorkspace": "Export workspace (.mnteainventory)",
     "settingsTip": "Settings (⌘,)",
@@ -245,7 +246,8 @@
   "ui": {
     "selectFile": "Select file…",
     "filterPlaceholder": "Filter…",
-    "inspector": "Inspector"
+    "inspector": "Inspector",
+    "openPanel": "Open panel"
   },
   "common": {
     "duplicate": "Duplicate",

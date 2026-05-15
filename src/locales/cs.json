@@ -4,6 +4,7 @@
     "brand": "Mountea",
     "brandSub": "Inventory",
     "loading": "Načítání…",
+    "search": "Hledat…",
     "searchPlaceholder": "Hledat šablony, tagy, reference…",
     "exportWorkspace": "Exportovat workspace (.mnteainventory)",
     "settingsTip": "Nastavení (⌘,)",
@@ -246,7 +247,8 @@
   "ui": {
     "selectFile": "Vybrat soubor…",
     "filterPlaceholder": "Filtrovat…",
-    "inspector": "Inspektor"
+    "inspector": "Inspektor",
+    "openPanel": "Otevřít panel"
   },
   "common": {
     "duplicate": "Duplikovat",

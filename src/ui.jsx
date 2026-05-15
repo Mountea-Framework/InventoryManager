@@ -1,4 +1,4 @@
-import React, { useState, useRef, forwardRef } from 'react';
+import React, { useState, useRef, forwardRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
@@ -6,6 +6,8 @@ import {
   SidebarInput, SidebarInset, SidebarProvider, SidebarRail, SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useMobileSidebar } from './contexts/mobile-sidebar-context.jsx';
 
 /* ---------- shadcn component imports ---------- */
 import { Button as ShadcnButton } from '@/components/ui/button';
@@ -181,13 +183,13 @@ export const Section = ({ title, icon, right, children, defaultOpen = true, comp
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="overflow-hidden rounded-lg border border-border/50 bg-card/40">
-      <div className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none" onClick={() => setOpen(!open)}>
+      <div className="flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3 cursor-pointer select-none" onClick={() => setOpen(!open)}>
         <Icon name={open ? 'chevDown' : 'chevRight'} size={14} className="text-muted-foreground"/>
         {icon && <Icon name={icon} size={14} className="text-muted-foreground"/>}
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">{title}</span>
         {right && <span onClick={e => e.stopPropagation()}>{right}</span>}
       </div>
-      {open && <div className={cn(compact ? 'px-4 pb-3' : 'px-4 pb-4')}>{children}</div>}
+      {open && <div className={cn(compact ? 'px-3 pb-3 md:px-4' : 'px-3 pb-3 md:px-4 md:pb-4')}>{children}</div>}
     </section>
   );
 };
@@ -210,12 +212,12 @@ export const Row = ({ label, hint, tooltip, children, stack = false }) => {
       <div>{children}</div>
     </div>
   ) : (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-1.5">
-      <div className="w-[180px] shrink-0">
+    <div className="flex flex-wrap items-start gap-x-3 gap-y-1 py-1.5">
+      <div className="w-full shrink-0 pt-1.5 md:w-[180px] md:pt-0">
         {labelEl}
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
-      <div className="min-w-0 grow basis-[200px]">{children}</div>
+      <div className="min-w-0 grow basis-full md:basis-[200px]">{children}</div>
     </div>
   );
 };
@@ -382,7 +384,7 @@ export function EmptyState({ icon = 'sparkle', title, description, children }) {
 export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
   const { t } = useTranslation();
   return (
-    <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-5">
+    <div className="sticky top-0 z-10 border-b border-border bg-background px-4 py-3 md:px-6 md:py-5">
       <div className="flex items-start gap-4">
         {thumb}
         <div className="min-w-0 flex-1">
@@ -405,7 +407,15 @@ export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
    ScreenLayout — dual-sidebar layout (left elements + right inspector)
    ============================================================ */
 
+function MobileSidebarWire() {
+  const { setToggle } = useMobileSidebar();
+  const { toggleSidebar } = useSidebar();
+  useEffect(() => { setToggle(toggleSidebar); }, [setToggle, toggleSidebar]);
+  return null;
+}
+
 export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
+  const isMobile = useIsMobile();
   const [leftOpen, setLeftOpen] = useState(() => {
     try { return localStorage.getItem('arch.sidebar.elements') !== 'false'; } catch { return true; }
   });
@@ -419,6 +429,7 @@ export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
       onOpenChange={v => { setLeftOpen(v); try { localStorage.setItem('arch.sidebar.elements', String(v)); } catch {} }}
       style={{ '--sidebar-width': '300px' }}
     >
+      <MobileSidebarWire/>
       {elementsSidebar}
       <SidebarInset className="flex min-h-0 flex-col overflow-hidden p-0">
         <SidebarProvider
@@ -429,7 +440,7 @@ export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
           <SidebarInset className="min-h-0 overflow-auto">
             {children}
           </SidebarInset>
-          {inspectorSidebar}
+          {!isMobile && inspectorSidebar}
         </SidebarProvider>
       </SidebarInset>
     </SidebarProvider>
@@ -439,14 +450,16 @@ export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
 /* ============================================================
    ElementsSidebar — left entity list sidebar (shadcn Sidebar)
    ============================================================ */
-export function ElementsSidebar({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {
+export function ElementsSidebar({ title, headerActions, mobileHeaderActions, search, setSearch, searchPlaceholder, loading, children }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const actions = isMobile ? (mobileHeaderActions ?? null) : headerActions;
   return (
     <Sidebar collapsible="icon" side="left">
       <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-1">
         <div className="flex items-center gap-1">
           <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">{title}</span>
-          <div className="group-data-[state=collapsed]:hidden flex items-center gap-1">{headerActions}</div>
+          <div className="group-data-[state=collapsed]:hidden flex items-center gap-1">{actions}</div>
           <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
         </div>
         <div className="relative group-data-[state=collapsed]:hidden">
