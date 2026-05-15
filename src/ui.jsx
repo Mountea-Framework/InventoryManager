@@ -109,12 +109,16 @@ export const Icon = ({ name, size = 16, className = '' }) => {
 /* ============================================================
    Tooltip — convenience wrapper: <Tooltip content="...">child</Tooltip>
    ============================================================ */
-export const Tooltip = ({ children, content, side = 'top', delayDuration = 500 }) => (
-  <TooltipRoot delayDuration={delayDuration}>
-    <TooltipTrigger asChild>{children}</TooltipTrigger>
-    <TooltipContent side={side}>{content}</TooltipContent>
-  </TooltipRoot>
-);
+export const Tooltip = ({ children, content, side = 'top', delayDuration = 500 }) => {
+  const isMobile = useIsMobile();
+  if (isMobile) return children;
+  return (
+    <TooltipRoot delayDuration={delayDuration}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{content}</TooltipContent>
+    </TooltipRoot>
+  );
+};
 
 /* ============================================================
    Button — shadcn Button extended with `icon` name prop + `full` width
