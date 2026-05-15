@@ -222,16 +222,17 @@ export const Row = ({ label, hint, tooltip, children, stack = false }) => {
 /* ============================================================
    TextField — styled text input with optional prefix/suffix
    ============================================================ */
-export const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, className = '' }) => (
+export const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, disabled, className = '' }) => (
   <div className={cn(
     'flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm',
     'focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+    disabled && 'pointer-events-none opacity-50',
     className,
   )}>
     {prefix && <span className="mr-2 flex text-muted-foreground">{prefix}</span>}
     <input
       value={value ?? ''} onChange={e => onChange?.(e.target.value)}
-      placeholder={placeholder} readOnly={readOnly}
+      placeholder={placeholder} readOnly={readOnly} disabled={disabled}
       className={cn(
         'flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground',
         mono && 'font-mono text-xs',

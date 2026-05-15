@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   cn, Icon, Button, Input, Select, Switch, Tooltip,
   Section, Row, TextField, Textarea, FilePicker,
@@ -288,6 +288,16 @@ function RangeField({ field, value, onChange }) {
    Internals
    ============================================================ */
 
+/** Returns the appropriate zero/empty value for a field when its section is disabled. */
+function defaultClearValue(type, field) {
+  switch (type) {
+    case 'number': return field?.min ?? 0;
+    case 'switch': return false;
+    case 'tags': case 'string-list': case 'chip-multi': return [];
+    case 'flags': return 0;
+    default: return '';
+  }
+}
 
 /** Field types that need a stacked (full-width) Row layout. */
 const STACK_TYPES = new Set(['textarea', 'flags', 'tags', 'string-list', 'chip-multi', 'file', 'item-list', 'group-list', 'slot-map']);
@@ -327,11 +337,12 @@ function resolveOptions(field, taxonomy, draft) {
 /**
  * Renders one field based on its schema type.
  * Calls renderField(field, value, onChange) first — return non-null to override.
- * @param {{ field: FieldSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
+ * @param {{ field: FieldSchema, draft: object, set: Function, taxonomy: object, renderField?: Function, disabled?: boolean }} props
  */
-function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
+function FieldRenderer({ field, draft, set, taxonomy, renderField, disabled = false }) {
   const value    = getPath(draft, field.id);
   const onChange = (v) => set(field.id, v);
+  const isDisabled = disabled || !!field.disabled;
 
   if (renderField) {
     const custom = renderField(field, value, onChange);
@@ -342,9 +353,9 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'readonly':
       return <TextField value={value ?? ''} mono readOnly/>;
     case 'text':
-      return <TextField value={value ?? ''} onChange={onChange} placeholder={field.placeholder}/>;
+      return <TextField value={value ?? ''} onChange={onChange} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'textarea':
-      return <Textarea value={value ?? ''} onChange={e => onChange(e.target.value)} rows={4} placeholder={field.placeholder}/>;
+      return <Textarea value={value ?? ''} onChange={e => onChange(e.target.value)} rows={4} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'number': {
       const suffix = field.unit ? <span className="text-xs">{field.unit}</span> : undefined;
       return (
@@ -353,15 +364,16 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
           onChange={v => onChange(field.step === 1 ? parseInt(v) || 0 : parseFloat(v) || 0)}
           mono
           suffix={suffix}
+          disabled={isDisabled}
         />
       );
     }
     case 'select': {
       const options = resolveOptions(field, taxonomy, draft);
-      return <Select value={value ?? ''} onChange={onChange} options={options} placeholder={field.placeholder}/>;
+      return <Select value={value ?? ''} onChange={onChange} options={options} placeholder={field.placeholder} disabled={isDisabled}/>;
     }
     case 'switch':
-      return <Switch checked={!!value} onCheckedChange={onChange}/>;
+      return <Switch checked={!!value} onCheckedChange={onChange} disabled={isDisabled}/>;
     case 'file':
       return <FilePicker
         value={value ?? ''}
@@ -369,27 +381,28 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
         onFilePicked={async (file) => { await saveFile(file.name, file); onChange(file.name); }}
         accept={field.accept}
         placeholder={field.placeholder}
+        disabled={isDisabled}
       />;
     case 'tags':
-      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder}/>;
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'string-list': {
       const suggestions = field.source ? resolveOptions(field, taxonomy, draft) : [];
-      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions}/>;
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions} disabled={isDisabled}/>;
     }
     case 'flags':
-      return <FlagsPicker value={value ?? 0} onChange={onChange}/>;
+      return <FlagsPicker value={value ?? 0} onChange={onChange} disabled={isDisabled}/>;
     case 'chip-multi':
       if (field.source === 'taxonomy.itemActions')
-        return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+        return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
       if (field.source === 'taxonomy.specialAffects')
-        return <SpecialAffectsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+        return <SpecialAffectsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
       if (field.source) {
         const options = resolveOptions(field, taxonomy, draft);
-        return <MultiChipField value={value ?? []} onChange={onChange} options={options}/>;
+        return <MultiChipField value={value ?? []} onChange={onChange} options={options} disabled={isDisabled}/>;
       }
-      return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+      return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
     case 'range':
-      return <RangeField field={field} value={value} onChange={onChange}/>;
+      return <RangeField field={field} value={value} onChange={onChange} disabled={isDisabled}/>;
     default:
       return null;
   }
@@ -397,16 +410,37 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
 
 /**
  * Renders one schema section as a collapsible <Section> with its fields as <Row>s.
+ * If section.editCondition is set, all fields except the controlling field are disabled
+ * when the condition path is falsy. On the true→false transition, dependent fields are
+ * reset to their type-appropriate clear values.
  * @param {{ section: SectionSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
  */
 function SectionRenderer({ section, draft, set, taxonomy, renderField }) {
+  const conditionPath = section.editCondition ?? null;
+  const conditionMet = conditionPath ? !!getPath(draft, conditionPath) : true;
+  const prevRef = useRef(conditionMet);
+
+  useEffect(() => {
+    if (prevRef.current && !conditionMet && conditionPath) {
+      section.fields.forEach(f => {
+        if (f.id === conditionPath) return;
+        const cv = f.clearValue !== undefined ? f.clearValue : defaultClearValue(f.type, f);
+        set(f.id, cv);
+      });
+    }
+    prevRef.current = conditionMet;
+  }, [conditionMet]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Section title={section.title} icon={section.icon} compact={section.compact}>
-      {section.fields.map(field => (
-        <Row key={field.id} label={field.label} hint={field.hint} tooltip={field.tooltip} stack={STACK_TYPES.has(field.type)}>
-          <FieldRenderer field={field} draft={draft} set={set} taxonomy={taxonomy} renderField={renderField}/>
-        </Row>
-      ))}
+      {section.fields.map(field => {
+        const fieldDisabled = !conditionMet && conditionPath && field.id !== conditionPath;
+        return (
+          <Row key={field.id} label={field.label} hint={field.hint} tooltip={field.tooltip} stack={STACK_TYPES.has(field.type)}>
+            <FieldRenderer field={field} draft={draft} set={set} taxonomy={taxonomy} renderField={renderField} disabled={!!fieldDisabled}/>
+          </Row>
+        );
+      })}
     </Section>
   );
 }

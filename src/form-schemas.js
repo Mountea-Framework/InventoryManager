@@ -33,29 +33,31 @@ import { newGuid } from './utils.js';
 
 /**
  * @typedef {Object} FieldSchema
- * @property {string}      id          - dot-notation path into the record (e.g. "durability.max")
- * @property {string}      label       - human-readable field label
- * @property {FieldType}   type        - UI component to use
- * @property {boolean}     [required]  - validation: field must be non-empty
- * @property {boolean}     [disabled]  - non-editable (grey out, not readonly display)
- * @property {string}      [hint]      - helper text shown below the field
- * @property {SelectOption[]} [options] - static options for select/chip-multi
- * @property {string}      [source]    - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
- * @property {string}      [dependsOn] - field id; re-filter options when this field changes
- * @property {string}      [accept]    - file picker: accepted MIME types or extensions
+ * @property {string}      id             - dot-notation path into the record (e.g. "durability.max")
+ * @property {string}      label          - human-readable field label
+ * @property {FieldType}   type           - UI component to use
+ * @property {boolean}     [required]     - validation: field must be non-empty
+ * @property {boolean}     [disabled]     - non-editable (grey out, not readonly display)
+ * @property {string}      [hint]         - helper text shown below the field
+ * @property {SelectOption[]} [options]   - static options for select/chip-multi
+ * @property {string}      [source]       - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
+ * @property {string}      [dependsOn]    - field id; re-filter options when this field changes
+ * @property {string}      [accept]       - file picker: accepted MIME types or extensions
  * @property {string}      [placeholder]
  * @property {number}      [min]
  * @property {number}      [max]
  * @property {number}      [step]
- * @property {string}      [unit]      - display unit label (e.g. 'kg', 's')
+ * @property {string}      [unit]         - display unit label (e.g. 'kg', 's')
+ * @property {*}           [clearValue]   - value assigned when section editCondition becomes false (overrides type default)
  */
 
 /**
  * @typedef {Object} SectionSchema
- * @property {string}        id       - unique section identifier
- * @property {string}        title    - section heading
- * @property {string}        [icon]   - icon name from ui.jsx Icon registry
- * @property {boolean}       [compact] - render rows without borders (compact Section)
+ * @property {string}        id              - unique section identifier
+ * @property {string}        title           - section heading
+ * @property {string}        [icon]          - icon name from ui.jsx Icon registry
+ * @property {boolean}       [compact]       - render rows without borders (compact Section)
+ * @property {string}        [editCondition] - dot-path into draft; all fields except the controlling field are disabled when falsy
  * @property {FieldSchema[]} fields
  */
 
@@ -228,6 +230,7 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionDurability'),
       icon: 'history',
       compact: true,
+      editCondition: 'durability.enabled',
       fields: [
         {
           id: 'durability.enabled',
@@ -278,6 +281,7 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionEconomy'),
       icon: 'export',
       compact: true,
+      editCondition: 'economy.enabled',
       fields: [
         {
           id: 'economy.enabled',
@@ -309,6 +313,7 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionWeight'),
       icon: 'layers',
       compact: true,
+      editCondition: 'weight.enabled',
       fields: [
         {
           id: 'weight.enabled',
