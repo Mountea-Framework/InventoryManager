@@ -181,7 +181,7 @@ function App() {
         <div className="flex h-screen flex-col bg-background text-foreground">
           <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onExportWorkspace={() => exportWorkspace().catch(console.error)}/>
           <div className="flex min-h-0 flex-1">
-            <div className={cn('flex min-h-0 flex-1', screenClass)}>
+            <div className={cn('flex min-h-0 flex-1 min-w-0 overflow-hidden', screenClass)}>
               <Routes location={displayLocation}>
                 <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
                 <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>

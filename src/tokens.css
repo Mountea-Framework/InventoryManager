@@ -95,6 +95,17 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent)); }
 ::-webkit-scrollbar-track { background: transparent; }
 
+@media (max-width: 767px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
 /* Screen transition */
 @keyframes screen-in {
   from { opacity: 0; transform: translateY(4px) scale(0.992); }

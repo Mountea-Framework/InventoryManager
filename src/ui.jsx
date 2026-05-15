@@ -331,12 +331,12 @@ function SidebarSkeleton() {
    ============================================================ */
 export function ContentSkeleton() {
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <div className="p-3 md:p-6 max-w-2xl space-y-6">
       <div className="flex items-start gap-4">
         <SkeletonPrim className="h-14 w-14 shrink-0 rounded-lg"/>
-        <div className="flex-1 space-y-2 pt-1">
-          <SkeletonPrim className="h-5 w-52"/>
-          <SkeletonPrim className="h-4 w-80"/>
+        <div className="min-w-0 flex-1 overflow-hidden space-y-2 pt-1">
+          <SkeletonPrim className="h-5 w-full max-w-[208px]"/>
+          <SkeletonPrim className="h-4 w-full max-w-[320px]"/>
         </div>
       </div>
       <div className="space-y-4">
@@ -390,10 +390,13 @@ export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-2.5">
             <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
-            {badges}
+            <div className="hidden md:contents">{badges}</div>
           </div>
           <div className="mt-1 flex items-center gap-3">
-            <div className="truncate font-mono text-xs text-muted-foreground">guid: {guid}</div>
+            <div className="truncate font-mono text-xs text-muted-foreground">
+              <span className="hidden md:inline">guid: </span>
+              <span>{guid}</span>
+            </div>
             {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
             {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
           </div>
