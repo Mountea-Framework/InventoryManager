@@ -7,8 +7,10 @@ import {
   Dialog, DialogContent, Command, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
 } from './command.jsx';
+import JSZip from 'jszip';
 import { useTaxonomy, TAX_KEY } from './hooks.jsx';
-import { exportAllData, bulkImport } from './store.js';
+import { bulkImport, saveFile } from './store.js';
+import { exportWorkspace } from './exporter.js';
 
 /* ============================================================
    Type definitions
@@ -288,33 +290,45 @@ function RootPage({ push, close }) {
   };
 
   const exportAll = async () => {
-    try {
-      const data = await exportAllData();
-      const blob = new Blob([JSON.stringify({
-        ...data,
-        taxonomy: JSON.parse(localStorage.getItem(TAX_KEY) || 'null'),
-      }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'mountea-workspace.json'; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { console.error(e); }
+    await exportWorkspace().catch(console.error);
     close();
   };
 
   const importAll = () => {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'application/json';
+    input.type = 'file';
+    input.accept = '.mnteainventory,application/json';
     input.onchange = async () => {
       const f = input.files?.[0]; if (!f) return;
       try {
-        const data = JSON.parse(await f.text());
-        if (data.taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(data.taxonomy));
-        await bulkImport({
-          items:    data.items    ?? [],
-          loadouts: data.loadouts ?? [],
-          recipes:  data.recipes  ?? [],
-        });
+        if (f.name.endsWith('.mnteainventory')) {
+          const zip = await JSZip.loadAsync(f);
+          const readJson = async (path) => {
+            const zf = zip.file(path); return zf ? JSON.parse(await zf.async('text')) : null;
+          };
+          const taxonomy = await readJson('taxonomy.json');
+          if (taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(taxonomy));
+          const items    = await Promise.all(Object.values(zip.folder('items').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
+          const loadouts = await Promise.all(Object.values(zip.folder('loadouts').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
+          const recipes  = await Promise.all(Object.values(zip.folder('crafting').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
+          const assetsFolder = zip.folder('assets');
+          if (assetsFolder) {
+            await Promise.all(
+              Object.values(assetsFolder.files)
+                .filter(zf => !zf.dir)
+                .map(async (zf) => {
+                  const blob = await zf.async('blob');
+                  const key = zf.name.replace(/^assets\//, '');
+                  await saveFile(key, blob);
+                })
+            );
+          }
+          await bulkImport({ items, loadouts, recipes });
+        } else {
+          const data = JSON.parse(await f.text());
+          if (data.taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(data.taxonomy));
+          await bulkImport({ items: data.items ?? [], loadouts: data.loadouts ?? [], recipes: data.recipes ?? [] });
+        }
         location.reload();
       } catch (e) { alert(t('settings.importFailed') + ' ' + e.message); }
     };

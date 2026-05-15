@@ -8,11 +8,11 @@ import { ItemsScreen }   from './items.jsx';
 import { LoadoutsScreen } from './loadouts.jsx';
 import { CraftingScreen } from './crafting.jsx';
 import { SettingsCommand } from './settings.jsx';
-import { loadData, exportAllData } from './store.js';
-import { TAX_KEY } from './hooks.jsx';
+import { loadData } from './store.js';
+import { exportWorkspace } from './exporter.js';
 import { SCHEMA_VERSION } from './db.js';
 
-function TopBar({ globalSearch, setGlobalSearch, openSettings, onSaveWorkspace }) {
+function TopBar({ globalSearch, setGlobalSearch, openSettings, onExportWorkspace }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -72,11 +72,8 @@ function TopBar({ globalSearch, setGlobalSearch, openSettings, onSaveWorkspace }
         </kbd>
       </div>
 
-      <Tooltip content={t('app.saveWorkspace')}>
-        <Button variant="ghost" size="icon-sm" icon="save" onClick={onSaveWorkspace}/>
-      </Tooltip>
-      <Tooltip content={t('app.exportData')}>
-        <Button variant="ghost" size="icon-sm" icon="export" disabled/>
+      <Tooltip content={t('app.exportWorkspace')}>
+        <Button variant="ghost" size="icon-sm" icon="export" onClick={onExportWorkspace}/>
       </Tooltip>
       <Tooltip content={t('app.settingsTip')}>
         <Button variant="ghost" size="icon-sm" icon="cog" onClick={openSettings}/>
@@ -155,26 +152,12 @@ function App() {
     };
   }, [location, displayLocation]);
 
-  const saveWorkspace = async () => {
-    try {
-      const data = await exportAllData();
-      const blob = new Blob([JSON.stringify({
-        ...data,
-        taxonomy: JSON.parse(localStorage.getItem(TAX_KEY) || 'null'),
-      }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'mountea-workspace.json'; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { console.error(e); }
-  };
-
   const screenProps = { search: globalSearch, loading: !ready };
 
   return (
     <TooltipProvider>
       <div className="flex h-screen flex-col bg-background text-foreground">
-        <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onSaveWorkspace={saveWorkspace}/>
+        <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onExportWorkspace={() => exportWorkspace().catch(console.error)}/>
         <div className="flex min-h-0 flex-1">
           <div className={cn('flex min-h-0 flex-1', screenClass)}>
             <Routes location={displayLocation}>

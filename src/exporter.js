@@ -1,6 +1,8 @@
 import JSZip from 'jszip';
 import db from './db.js';
+import { SCHEMA_VERSION } from './db.js';
 import { DATA } from './store.js';
+import { TAX_KEY } from './hooks.jsx';
 
 // ── Taxonomy helpers ─────────────────────────────────────────────────────────
 
@@ -169,4 +171,48 @@ export async function exportRecipe(recipe, tax) {
   addTaxonomyToFolder(zip.folder('taxonomy'), merged);
 
   await downloadZip(zip, `${recipe.name}.mntearecipe`);
+}
+
+/**
+ * Export the entire workspace as a single .mnteainventory zip.
+ * Includes all items, loadouts, recipes, binary assets, and taxonomy.
+ */
+export async function exportWorkspace() {
+  const zip = new JSZip();
+
+  const [items, loadouts, recipes, files] = await Promise.all([
+    db.items.toArray(),
+    db.loadouts.toArray(),
+    db.recipes.toArray(),
+    db.files.toArray(),
+  ]);
+
+  const itemsFolder    = zip.folder('items');
+  const loadoutsFolder = zip.folder('loadouts');
+  const craftingFolder = zip.folder('crafting');
+  const assetsFolder   = zip.folder('assets');
+
+  items.forEach(item      => itemsFolder.file(`${item.guid}.json`,     JSON.stringify(item,    null, 2)));
+  loadouts.forEach(loadout => loadoutsFolder.file(`${loadout.guid}.json`, JSON.stringify(loadout, null, 2)));
+  recipes.forEach(recipe   => craftingFolder.file(`${recipe.guid}.json`,  JSON.stringify(recipe,  null, 2)));
+
+  for (const record of files) {
+    if (record.blob) assetsFolder.file(record.key, record.blob);
+  }
+
+  const taxonomy = JSON.parse(localStorage.getItem(TAX_KEY) || 'null');
+  if (taxonomy) zip.file('taxonomy.json', JSON.stringify(taxonomy, null, 2));
+
+  zip.file('manifest.json', JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    counts: {
+      items:    items.length,
+      loadouts: loadouts.length,
+      recipes:  recipes.length,
+      files:    files.length,
+    },
+  }, null, 2));
+
+  await downloadZip(zip, 'mountea-workspace.mnteainventory');
 }
