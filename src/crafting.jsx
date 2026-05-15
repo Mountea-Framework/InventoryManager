@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Tooltip,
-  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
   Section,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
-import { exportRecipe } from './exporter.js';
+import { exportRecipe, exportRecipesBundle } from './exporter.js';
 import { importRecipes } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
@@ -304,7 +304,7 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
                 <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
                   {t('crafting.addIngredientTitle')}
                 </Button>
-                <IconBtn icon="trash" tone="danger" title={t('crafting.removeGroup')} onClick={() => removeGroup(g.id)}/>
+                <Tooltip content={t('crafting.removeGroup')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeGroup(g.id)}><Icon name="trash" size={14}/></Button></Tooltip>
               </div>
             }
           >
@@ -327,7 +327,7 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
                         onChange={qty => updateIngredientQty(g.id, ii, qty)}
                       />
                     </div>
-                    <IconBtn icon="trash" tone="danger" title={t('crafting.removeIngredient')} onClick={() => removeIngredient(g.id, ii)}/>
+                    <Tooltip content={t('crafting.removeIngredient')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeIngredient(g.id, ii)}><Icon name="trash" size={14}/></Button></Tooltip>
                   </div>
                 );
               })}
@@ -412,9 +412,9 @@ export function CraftingScreen({ search: globalSearch, loading }) {
         <ElementsSidebar
           title={t('crafting.title')}
           headerActions={<>
-            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportRecipesBundle(allRecipes, tax)} disabled={!allRecipes.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
             <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
           </>}
           search={browserSearch}

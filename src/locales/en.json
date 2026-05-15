@@ -27,7 +27,7 @@
     "craftingTip": "Author crafting recipes by station"
   },
   "items": {
-    "title": "Item Templates",
+    "title": "Items",
     "newTip": "New item",
     "filterPlaceholder": "Filter items…",
     "selectPrompt": "Select an item template",
@@ -55,7 +55,7 @@
     "tipAttachmentSlots": "Slots this item exposes for other items to attach into (e.g. scope, magazine, grip)."
   },
   "loadouts": {
-    "title": "Loadout Templates",
+    "title": "Loadouts",
     "newTip": "New loadout",
     "filterPlaceholder": "Filter loadouts…",
     "editItemTitle": "Edit Loadout Item",
@@ -111,7 +111,7 @@
     "tipSlotAssignments": "Maps each attachment slot to a specific item in the Composition list."
   },
   "crafting": {
-    "title": "Recipe Templates",
+    "title": "Recipes",
     "newTip": "New recipe",
     "filterPlaceholder": "Filter recipes…",
     "addIngredientTitle": "Add Ingredient",

@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
-  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
   Section, Row, TextField, Tag,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
 import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
-import { exportLoadout } from './exporter.js';
+import { exportLoadout, exportLoadoutsBundle } from './exporter.js';
 import { importLoadouts } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
@@ -187,9 +187,9 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         <ElementsSidebar
           title={t('loadouts.title')}
           headerActions={<>
-            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportLoadoutsBundle(DATA.loadouts, tax)} disabled={!DATA.loadouts.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('loadouts.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
             <input ref={importRef} type="file" accept=".mntealoadout,.mntealoadouts" multiple hidden onChange={handleImport}/>
           </>}
           search={browserSearch} setSearch={setBrowserSearch}
@@ -353,8 +353,8 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                   }
                 </div>
                 <div className="flex items-center justify-end gap-1">
-                  <IconBtn icon="cog" title={t('loadouts.editItemTip')} onClick={() => setEditModalData({ item: it, idx })}/>
-                  <IconBtn icon="trash" tone="danger" title={t('loadouts.removeTip')} onClick={() => removeItem(idx)}/>
+                  <Tooltip content={t('loadouts.editItemTip')}><Button variant="ghost" size="icon-sm" onClick={() => setEditModalData({ item: it, idx })}><Icon name="cog" size={14}/></Button></Tooltip>
+                  <Tooltip content={t('loadouts.removeTip')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(idx)}><Icon name="trash" size={14}/></Button></Tooltip>
                 </div>
               </div>
             );

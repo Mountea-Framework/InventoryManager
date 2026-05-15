@@ -273,25 +273,6 @@ export const FilePicker = ({ value = '', onChange, onFilePicked, accept, placeho
 };
 
 /* ============================================================
-   IconBtn — ghost icon button with auto Tooltip via shadcn Tooltip
-   ============================================================ */
-export const IconBtn = forwardRef(({ icon, onClick, title, tone, size = 'sm' }, ref) => {
-  const btn = (
-    <Button
-      ref={ref}
-      variant="ghost"
-      size={size === 'sm' ? 'icon-sm' : 'icon'}
-      onClick={onClick}
-      className={cn(tone === 'danger' && 'text-destructive hover:text-destructive hover:bg-destructive/10')}
-      icon={icon}
-    />
-  );
-  if (!title) return btn;
-  return <Tooltip content={title}>{btn}</Tooltip>;
-});
-IconBtn.displayName = 'IconBtn';
-
-/* ============================================================
    Thumb — item thumbnail placeholder
    ============================================================ */
 export const Thumb = ({ tone = 1, size = 36, icon }) => {
@@ -462,10 +443,10 @@ export function ElementsSidebar({ title, headerActions, search, setSearch, searc
   const { t } = useTranslation();
   return (
     <Sidebar collapsible="icon" side="left">
-      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-2">
+      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-1">
         <div className="flex items-center gap-1">
           <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">{title}</span>
-          <div className="group-data-[state=collapsed]:hidden flex items-center gap-2">{headerActions}</div>
+          <div className="group-data-[state=collapsed]:hidden flex items-center gap-1">{headerActions}</div>
           <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
         </div>
         <div className="relative group-data-[state=collapsed]:hidden">

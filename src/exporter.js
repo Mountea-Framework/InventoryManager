@@ -99,9 +99,9 @@ async function downloadZip(zip, filename) {
   URL.revokeObjectURL(url);
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// ── Internal zip builders (return JSZip, do not download) ────────────────────
 
-export async function exportItem(item, tax) {
+async function buildItemZip(item, tax) {
   const zip = new JSZip();
   zip.file('item.json', JSON.stringify(item, null, 2));
 
@@ -110,11 +110,10 @@ export async function exportItem(item, tax) {
   files.forEach(({ path, blob }) => assets.file(path, blob));
 
   addTaxonomyToFolder(zip.folder('taxonomy'), extractItemTaxonomy(item, tax));
-
-  await downloadZip(zip, `${item.displayName}.mnteaitem`);
+  return zip;
 }
 
-export async function exportLoadout(loadout, tax) {
+async function buildLoadoutZip(loadout, tax) {
   const zip = new JSZip();
   zip.file('loadout.json', JSON.stringify(loadout, null, 2));
 
@@ -135,11 +134,10 @@ export async function exportLoadout(loadout, tax) {
   }
 
   addTaxonomyToFolder(zip.folder('taxonomy'), mergeTaxonomies(taxSubsets));
-
-  await downloadZip(zip, `${loadout.name}.mntealoadout`);
+  return zip;
 }
 
-export async function exportRecipe(recipe, tax) {
+async function buildRecipeZip(recipe, tax) {
   const zip = new JSZip();
   zip.file('recipe.json', JSON.stringify(recipe, null, 2));
 
@@ -169,8 +167,48 @@ export async function exportRecipe(recipe, tax) {
   }
 
   addTaxonomyToFolder(zip.folder('taxonomy'), merged);
+  return zip;
+}
 
-  await downloadZip(zip, `${recipe.name}.mntearecipe`);
+// ── Public API ───────────────────────────────────────────────────────────────
+
+export async function exportItem(item, tax) {
+  await downloadZip(await buildItemZip(item, tax), `${item.displayName}.mnteaitem`);
+}
+
+export async function exportLoadout(loadout, tax) {
+  await downloadZip(await buildLoadoutZip(loadout, tax), `${loadout.name}.mntealoadout`);
+}
+
+export async function exportRecipe(recipe, tax) {
+  await downloadZip(await buildRecipeZip(recipe, tax), `${recipe.name}.mntearecipe`);
+}
+
+export async function exportItemsBundle(items, tax) {
+  const outer = new JSZip();
+  for (const item of items) {
+    const blob = await (await buildItemZip(item, tax)).generateAsync({ type: 'blob' });
+    outer.file(`${item.guid}.mnteaitem`, blob);
+  }
+  await downloadZip(outer, 'items.mnteaitems');
+}
+
+export async function exportLoadoutsBundle(loadouts, tax) {
+  const outer = new JSZip();
+  for (const loadout of loadouts) {
+    const blob = await (await buildLoadoutZip(loadout, tax)).generateAsync({ type: 'blob' });
+    outer.file(`${loadout.guid}.mntealoadout`, blob);
+  }
+  await downloadZip(outer, 'loadouts.mntealoadouts');
+}
+
+export async function exportRecipesBundle(recipes, tax) {
+  const outer = new JSZip();
+  for (const recipe of recipes) {
+    const blob = await (await buildRecipeZip(recipe, tax)).generateAsync({ type: 'blob' });
+    outer.file(`${recipe.guid}.mntearecipe`, blob);
+  }
+  await downloadZip(outer, 'recipes.mntearecipes');
 }
 
 /**

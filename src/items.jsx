@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
-  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar, IconBtn,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
   ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
 import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
-import { exportItem } from './exporter.js';
+import { exportItem, exportItemsBundle } from './exporter.js';
 import { importItems } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
@@ -199,9 +199,9 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         <ElementsSidebar
           title={t('items.title')}
           headerActions={<>
-            <IconBtn icon="export" title={t('common.import')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="import" title={t('common.export')} onClick={() => importRef.current.click()}/>
-            <IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportItemsBundle(DATA.allItems, tax)} disabled={!DATA.allItems.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('items.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
             <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
           </>}
           search={browserSearch} setSearch={setBrowserSearch}
