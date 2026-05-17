@@ -80,7 +80,7 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
     : materials;
 
   const handleAdd = (item) => {
-    onAdd({ ref: item.displayName, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
+    onAdd({ ref: { guid: item.guid, displayName: item.displayName }, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
     onOpenChange(false);
     setQuery('');
   };
@@ -145,6 +145,13 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
 function RecipeInspector({ recipe }) {
   const { t } = useTranslation();
   const ings = recipe.groups.flatMap(g => g.ingredients);
+
+  const preview = {
+    guid: recipe.guid, name: recipe.name, successChance: recipe.successChance,
+    qtyMin: recipe.qtyMin, qtyMax: recipe.qtyMax,
+    result: recipe.result, reqs: recipe.reqs, groups: recipe.groups,
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div>
@@ -171,16 +178,20 @@ function RecipeInspector({ recipe }) {
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.ingredientTally')}</div>
         <div className="space-y-1">
           {ings.map((ing, i) => {
-            const match = DATA.allItems.find(it => it.displayName === ing.ref);
+            const match = DATA.itemById[ing.ref?.guid];
             return (
               <div key={i} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
                 <Thumb size={20} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
-                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref}</span>
+                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</span>
                 <span className="font-mono text-[11px] text-primary">×{ing.qty}</span>
               </div>
             );
           })}
         </div>
+      </div>
+      <div>
+        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.jsonPreview')}</div>
+        <pre className="overflow-x-auto rounded-md border border-border bg-card p-3 font-mono text-[10.5px] leading-relaxed text-foreground/80">{JSON.stringify(preview, null, 2)}</pre>
       </div>
     </div>
   );
@@ -310,14 +321,13 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
           >
             <div className="space-y-1.5">
               {g.ingredients.map((ing, ii) => {
-                const match = DATA.allItems.find(it => it.displayName === ing.ref);
+                const match = DATA.itemById[ing.ref?.guid];
                 return (
                   <div key={ii} className="grid grid-cols-[36px_1fr_120px_32px] items-center gap-3 rounded-lg border border-border bg-card p-2.5">
                     <Thumb size={32} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
                     <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">REF_ID</div>
-                      {/* REF_ID is a technical label, not translated */}
-                      <div className="truncate font-mono text-xs">{ing.ref}</div>
+                      <div className="truncate text-sm font-medium">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</div>
+                      <div className="truncate font-mono text-[10px] text-muted-foreground">{ing.ref?.guid?.slice(0, 13)}{ing.ref?.guid ? '…' : ''}</div>
                     </div>
                     <div>
                       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.amount')}</div>

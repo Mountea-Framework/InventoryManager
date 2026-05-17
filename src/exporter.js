@@ -117,11 +117,11 @@ async function buildLoadoutZip(loadout, tax) {
   const zip = new JSZip();
   zip.file('loadout.json', JSON.stringify(loadout, null, 2));
 
-  const itemNames = new Set([
-    ...(loadout.items ?? []).map(i => i.ref).filter(Boolean),
-    ...Object.values(loadout.slots ?? {}).filter(Boolean),
+  const itemGuids = new Set([
+    ...(loadout.items ?? []).map(i => i.ref?.guid ?? i.ref).filter(Boolean),
+    ...Object.values(loadout.slots ?? {}).map(v => v?.guid ?? v).filter(Boolean),
   ]);
-  const items        = [...itemNames].map(n => DATA.itemByName[n]).filter(Boolean);
+  const items        = [...itemGuids].map(g => DATA.itemById[g]).filter(Boolean);
   const itemsFolder  = zip.folder('items');
   const assetsFolder = zip.folder('assets');
 
@@ -141,12 +141,12 @@ async function buildRecipeZip(recipe, tax) {
   const zip = new JSZip();
   zip.file('recipe.json', JSON.stringify(recipe, null, 2));
 
-  const itemNames = new Set();
-  if (recipe.result?.itemRef) itemNames.add(recipe.result.itemRef);
-  (recipe.groups ?? []).forEach(g =>
-    (g.ingredients ?? []).forEach(ing => { if (ing.ref) itemNames.add(ing.ref); })
+  const itemGuids = new Set();
+  if (recipe.result?.itemRef) itemGuids.add(recipe.result.itemRef);
+  (recipe.groups ?? []).forEach(grp =>
+    (grp.ingredients ?? []).forEach(ing => { const id = ing.ref?.guid ?? ing.ref; if (id) itemGuids.add(id); })
   );
-  const items        = [...itemNames].map(n => DATA.itemByName[n]).filter(Boolean);
+  const items        = [...itemGuids].map(g => DATA.itemById[g]).filter(Boolean);
   const itemsFolder  = zip.folder('items');
   const assetsFolder = zip.folder('assets');
 

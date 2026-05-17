@@ -36,7 +36,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
   const isEdit = item != null;
 
   const buildDraft = (src) => ({
-    ref:        src?.ref        ?? '',
+    ref:        src?.ref        ?? null,
     qty:        src?.qty        ?? 1,
     durability: src?.durability ?? 1.0,
     autoEquip:  src?.autoEquip  ?? false,
@@ -52,7 +52,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
     ...(taxonomy.attachmentSlots ?? []).map(s => ({ value: s.name, label: s.name })),
   ];
 
-  const canSave = draft.ref.trim() !== '';
+  const canSave = !!draft.ref?.guid;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -73,9 +73,12 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.itemTemplate')}</Label>
             <Select
-              value={draft.ref}
-              onChange={v => setDraft(d => ({ ...d, ref: v }))}
-              options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.displayName, label: it.displayName }))]}
+              value={draft.ref?.guid ?? ''}
+              onChange={v => {
+                const item = DATA.itemById[v];
+                setDraft(d => ({ ...d, ref: v ? { guid: v, displayName: item?.displayName || v } : null }));
+              }}
+              options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.guid, label: it.displayName }))]}
               placeholder={t('loadouts.selectItem')}
             />
           </div>
@@ -324,7 +327,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
             <div/><div>{t('loadouts.colItemRef')}</div><div>{t('loadouts.colQty')}</div><div>{t('loadouts.colSlot')}</div><div/>
           </div>
           {draft.items.map((it, idx) => {
-            const src = DATA.itemByName[it.ref];
+            const src = DATA.itemById[it.ref?.guid];
             return (
               <div
                 key={idx}
@@ -345,8 +348,8 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
-                    <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
+                    <div className="truncate text-sm font-medium">{it.ref?.displayName || src?.displayName}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">{it.ref?.guid?.slice(0, 13)}{it.ref?.guid ? '…' : ''}</div>
                   </div>
                 </div>
                 <div><TextField value={String(it.qty)} mono/></div>
@@ -377,7 +380,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
       const slots = taxonomy.attachmentSlots ?? [];
       const itemOptions = [
         { value: '', label: '— none —' },
-        ...draft.items.map(it => ({ value: it.ref, label: it.ref })),
+        ...draft.items.map(it => ({ value: it.ref?.guid ?? '', label: it.ref?.displayName || it.ref?.guid || '' })).filter(o => o.value),
       ];
       return (
         <div className="space-y-2">
@@ -388,11 +391,15 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                 <span className="truncate">{s.name}</span>
               </div>
               <Select
-                value={(value ?? {})[s.name] ?? ''}
+                value={(value ?? {})[s.name]?.guid ?? ''}
                 onChange={v => {
                   const next = { ...(value ?? {}) };
-                  if (v) next[s.name] = v;
-                  else delete next[s.name];
+                  if (v) {
+                    const item = DATA.itemById[v];
+                    next[s.name] = { guid: v, displayName: item?.displayName || v };
+                  } else {
+                    delete next[s.name];
+                  }
                   onChange(next);
                 }}
                 options={itemOptions}

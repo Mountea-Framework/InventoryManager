@@ -204,10 +204,9 @@ export async function importLoadouts(files) {
     getCurrentTaxonomy(),
   );
 
-  // All item displayNames available after this import (DB + bundled)
-  const availableNames = new Set([
-    ...Object.keys(DATA.itemByName),
-    ...parsed.flatMap(p => p.items.map(i => i.displayName).filter(Boolean)),
+  const availableGuids = new Set([
+    ...Object.keys(DATA.itemById),
+    ...parsed.flatMap(p => p.items.map(i => i.guid).filter(Boolean)),
   ]);
 
   for (const { entity, items } of parsed) {
@@ -218,12 +217,12 @@ export async function importLoadouts(files) {
     }
 
     const refs = [
-      ...(entity.items ?? []).map(i => i.ref),
-      ...Object.values(entity.slots ?? {}),
+      ...(entity.items ?? []).map(i => i.ref?.guid ?? i.ref),
+      ...Object.values(entity.slots ?? {}).map(v => v?.guid ?? v),
     ].filter(Boolean);
 
     for (const ref of refs) {
-      if (!availableNames.has(ref)) {
+      if (!availableGuids.has(ref)) {
         throw new Error(`Loadout "${entity.name}": referenced item "${ref}" not found`);
       }
     }
@@ -271,9 +270,9 @@ export async function importRecipes(files) {
     getCurrentTaxonomy(),
   );
 
-  const availableNames = new Set([
-    ...Object.keys(DATA.itemByName),
-    ...parsed.flatMap(p => p.items.map(i => i.displayName).filter(Boolean)),
+  const availableGuids = new Set([
+    ...Object.keys(DATA.itemById),
+    ...parsed.flatMap(p => p.items.map(i => i.guid).filter(Boolean)),
   ]);
 
   for (const { entity, items } of parsed) {
@@ -285,11 +284,11 @@ export async function importRecipes(files) {
 
     const refs = [
       entity.result?.itemRef,
-      ...(entity.groups ?? []).flatMap(g => (g.ingredients ?? []).map(i => i.ref)),
+      ...(entity.groups ?? []).flatMap(g => (g.ingredients ?? []).map(i => i.ref?.guid ?? i.ref)),
     ].filter(Boolean);
 
     for (const ref of refs) {
-      if (!availableNames.has(ref)) {
+      if (!availableGuids.has(ref)) {
         throw new Error(`Recipe "${entity.name}": referenced item "${ref}" not found`);
       }
     }

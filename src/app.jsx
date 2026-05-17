@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -22,6 +22,17 @@ function TopBar({ globalSearch, setGlobalSearch, openSettings, onExportWorkspace
   const { pathname } = useLocation();
   const isMobile = useIsMobile();
   const { toggle: toggleMobileSidebar } = useMobileSidebar();
+  const searchRef = useRef(null);
+  const isMac = /Mac/i.test(navigator.platform);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === 'k') { e.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const screen = pathname.startsWith('/loadouts') ? 'loadouts'
     : pathname.startsWith('/crafting') ? 'crafting'
@@ -80,13 +91,14 @@ function TopBar({ globalSearch, setGlobalSearch, openSettings, onExportWorkspace
         <div className="relative w-[280px]">
           <Icon name="search" size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
           <Input
+            ref={searchRef}
             placeholder={t('app.searchPlaceholder')}
             value={globalSearch}
             onChange={e => setGlobalSearch(e.target.value)}
             className="pl-8 pr-12"
           />
           <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-            ⌘K
+            {isMac ? '⌘' : 'Ctrl '}K
           </kbd>
         </div>
       )}

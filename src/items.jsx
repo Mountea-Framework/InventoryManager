@@ -329,9 +329,9 @@ function ItemEditor({ item, taxonomy, onSaved }) {
 function ItemInspector({ item }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => it.ref === item.displayName));
+  const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => (it.ref?.guid ?? it.ref) === item.guid));
   const usedInRecipes  = Object.values(DATA.recipes).flat().filter(r =>
-    r.groups.some(g => g.ingredients.some(i => i.ref === item.displayName))
+    r.groups.some(g => g.ingredients.some(i => (i.ref?.guid ?? i.ref) === item.guid))
   );
 
   const preview = {
