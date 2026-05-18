@@ -1,0 +1,1350 @@
+{
+  "items": [
+    {
+      "guid": "1ed752bc-4f7b-46d3-be6f-93a923183e01",
+      "displayName": "Silver Wolf Blade",
+      "category": "Weapons",
+      "subCategory": "Swords",
+      "rarity": "Rare",
+      "flags": 137,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Weapon.Sword",
+        "World.Witcher"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "A silvered blade tuned for cursed foes.",
+        "long": "Forged in Novigrad style with a narrow fuller and moon-silver edge."
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 140,
+        "base": 132,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 680,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 3.7
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "sword",
+        "thumbTone": 2,
+        "slot": null
+      }
+    },
+    {
+      "guid": "c11711e9-24dd-4e6c-a8a7-5269328e8538",
+      "displayName": "Moonveil Replica",
+      "category": "Weapons",
+      "subCategory": "Swords",
+      "rarity": "Epic",
+      "flags": 201,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Weapon.Katana",
+        "World.EldenRing"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "A moonlit katana imitation with arcane residue.",
+        "long": "Not the original, but the draw is still clean enough to split armor joints."
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 180,
+        "base": 180,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 1500,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 4.2
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "sword",
+        "thumbTone": 6,
+        "slot": null
+      }
+    },
+    {
+      "guid": "caa3be83-db88-46d0-8728-50118b5efd32",
+      "displayName": "Lothric Knight Spear",
+      "category": "Weapons",
+      "subCategory": "Polearms",
+      "rarity": "Uncommon",
+      "flags": 137,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Weapon.Spear",
+        "World.DarkSouls3"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "A disciplined thrusting spear from Lothric drill lines.",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 120,
+        "base": 112,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 540,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 4.8
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "sword",
+        "thumbTone": 3,
+        "slot": null
+      }
+    },
+    {
+      "guid": "99cb5654-6876-4a82-bb14-fa38835c931c",
+      "displayName": "Gravelord Greatsword",
+      "category": "Weapons",
+      "subCategory": "Greatswords",
+      "rarity": "Legendary",
+      "flags": 201,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Weapon.Greatsword",
+        "World.DarkSouls3"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "A heavy relic that hums with grave-cold intent.",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 220,
+        "base": 220,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 2200,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 9.1
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "sword",
+        "thumbTone": 8,
+        "slot": null
+      }
+    },
+    {
+      "guid": "b5672fc1-1f0f-4219-871f-c194ea8e5c0d",
+      "displayName": "Swallow Flask",
+      "category": "Consumables",
+      "subCategory": "Potions",
+      "rarity": "Common",
+      "flags": 31,
+      "maxQuantity": 50,
+      "maxStackSize": 10,
+      "tags": [
+        "Item.Consumable.Potion",
+        "World.Witcher"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "Gradual vitality recovery over time.",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 90,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.4
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Consume",
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "beaker",
+        "thumbTone": 1,
+        "slot": null
+      }
+    },
+    {
+      "guid": "3d442e90-8a23-45cc-aa7a-98da3d82e0bb",
+      "displayName": "Estus Fragment Tonic",
+      "category": "Consumables",
+      "subCategory": "Potions",
+      "rarity": "Rare",
+      "flags": 31,
+      "maxQuantity": 20,
+      "maxStackSize": 5,
+      "tags": [
+        "Item.Consumable.Tonic",
+        "World.DarkSouls3"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "A fortified draught for harsh duels.",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 240,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.5
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Consume",
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "drop",
+        "thumbTone": 4,
+        "slot": null
+      }
+    },
+    {
+      "guid": "178568af-294c-48b6-b449-853c60946ccb",
+      "displayName": "Warming Stone",
+      "category": "Consumables",
+      "subCategory": "Bombs",
+      "rarity": "Uncommon",
+      "flags": 31,
+      "maxQuantity": 30,
+      "maxStackSize": 10,
+      "tags": [
+        "Item.Consumable.Utility",
+        "World.EldenRing"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "Creates a brief warm aura that steadies recovery.",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 180,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.3
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Use",
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "sparkle",
+        "thumbTone": 5,
+        "slot": null
+      }
+    },
+    {
+      "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+      "displayName": "Titanite Shard",
+      "category": "Materials",
+      "subCategory": "Metals",
+      "rarity": "Common",
+      "flags": 15,
+      "maxQuantity": 999,
+      "maxStackSize": 99,
+      "tags": [
+        "Item.Material.Metal",
+        "World.DarkSouls3"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 40,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.1
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "cube",
+        "thumbTone": 2,
+        "slot": null
+      }
+    },
+    {
+      "guid": "68bfb802-0f45-4fbb-8936-cedf70376bd7",
+      "displayName": "Somber Smithing Stone [2]",
+      "category": "Materials",
+      "subCategory": "Metals",
+      "rarity": "Rare",
+      "flags": 15,
+      "maxQuantity": 999,
+      "maxStackSize": 99,
+      "tags": [
+        "Item.Material.Stone",
+        "World.EldenRing"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 120,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.15
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "cube",
+        "thumbTone": 7,
+        "slot": null
+      }
+    },
+    {
+      "guid": "41f4752d-c0d5-4486-a173-95c7b1f20788",
+      "displayName": "Drowner Brain",
+      "category": "Materials",
+      "subCategory": "Organic",
+      "rarity": "Uncommon",
+      "flags": 15,
+      "maxQuantity": 200,
+      "maxStackSize": 20,
+      "tags": [
+        "Item.Material.Organic",
+        "World.Witcher"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 65,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.2
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "cube",
+        "thumbTone": 3,
+        "slot": null
+      }
+    },
+    {
+      "guid": "c3e0c30f-2ebf-416a-906d-f4c0a256f64f",
+      "displayName": "Rowa Fruit",
+      "category": "Materials",
+      "subCategory": "Plants",
+      "rarity": "Common",
+      "flags": 15,
+      "maxQuantity": 999,
+      "maxStackSize": 99,
+      "tags": [
+        "Item.Material.Plant",
+        "World.EldenRing"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 18,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 0.05
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "leaf",
+        "thumbTone": 1,
+        "slot": null
+      }
+    },
+    {
+      "guid": "478836d6-072c-4a1a-9c5e-15b07191b6c3",
+      "displayName": "Kaer Morhen Jacket",
+      "category": "Armor",
+      "subCategory": "Chest",
+      "rarity": "Rare",
+      "flags": 137,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Armor.Chest",
+        "World.Witcher"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 160,
+        "base": 145,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 900,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 6.2
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "shield",
+        "thumbTone": 2,
+        "slot": null
+      }
+    },
+    {
+      "guid": "480cd420-d6e8-40f9-8b80-dfbff3a4ee13",
+      "displayName": "Raging Wolf Helm",
+      "category": "Armor",
+      "subCategory": "Head",
+      "rarity": "Epic",
+      "flags": 137,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Armor.Helm",
+        "World.EldenRing"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": true,
+        "max": 175,
+        "base": 170,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 1250,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 4.3
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Equip",
+        "Unequip",
+        "Inspect",
+        "Repair",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "shield",
+        "thumbTone": 6,
+        "slot": null
+      }
+    },
+    {
+      "guid": "cabcaed8-e852-446f-82a4-80a0411990d0",
+      "displayName": "Hunter Satchel",
+      "category": "Containers",
+      "subCategory": "Backpacks",
+      "rarity": "Uncommon",
+      "flags": 9,
+      "maxQuantity": 1,
+      "maxStackSize": 1,
+      "tags": [
+        "Item.Container.Bag"
+      ],
+      "spawnActor": {
+        "path": ""
+      },
+      "description": {
+        "short": "",
+        "long": ""
+      },
+      "visuals": {
+        "thumbnail": {
+          "path": ""
+        },
+        "cover": {
+          "path": ""
+        },
+        "mesh": {
+          "path": ""
+        }
+      },
+      "durability": {
+        "enabled": false,
+        "max": 100,
+        "base": 100,
+        "penalization": 0.1,
+        "priceCoefficient": 0.6
+      },
+      "economy": {
+        "enabled": true,
+        "basePrice": 220,
+        "sellCoefficient": 0.7
+      },
+      "weight": {
+        "enabled": true,
+        "value": 1.1
+      },
+      "attachmentSlots": [],
+      "specialAffects": [],
+      "itemActions": [
+        "Inspect",
+        "Sell",
+        "Drop"
+      ],
+      "_ui": {
+        "icon": "backpack",
+        "thumbTone": 4,
+        "slot": null
+      }
+    }
+  ],
+  "loadouts": [
+    {
+      "guid": "a56845dd-f547-4561-8315-32ef2b701cb2",
+      "name": "NPC - Novigrad Monster Hunter",
+      "tagline": "Fast blade, light armor, field alchemy",
+      "desc": "A witcher-style hunter prepared for cursed contracts and swamp creatures.",
+      "items": [
+        {
+          "ref": {
+            "guid": "1ed752bc-4f7b-46d3-be6f-93a923183e01",
+            "displayName": "Silver Wolf Blade"
+          },
+          "qty": 1,
+          "durability": 0.92,
+          "autoEquip": true,
+          "slot": "Primary Weapon"
+        },
+        {
+          "ref": {
+            "guid": "478836d6-072c-4a1a-9c5e-15b07191b6c3",
+            "displayName": "Kaer Morhen Jacket"
+          },
+          "qty": 1,
+          "durability": 0.87,
+          "autoEquip": true,
+          "slot": "Chest"
+        },
+        {
+          "ref": {
+            "guid": "b5672fc1-1f0f-4219-871f-c194ea8e5c0d",
+            "displayName": "Swallow Flask"
+          },
+          "qty": 3,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "41f4752d-c0d5-4486-a173-95c7b1f20788",
+            "displayName": "Drowner Brain"
+          },
+          "qty": 2,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        }
+      ],
+      "slots": {
+        "Primary Weapon": {
+          "guid": "1ed752bc-4f7b-46d3-be6f-93a923183e01",
+          "displayName": "Silver Wolf Blade"
+        },
+        "Chest": {
+          "guid": "478836d6-072c-4a1a-9c5e-15b07191b6c3",
+          "displayName": "Kaer Morhen Jacket"
+        }
+      },
+      "behaviour": {
+        "applyOnSpawn": true,
+        "randomiseQty": false,
+        "autoEquipPass": true,
+        "dropOnDeath": "Equipped only"
+      }
+    },
+    {
+      "guid": "896e82b8-678b-4b4e-a0d8-ce8af7d631bf",
+      "name": "NPC - Lothric Spear Sentinel",
+      "tagline": "Measured spacing and poise control",
+      "desc": "A disciplined guard unit built around thrust pressure and attrition.",
+      "items": [
+        {
+          "ref": {
+            "guid": "caa3be83-db88-46d0-8728-50118b5efd32",
+            "displayName": "Lothric Knight Spear"
+          },
+          "qty": 1,
+          "durability": 0.95,
+          "autoEquip": true,
+          "slot": "Primary Weapon"
+        },
+        {
+          "ref": {
+            "guid": "3d442e90-8a23-45cc-aa7a-98da3d82e0bb",
+            "displayName": "Estus Fragment Tonic"
+          },
+          "qty": 2,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+            "displayName": "Titanite Shard"
+          },
+          "qty": 5,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "cabcaed8-e852-446f-82a4-80a0411990d0",
+            "displayName": "Hunter Satchel"
+          },
+          "qty": 1,
+          "durability": 1,
+          "autoEquip": true,
+          "slot": "Backpack"
+        }
+      ],
+      "slots": {
+        "Primary Weapon": {
+          "guid": "caa3be83-db88-46d0-8728-50118b5efd32",
+          "displayName": "Lothric Knight Spear"
+        },
+        "Backpack": {
+          "guid": "cabcaed8-e852-446f-82a4-80a0411990d0",
+          "displayName": "Hunter Satchel"
+        }
+      },
+      "behaviour": {
+        "applyOnSpawn": true,
+        "randomiseQty": false,
+        "autoEquipPass": true,
+        "dropOnDeath": "Equipped only"
+      }
+    },
+    {
+      "guid": "f70dcc1e-7ec2-4efe-a9b6-207e6e60e57d",
+      "name": "NPC - Raya Lucaria Duelist",
+      "tagline": "Moonlit edge and reactive sustain",
+      "desc": "A nimble duelist carrying an arcane replica katana and utility stones.",
+      "items": [
+        {
+          "ref": {
+            "guid": "c11711e9-24dd-4e6c-a8a7-5269328e8538",
+            "displayName": "Moonveil Replica"
+          },
+          "qty": 1,
+          "durability": 1,
+          "autoEquip": true,
+          "slot": "Primary Weapon"
+        },
+        {
+          "ref": {
+            "guid": "480cd420-d6e8-40f9-8b80-dfbff3a4ee13",
+            "displayName": "Raging Wolf Helm"
+          },
+          "qty": 1,
+          "durability": 0.98,
+          "autoEquip": true,
+          "slot": "Head"
+        },
+        {
+          "ref": {
+            "guid": "178568af-294c-48b6-b449-853c60946ccb",
+            "displayName": "Warming Stone"
+          },
+          "qty": 4,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "68bfb802-0f45-4fbb-8936-cedf70376bd7",
+            "displayName": "Somber Smithing Stone [2]"
+          },
+          "qty": 2,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        }
+      ],
+      "slots": {
+        "Primary Weapon": {
+          "guid": "c11711e9-24dd-4e6c-a8a7-5269328e8538",
+          "displayName": "Moonveil Replica"
+        },
+        "Head": {
+          "guid": "480cd420-d6e8-40f9-8b80-dfbff3a4ee13",
+          "displayName": "Raging Wolf Helm"
+        }
+      },
+      "behaviour": {
+        "applyOnSpawn": true,
+        "randomiseQty": false,
+        "autoEquipPass": true,
+        "dropOnDeath": "Equipped only"
+      }
+    },
+    {
+      "guid": "c0150a7b-c4be-4238-baf1-fbfd04d5ed32",
+      "name": "NPC - Ashen Grave Warden",
+      "tagline": "Heavy pressure and relentless stamina",
+      "desc": "An elite guardian with punishing weight and battlefield staying power.",
+      "items": [
+        {
+          "ref": {
+            "guid": "99cb5654-6876-4a82-bb14-fa38835c931c",
+            "displayName": "Gravelord Greatsword"
+          },
+          "qty": 1,
+          "durability": 0.9,
+          "autoEquip": true,
+          "slot": "Primary Weapon"
+        },
+        {
+          "ref": {
+            "guid": "b5672fc1-1f0f-4219-871f-c194ea8e5c0d",
+            "displayName": "Swallow Flask"
+          },
+          "qty": 2,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+            "displayName": "Titanite Shard"
+          },
+          "qty": 8,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        },
+        {
+          "ref": {
+            "guid": "c3e0c30f-2ebf-416a-906d-f4c0a256f64f",
+            "displayName": "Rowa Fruit"
+          },
+          "qty": 5,
+          "durability": 1,
+          "autoEquip": false,
+          "slot": null
+        }
+      ],
+      "slots": {
+        "Primary Weapon": {
+          "guid": "99cb5654-6876-4a82-bb14-fa38835c931c",
+          "displayName": "Gravelord Greatsword"
+        }
+      },
+      "behaviour": {
+        "applyOnSpawn": true,
+        "randomiseQty": false,
+        "autoEquipPass": true,
+        "dropOnDeath": "All items"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "guid": "7b2226a5-ed49-4aea-9e98-69b1036d56fa",
+      "name": "Brew: Swallow Flask",
+      "family": "Alchemy",
+      "result": {
+        "itemRef": "b5672fc1-1f0f-4219-871f-c194ea8e5c0d",
+        "display": "Swallow Flask",
+        "icon": "beaker",
+        "tone": 1
+      },
+      "qtyMin": 1,
+      "qtyMax": 2,
+      "successChance": 94,
+      "reqs": {
+        "level": 4,
+        "station": "Alchemy Bench",
+        "duration": 35
+      },
+      "groups": [
+        {
+          "id": "5d743ef2-d0f6-4e40-9d50-aba9594332b4",
+          "title": "Core Ingredients",
+          "required": true,
+          "ingredients": [
+            {
+              "ref": {
+                "guid": "41f4752d-c0d5-4486-a173-95c7b1f20788",
+                "displayName": "Drowner Brain"
+              },
+              "qty": 1,
+              "icon": "cube",
+              "tone": 3
+            },
+            {
+              "ref": {
+                "guid": "c3e0c30f-2ebf-416a-906d-f4c0a256f64f",
+                "displayName": "Rowa Fruit"
+              },
+              "qty": 2,
+              "icon": "leaf",
+              "tone": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "guid": "655bb70f-6488-4771-8125-4dc427ab4398",
+      "name": "Fortify: Estus Fragment Tonic",
+      "family": "Alchemy",
+      "result": {
+        "itemRef": "3d442e90-8a23-45cc-aa7a-98da3d82e0bb",
+        "display": "Estus Fragment Tonic",
+        "icon": "drop",
+        "tone": 4
+      },
+      "qtyMin": 1,
+      "qtyMax": 1,
+      "successChance": 88,
+      "reqs": {
+        "level": 7,
+        "station": "Alchemy Bench",
+        "duration": 52
+      },
+      "groups": [
+        {
+          "id": "a850ff6b-6c28-4c76-a692-82d28f8cfbd2",
+          "title": "Core Ingredients",
+          "required": true,
+          "ingredients": [
+            {
+              "ref": {
+                "guid": "b5672fc1-1f0f-4219-871f-c194ea8e5c0d",
+                "displayName": "Swallow Flask"
+              },
+              "qty": 1,
+              "icon": "beaker",
+              "tone": 1
+            },
+            {
+              "ref": {
+                "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+                "displayName": "Titanite Shard"
+              },
+              "qty": 2,
+              "icon": "cube",
+              "tone": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "guid": "8af72f15-93da-4c4f-a4fd-b2c520bd8a0a",
+      "name": "Sharpen: Silver Wolf Blade",
+      "family": "Smithing",
+      "result": {
+        "itemRef": "1ed752bc-4f7b-46d3-be6f-93a923183e01",
+        "display": "Silver Wolf Blade",
+        "icon": "sword",
+        "tone": 2
+      },
+      "qtyMin": 1,
+      "qtyMax": 1,
+      "successChance": 90,
+      "reqs": {
+        "level": 8,
+        "station": "Forge",
+        "duration": 75
+      },
+      "groups": [
+        {
+          "id": "06bc3b0b-e401-4bca-8924-64ad7e2e21cb",
+          "title": "Core Ingredients",
+          "required": true,
+          "ingredients": [
+            {
+              "ref": {
+                "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+                "displayName": "Titanite Shard"
+              },
+              "qty": 3,
+              "icon": "cube",
+              "tone": 2
+            },
+            {
+              "ref": {
+                "guid": "68bfb802-0f45-4fbb-8936-cedf70376bd7",
+                "displayName": "Somber Smithing Stone [2]"
+              },
+              "qty": 1,
+              "icon": "cube",
+              "tone": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "guid": "262c2615-cec1-464c-9ab8-0afa75da5a2c",
+      "name": "Temper: Lothric Knight Spear",
+      "family": "Smithing",
+      "result": {
+        "itemRef": "caa3be83-db88-46d0-8728-50118b5efd32",
+        "display": "Lothric Knight Spear",
+        "icon": "sword",
+        "tone": 3
+      },
+      "qtyMin": 1,
+      "qtyMax": 1,
+      "successChance": 87,
+      "reqs": {
+        "level": 6,
+        "station": "Forge",
+        "duration": 68
+      },
+      "groups": [
+        {
+          "id": "95ff5b88-9028-4d00-83ec-4dbae87584ef",
+          "title": "Core Ingredients",
+          "required": true,
+          "ingredients": [
+            {
+              "ref": {
+                "guid": "aab1b1c7-f952-4e74-bfb7-6101dfd6b87d",
+                "displayName": "Titanite Shard"
+              },
+              "qty": 4,
+              "icon": "cube",
+              "tone": 2
+            },
+            {
+              "ref": {
+                "guid": "c3e0c30f-2ebf-416a-906d-f4c0a256f64f",
+                "displayName": "Rowa Fruit"
+              },
+              "qty": 1,
+              "icon": "leaf",
+              "tone": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "guid": "dc6df005-e3b1-4ec5-b937-40c75465b1c6",
+      "name": "Rite: Warming Stone",
+      "family": "General",
+      "result": {
+        "itemRef": "178568af-294c-48b6-b449-853c60946ccb",
+        "display": "Warming Stone",
+        "icon": "sparkle",
+        "tone": 5
+      },
+      "qtyMin": 2,
+      "qtyMax": 4,
+      "successChance": 92,
+      "reqs": {
+        "level": 5,
+        "station": "Cookfire",
+        "duration": 40
+      },
+      "groups": [
+        {
+          "id": "363c3f10-9824-4b7b-97ab-b41a91b2b6cf",
+          "title": "Core Ingredients",
+          "required": true,
+          "ingredients": [
+            {
+              "ref": {
+                "guid": "c3e0c30f-2ebf-416a-906d-f4c0a256f64f",
+                "displayName": "Rowa Fruit"
+              },
+              "qty": 3,
+              "icon": "leaf",
+              "tone": 1
+            },
+            {
+              "ref": {
+                "guid": "41f4752d-c0d5-4486-a173-95c7b1f20788",
+                "displayName": "Drowner Brain"
+              },
+              "qty": 1,
+              "icon": "cube",
+              "tone": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
