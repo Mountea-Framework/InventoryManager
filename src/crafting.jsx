@@ -1,22 +1,21 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
+  Section,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe, exportEntityAsJson } from './store.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
+import { exportRecipe, exportRecipesBundle } from './exporter.js';
+import { importRecipes } from './importer.js';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createRecipeSchema, createRecipeDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -81,7 +80,7 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
     : materials;
 
   const handleAdd = (item) => {
-    onAdd({ ref: item.displayName, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
+    onAdd({ ref: { guid: item.guid, displayName: item.displayName }, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
     onOpenChange(false);
     setQuery('');
   };
@@ -146,6 +145,13 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
 function RecipeInspector({ recipe }) {
   const { t } = useTranslation();
   const ings = recipe.groups.flatMap(g => g.ingredients);
+
+  const preview = {
+    guid: recipe.guid, name: recipe.name, successChance: recipe.successChance,
+    qtyMin: recipe.qtyMin, qtyMax: recipe.qtyMax,
+    result: recipe.result, reqs: recipe.reqs, groups: recipe.groups,
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div>
@@ -172,16 +178,20 @@ function RecipeInspector({ recipe }) {
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.ingredientTally')}</div>
         <div className="space-y-1">
           {ings.map((ing, i) => {
-            const match = DATA.allItems.find(it => it.displayName === ing.ref);
+            const match = DATA.itemById[ing.ref?.guid];
             return (
               <div key={i} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
                 <Thumb size={20} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
-                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref}</span>
+                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</span>
                 <span className="font-mono text-[11px] text-primary">×{ing.qty}</span>
               </div>
             );
           })}
         </div>
+      </div>
+      <div>
+        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.jsonPreview')}</div>
+        <pre className="overflow-x-auto rounded-md border border-border bg-card p-3 font-mono text-[10.5px] leading-relaxed text-foreground/80">{JSON.stringify(preview, null, 2)}</pre>
       </div>
     </div>
   );
@@ -202,13 +212,7 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
-    const keys = path.split('.');
-    let cur = next;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
-    }
-    cur[keys[keys.length - 1]] = val;
+    setPath(next, path, val);
     return next;
   });
 
@@ -271,21 +275,16 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
+      <EntityHeader
+        title={draft.name}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="hammer" size={22}/>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
-              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
-              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Schema-driven sections: identity, result, requirements */}
       <FormRenderer
@@ -316,20 +315,19 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
                 <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
                   {t('crafting.addIngredientTitle')}
                 </Button>
-                <IconBtn icon="trash" tone="danger" title={t('crafting.removeGroup')} onClick={() => removeGroup(g.id)}/>
+                <Tooltip content={t('crafting.removeGroup')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeGroup(g.id)}><Icon name="trash" size={14}/></Button></Tooltip>
               </div>
             }
           >
             <div className="space-y-1.5">
               {g.ingredients.map((ing, ii) => {
-                const match = DATA.allItems.find(it => it.displayName === ing.ref);
+                const match = DATA.itemById[ing.ref?.guid];
                 return (
                   <div key={ii} className="grid grid-cols-[36px_1fr_120px_32px] items-center gap-3 rounded-lg border border-border bg-card p-2.5">
                     <Thumb size={32} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
                     <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">REF_ID</div>
-                      {/* REF_ID is a technical label, not translated */}
-                      <div className="truncate font-mono text-xs">{ing.ref}</div>
+                      <div className="truncate text-sm font-medium">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</div>
+                      <div className="truncate font-mono text-[10px] text-muted-foreground">{ing.ref?.guid?.slice(0, 13)}{ing.ref?.guid ? '…' : ''}</div>
                     </div>
                     <div>
                       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.amount')}</div>
@@ -339,7 +337,7 @@ function RecipeEditor({ recipe, taxonomy, onSaved }) {
                         onChange={qty => updateIngredientQty(g.id, ii, qty)}
                       />
                     </div>
-                    <IconBtn icon="trash" tone="danger" title={t('crafting.removeIngredient')} onClick={() => removeIngredient(g.id, ii)}/>
+                    <Tooltip content={t('crafting.removeIngredient')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeIngredient(g.id, ii)}><Icon name="trash" size={14}/></Button></Tooltip>
                   </div>
                 );
               })}
@@ -375,8 +373,10 @@ export function CraftingScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteRecipe,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) setSelected(null); },
+  });
 
   const selected = guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/crafting/${newGuid}` : '/crafting');
@@ -397,42 +397,62 @@ export function CraftingScreen({ search: globalSearch, loading }) {
     setSelected(newRecipe.guid);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateRecipe(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.name}.json`);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteRecipe(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) setSelected(null);
-    setDeleteTarget(null);
+  const handleExport = (entity) => exportRecipe(entity, tax);
+
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importRecipes(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('crafting.title')}
-        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('crafting.filterPlaceholder')}
-        loading={loading}
-      >
-        {Object.entries(DATA.recipes).map(([family, recipes]) => {
-          const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
-          const filtered = search ? recipes.filter(r => (r.name + ' ' + r.guid).toLowerCase().includes(search)) : recipes;
-          if (filtered.length === 0) return null;
-          return (
-            <div key={family} className="mb-1">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Icon name={icon} size={12}/>
-                <span className="flex-1">{family}</span>
-                <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
-              </div>
-              {filtered.map(r => (
-                <ContextMenu key={r.guid}>
-                  <ContextMenuTrigger asChild>
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('crafting.title')}
+          headerActions={<>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportRecipesBundle(allRecipes, tax)} disabled={!allRecipes.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
+          search={browserSearch}
+          setSearch={setBrowserSearch}
+          searchPlaceholder={t('crafting.filterPlaceholder')}
+          loading={loading}
+        >
+          {Object.entries(DATA.recipes).map(([family, recipes]) => {
+            const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
+            const filtered = search ? recipes.filter(r => (r.name + ' ' + r.guid).toLowerCase().includes(search)) : recipes;
+            if (filtered.length === 0) return null;
+            return (
+              <div key={family} className="mb-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Icon name={icon} size={12}/>
+                  <span className="flex-1">{family}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
+                </div>
+                {filtered.map(r => (
+                  <EntityContextMenu key={r.guid}
+                    onDuplicate={() => handleDuplicate(r)}
+                    onExport={() => handleExport(r)}
+                    onDelete={() => handleDeleteRequest(r)}
+                  >
                     <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
                       <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
                         <div className="min-w-0">
@@ -441,46 +461,29 @@ export function CraftingScreen({ search: globalSearch, loading }) {
                         </div>
                       </Tooltip>
                     </SidebarItem>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-44">
-                    <ContextMenuGroup>
-                      <ContextMenuItem onClick={() => handleDuplicate(r)}>
-                        <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleExport(r)}>
-                        <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                      </ContextMenuItem>
-                    </ContextMenuGroup>
-                    <ContextMenuSeparator/>
-                    <ContextMenuGroup>
-                      <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(r)}>
-                        <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                      </ContextMenuItem>
-                    </ContextMenuGroup>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
-          );
-        })}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+                  </EntityContextMenu>
+                ))}
+              </div>
+            );
+          })}
+        </ElementsSidebar>
+      }
+      inspectorSidebar={recipe && (
+        <InspectorSidebar>
+          <RecipeInspector recipe={recipe}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : allRecipes.length === 0
             ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}>
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('crafting.newTip')}</Button>
               </EmptyState>
-            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={onSaved}/>
         }
-      </main>
-
-      {recipe && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <RecipeInspector recipe={recipe}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -498,6 +501,6 @@ export function CraftingScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.name ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }

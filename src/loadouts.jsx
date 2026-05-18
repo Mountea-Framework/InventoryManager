@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Label, Switch, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, Row, TextField, Tag, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
+  Section, Row, TextField, Tag,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout, exportEntityAsJson } from './store.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { DATA, saveLoadout, loadData, deleteLoadout, duplicateLoadout } from './store.js';
+import { exportLoadout, exportLoadoutsBundle } from './exporter.js';
+import { importLoadouts } from './importer.js';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createLoadoutSchema, createLoadoutDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -37,7 +36,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
   const isEdit = item != null;
 
   const buildDraft = (src) => ({
-    ref:        src?.ref        ?? '',
+    ref:        src?.ref        ?? null,
     qty:        src?.qty        ?? 1,
     durability: src?.durability ?? 1.0,
     autoEquip:  src?.autoEquip  ?? false,
@@ -53,7 +52,7 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
     ...(taxonomy.attachmentSlots ?? []).map(s => ({ value: s.name, label: s.name })),
   ];
 
-  const canSave = draft.ref.trim() !== '';
+  const canSave = !!draft.ref?.guid;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -74,9 +73,12 @@ function LoadoutItemModal({ open, onOpenChange, item, onSave, taxonomy }) {
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground">{t('loadouts.itemTemplate')}</Label>
             <Select
-              value={draft.ref}
-              onChange={v => setDraft(d => ({ ...d, ref: v }))}
-              options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.displayName, label: it.displayName }))]}
+              value={draft.ref?.guid ?? ''}
+              onChange={v => {
+                const item = DATA.itemById[v];
+                setDraft(d => ({ ...d, ref: v ? { guid: v, displayName: item?.displayName || v } : null }));
+              }}
+              options={[{ value: '', label: '— select item —' }, ...DATA.allItems.map(it => ({ value: it.guid, label: it.displayName }))]}
               placeholder={t('loadouts.selectItem')}
             />
           </div>
@@ -137,8 +139,10 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
   const [tax] = useTaxonomy();
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteLoadout,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) setSelected(DATA.loadouts[0]?.guid ?? null); },
+  });
 
   const selected = guid ?? DATA.loadouts[0]?.guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/loadouts/${newGuid}` : '/loadouts');
@@ -161,84 +165,86 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
     setSelected(newLoadout.guid);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateLoadout(entity);
     setSelected(newGuid);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.name}.json`);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteLoadout(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) setSelected(DATA.loadouts[0]?.guid ?? null);
-    setDeleteTarget(null);
+  const handleExport = (entity) => exportLoadout(entity, tax);
+
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importLoadouts(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('loadouts.title')}
-        headerActions={<IconBtn icon="plus" title={t('loadouts.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('loadouts.filterPlaceholder')}
-        loading={loading}
-      >
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('loadouts.title')}
+          headerActions={<>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportLoadoutsBundle(DATA.loadouts, tax)} disabled={!DATA.loadouts.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('loadouts.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntealoadout,.mntealoadouts" multiple hidden onChange={handleImport}/>
+          </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('loadouts.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntealoadout,.mntealoadouts" multiple hidden onChange={handleImport}/>
+          </>}
+          search={browserSearch} setSearch={setBrowserSearch}
+          searchPlaceholder={t('loadouts.filterPlaceholder')}
+          loading={loading}
+        >
         {filtered.map(l => {
           const sel = l.guid === selected;
           return (
-            <ContextMenu key={l.guid}>
-              <ContextMenuTrigger asChild>
-                <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="items-start py-2.5">
-                  <Tooltip content={l.tagline || `${l.items.length} ${t('app.statusItems')}`} side="right">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{l.name}</div>
-                      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
-                      <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                        <span>{l.items.length} {t('app.statusItems')}</span>
-                        <span className="opacity-50">·</span>
-                        <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
-                      </div>
+            <EntityContextMenu key={l.guid}
+              onDuplicate={() => handleDuplicate(l)}
+              onExport={() => handleExport(l)}
+              onDelete={() => handleDeleteRequest(l)}
+            >
+              <SidebarItem selected={sel} onClick={() => setSelected(l.guid)} className="items-start py-2.5">
+                <Tooltip content={l.tagline || `${l.items.length} ${t('app.statusItems')}`} side="right">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{l.name}</div>
+                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{l.desc}</div>
+                    <div className="mt-1.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                      <span>{l.items.length} {t('app.statusItems')}</span>
+                      <span className="opacity-50">·</span>
+                      <span>{Object.keys(l.slots || {}).length} {t('loadouts.slotMapping').toLowerCase()}</span>
                     </div>
-                  </Tooltip>
-                </SidebarItem>
-              </ContextMenuTrigger>
-              <ContextMenuContent className="w-44">
-                <ContextMenuGroup>
-                  <ContextMenuItem onClick={() => handleDuplicate(l)}>
-                    <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => handleExport(l)}>
-                    <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                  </ContextMenuItem>
-                </ContextMenuGroup>
-                <ContextMenuSeparator/>
-                <ContextMenuGroup>
-                  <ContextMenuItem variant="destructive" onClick={() => handleDeleteRequest(l)}>
-                    <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                  </ContextMenuItem>
-                </ContextMenuGroup>
-              </ContextMenuContent>
-            </ContextMenu>
+                  </div>
+                </Tooltip>
+              </SidebarItem>
+            </EntityContextMenu>
           );
         })}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+        </ElementsSidebar>
+      }
+      inspectorSidebar={loadout && (
+        <InspectorSidebar>
+          <LoadoutInspector loadout={loadout}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : DATA.loadouts.length === 0
             ? <EmptyState icon="layers" title={t('loadouts.empty')} description={t('loadouts.emptyDesc')}>
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('loadouts.newTip')}</Button>
               </EmptyState>
-            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+            : loadout && <LoadoutEditor key={loadout.guid} loadout={loadout} taxonomy={tax} onSaved={onSaved}/>
         }
-      </main>
-
-      {loadout && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <LoadoutInspector loadout={loadout}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -256,7 +262,7 @@ export function LoadoutsScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.name ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }
 
@@ -288,13 +294,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
-    const keys = path.split('.');
-    let cur = next;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
-    }
-    cur[keys[keys.length - 1]] = val;
+    setPath(next, path, val);
     return next;
   });
 
@@ -327,7 +327,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
             <div/><div>{t('loadouts.colItemRef')}</div><div>{t('loadouts.colQty')}</div><div>{t('loadouts.colSlot')}</div><div/>
           </div>
           {draft.items.map((it, idx) => {
-            const src = DATA.itemByName[it.ref];
+            const src = DATA.itemById[it.ref?.guid];
             return (
               <div
                 key={idx}
@@ -348,8 +348,8 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Thumb size={30} tone={src?._ui?.thumbTone ?? 0} icon={src?._ui?.icon || 'cube'}/>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{src?.displayName || it.ref}</div>
-                    <div className="truncate font-mono text-[10px] text-muted-foreground">guid: {(src?.guid || '').slice(0, 13)}{src ? '…' : ''}</div>
+                    <div className="truncate text-sm font-medium">{it.ref?.displayName || src?.displayName}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">{it.ref?.guid?.slice(0, 13)}{it.ref?.guid ? '…' : ''}</div>
                   </div>
                 </div>
                 <div><TextField value={String(it.qty)} mono/></div>
@@ -360,8 +360,8 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                   }
                 </div>
                 <div className="flex items-center justify-end gap-1">
-                  <IconBtn icon="cog" title={t('loadouts.editItemTip')} onClick={() => setEditModalData({ item: it, idx })}/>
-                  <IconBtn icon="trash" tone="danger" title={t('loadouts.removeTip')} onClick={() => removeItem(idx)}/>
+                  <Tooltip content={t('loadouts.editItemTip')}><Button variant="ghost" size="icon-sm" onClick={() => setEditModalData({ item: it, idx })}><Icon name="cog" size={14}/></Button></Tooltip>
+                  <Tooltip content={t('loadouts.removeTip')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(idx)}><Icon name="trash" size={14}/></Button></Tooltip>
                 </div>
               </div>
             );
@@ -380,7 +380,7 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
       const slots = taxonomy.attachmentSlots ?? [];
       const itemOptions = [
         { value: '', label: '— none —' },
-        ...draft.items.map(it => ({ value: it.ref, label: it.ref })),
+        ...draft.items.map(it => ({ value: it.ref?.guid ?? '', label: it.ref?.displayName || it.ref?.guid || '' })).filter(o => o.value),
       ];
       return (
         <div className="space-y-2">
@@ -391,11 +391,15 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
                 <span className="truncate">{s.name}</span>
               </div>
               <Select
-                value={(value ?? {})[s.name] ?? ''}
+                value={(value ?? {})[s.name]?.guid ?? ''}
                 onChange={v => {
                   const next = { ...(value ?? {}) };
-                  if (v) next[s.name] = v;
-                  else delete next[s.name];
+                  if (v) {
+                    const item = DATA.itemById[v];
+                    next[s.name] = { guid: v, displayName: item?.displayName || v };
+                  } else {
+                    delete next[s.name];
+                  }
                   onChange(next);
                 }}
                 options={itemOptions}
@@ -415,21 +419,16 @@ function LoadoutEditor({ loadout, taxonomy, onSaved }) {
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
+      <EntityHeader
+        title={draft.name}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="layers" size={22}/>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
-              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
-              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <FormRenderer
         schema={createLoadoutSchema(t)}
@@ -476,9 +475,8 @@ function LoadoutInspector({ loadout }) {
     behaviour: loadout.behaviour,
   };
   return (
-    <div className="space-y-5 p-4 pt-10">
+    <div className="space-y-5 p-4 pt-4">
       <div>
-        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('loadouts.inspector')}</div>
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">

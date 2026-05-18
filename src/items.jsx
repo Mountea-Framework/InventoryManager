@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Icon, Badge, Button, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside, IconBtn,
-  ContentSkeleton, EmptyState, DeleteConfirmDialog,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { flagsLabels } from './data.js';
-import { DATA, saveItem, loadData, deleteItem, duplicateItem, exportEntityAsJson } from './store.js';
-import { useTaxonomy, useAutoSave } from './hooks.jsx';
+import { DATA, saveItem, loadData, deleteItem, duplicateItem } from './store.js';
+import { exportItem, exportItemsBundle } from './exporter.js';
+import { importItems } from './importer.js';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createItemSchema, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
-import {
-  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
-} from '@/components/ui/context-menu';
 
 /* ============================================================
    Type definitions
@@ -26,6 +25,55 @@ import {
 
 /** @param {string} g @returns {string} */
 const shortGuid = (g) => g ? g.slice(0, 8) + '…' : '';
+
+/**
+ * When `category` or `subCategory` changes, merge that taxonomy entry's tags,
+ * defaultFlags, and defaultItemActions into the draft (true-wins, additive only).
+ * Item-action flags are resolved inline to avoid a second setState cycle.
+ */
+function applyCategoryDefaults(draft, path, val, taxonomy) {
+  let newTags = [];
+  let catFlags = 0;
+  let catActions = [];
+
+  if (path === 'category') {
+    const cat = taxonomy.categories?.find(c => c.title === val);
+    newTags    = cat?.tags               ?? [];
+    catFlags   = cat?.defaultFlags       ?? 0;
+    catActions = cat?.defaultItemActions ?? [];
+  } else if (path === 'subCategory') {
+    const cat = taxonomy.categories?.find(c => c.title === draft.category);
+    const sub = cat?.subcategories?.find(s => s.title === val);
+    newTags    = sub?.tags               ?? [];
+    catFlags   = sub?.defaultFlags       ?? 0;
+    catActions = sub?.defaultItemActions ?? [];
+  }
+
+  let result = draft;
+
+  if (newTags.length) {
+    const existing = new Set(result.tags ?? []);
+    const unique = newTags.filter(t => !existing.has(t));
+    if (unique.length) result = { ...result, tags: [...(result.tags ?? []), ...unique] };
+  }
+
+  if (catFlags) {
+    result = { ...result, flags: (result.flags ?? 0) | catFlags };
+  }
+
+  if (catActions.length) {
+    const existingSet = new Set(result.itemActions ?? []);
+    const toAdd = catActions.filter(k => !existingSet.has(k));
+    if (toAdd.length) {
+      const actionFlags = (taxonomy.itemActions ?? [])
+        .filter(a => toAdd.includes(a.key))
+        .reduce((acc, a) => acc | (a.flags ?? 0), 0);
+      result = { ...result, itemActions: [...(result.itemActions ?? []), ...toAdd], flags: (result.flags ?? 0) | actionFlags };
+    }
+  }
+
+  return result;
+}
 
 /* ============================================================
    ItemTreeNode — sidebar category row
@@ -56,36 +104,31 @@ function ItemTreeNode({ category, items, expanded, setExpanded, selected, setSel
       </button>
       {isOpen && filteredItems.map(item => {
         const isSel = selected === item.guid;
-        const tip = item.description?.short || `${item.rarity} · ${item.category}`;
+        const tip = (
+          <span className="flex flex-col gap-0.5">
+            {item.description?.short && (
+              <span>{item.description.short}</span>
+            )}
+            <span className="font-mono text-[11px]">{`${item.rarity} · ${item.category}`}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{item.guid}</span>
+          </span>
+        );
+
         return (
-          <ContextMenu key={item.guid}>
-            <ContextMenuTrigger asChild>
-              <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
-                <Tooltip content={tip} side="right">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate">{item.displayName}</div>
-                    <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
-                  </div>
-                </Tooltip>
-              </SidebarItem>
-            </ContextMenuTrigger>
-            <ContextMenuContent className="w-44">
-              <ContextMenuGroup>
-                <ContextMenuItem onClick={() => onDuplicate(item)}>
-                  <Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}
-                </ContextMenuItem>
-                <ContextMenuItem onClick={() => onExport(item)}>
-                  <Icon name="export" size={14} className="mr-2"/>{t('common.export')}
-                </ContextMenuItem>
-              </ContextMenuGroup>
-              <ContextMenuSeparator/>
-              <ContextMenuGroup>
-                <ContextMenuItem variant="destructive" onClick={() => onDeleteRequest(item)}>
-                  <Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}
-                </ContextMenuItem>
-              </ContextMenuGroup>
-            </ContextMenuContent>
-          </ContextMenu>
+          <EntityContextMenu key={item.guid}
+            onDuplicate={() => onDuplicate(item)}
+            onExport={() => onExport(item)}
+            onDelete={() => onDeleteRequest(item)}
+          >
+            <SidebarItem selected={isSel} onClick={() => setSelected(item.guid)} className="text-sm">
+              <Tooltip content={tip} side="right">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate">{item.displayName}</div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground">{shortGuid(item.guid)}</div>
+                </div>
+              </Tooltip>
+            </SidebarItem>
+          </EntityContextMenu>
         );
       })}
     </div>
@@ -108,8 +151,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
   );
   const [browserSearch, setBrowserSearch] = useState('');
   const [createOpen,    setCreateOpen]    = useState(false);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [tick,          setTick]          = useState(0); // eslint-disable-line no-unused-vars
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteItem,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) navigate(`/inventory/${DATA.allItems[0]?.guid ?? ''}`); },
+  });
 
   const selected = guid ?? DATA.allItems[0]?.guid ?? null;
   const setSelected = (newGuid) => navigate(newGuid ? `/inventory/${newGuid}` : '/inventory');
@@ -129,41 +174,63 @@ export function ItemsScreen({ search: globalSearch, loading }) {
     navigate(`/inventory/${newItem.guid}`);
   };
 
+  const importRef = useRef(null);
+
   const handleDuplicate = async (entity) => {
     const newGuid = await duplicateItem(entity);
     navigate(`/inventory/${newGuid}`);
   };
-  const handleExport        = (entity) => exportEntityAsJson(entity, `${entity.displayName}.json`);
-  const handleDeleteRequest = (entity) => setDeleteTarget(entity);
-  const handleDeleteConfirm = async () => {
-    await deleteItem(deleteTarget.guid);
-    await loadData();
-    if (guid === deleteTarget.guid) navigate(`/inventory/${DATA.allItems[0]?.guid ?? ''}`);
-    setDeleteTarget(null);
+  const handleExport = (entity) => exportItem(entity, tax);
+
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importItems(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
   };
 
   return (
-    <>
-      <LeftPanel
-        title={t('items.title')}
-        headerActions={<IconBtn icon="plus" title={t('items.newTip')} onClick={() => setCreateOpen(true)}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('items.filterPlaceholder')}
-        loading={loading}
-      >
-        {Object.entries(DATA.items).map(([cat, arr]) => (
-          <ItemTreeNode key={cat} category={cat} items={arr}
-            expanded={expanded} setExpanded={setExpanded}
-            selected={selected} setSelected={setSelected}
-            search={search}
-            icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}
-            onDuplicate={handleDuplicate}
-            onExport={handleExport}
-            onDeleteRequest={handleDeleteRequest}/>
-        ))}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('items.title')}
+          headerActions={<>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportItemsBundle(DATA.allItems, tax)} disabled={!DATA.allItems.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('items.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
+          </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('items.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mnteaitem,.mnteaitems" multiple hidden onChange={handleImport}/>
+          </>}
+          search={browserSearch} setSearch={setBrowserSearch}
+          searchPlaceholder={t('items.filterPlaceholder')}
+          loading={loading}
+        >
+          {Object.entries(DATA.items).map(([cat, arr]) => (
+            <ItemTreeNode key={cat} category={cat} items={arr}
+              expanded={expanded} setExpanded={setExpanded}
+              selected={selected} setSelected={setSelected}
+              search={search}
+              icon={tax.categories.find(c => c.title === cat)?.icon ?? 'folder'}
+              onDuplicate={handleDuplicate}
+              onExport={handleExport}
+              onDeleteRequest={handleDeleteRequest}/>
+          ))}
+        </ElementsSidebar>
+      }
+      inspectorSidebar={item && (
+        <InspectorSidebar>
+          <ItemInspector item={item}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : DATA.allItems.length === 0
@@ -171,16 +238,10 @@ export function ItemsScreen({ search: globalSearch, loading }) {
                 <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('items.newTip')}</Button>
               </EmptyState>
             : item
-              ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={() => setTick(t => t + 1)}/>
+              ? <ItemEditor key={item.guid} item={item} taxonomy={tax} onSaved={onSaved}/>
               : <div className="p-10 text-sm text-muted-foreground">{t('items.selectPrompt')}</div>
         }
-      </main>
-
-      {item && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <ItemInspector item={item}/>
-        </CollapsibleAside>
-      )}
+      </div>
 
       <EntityCreateSheet
         open={createOpen}
@@ -190,6 +251,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         taxonomy={tax}
         onSave={handleCreateItem}
         sectionIds={['identity', 'description', 'flags']}
+        afterSet={(draft, path, val) => applyCategoryDefaults(draft, path, val, tax)}
       />
 
       <DeleteConfirmDialog
@@ -198,7 +260,7 @@ export function ItemsScreen({ search: globalSearch, loading }) {
         name={deleteTarget?.displayName ?? ''}
         onConfirm={handleDeleteConfirm}
       />
-    </>
+    </ScreenLayout>
   );
 }
 
@@ -217,42 +279,40 @@ function ItemEditor({ item, taxonomy, onSaved }) {
 
   const set = (path, val) => {
     if (path === 'category') {
-      setDraft(d => ({ ...d, category: val, subCategory: '' }));
+      setDraft(d => {
+        const base = { ...d, category: val, subCategory: '' };
+        return applyCategoryDefaults(base, path, val, taxonomy);
+      });
+      return;
+    }
+    if (path === 'itemActions') {
+      setDraft(d => {
+        const actionFlags = (taxonomy.itemActions ?? [])
+          .filter(a => (val ?? []).includes(a.key))
+          .reduce((acc, a) => acc | (a.flags ?? 0), 0);
+        return { ...d, itemActions: val, flags: d.flags | actionFlags };
+      });
       return;
     }
     setDraft(d => {
       const next = structuredClone(d);
-      const keys = path.split('.');
-      let cur = next;
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (cur[keys[i]] == null) cur[keys[i]] = {};
-        cur = cur[keys[i]];
-      }
-      cur[keys[keys.length - 1]] = val;
-      return next;
+      setPath(next, path, val);
+      return applyCategoryDefaults(next, path, val, taxonomy);
     });
   };
 
   return (
     <div>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
-          <Thumb size={52} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h1 className="truncate text-lg font-semibold tracking-tight">{draft.displayName}</h1>
-              <Badge variant="secondary">{draft.rarity}</Badge>
-              <Badge variant="outline">{draft.category}{draft.subCategory ? ` · ${draft.subCategory}` : ''}</Badge>
-            </div>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="truncate font-mono text-xs text-muted-foreground">guid: {draft.guid}</div>
-              {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
-              {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
+      <EntityHeader
+        title={draft.displayName}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={<Thumb size={52} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>}
+        badges={<>
+          <Badge variant="secondary">{draft.rarity}</Badge>
+          <Badge variant="outline">{draft.category}{draft.subCategory ? ` · ${draft.subCategory}` : ''}</Badge>
+        </>}
+      />
 
       <FormRenderer schema={createItemSchema(t)} draft={draft} set={set} taxonomy={taxonomy}/>
     </div>
@@ -269,9 +329,9 @@ function ItemEditor({ item, taxonomy, onSaved }) {
 function ItemInspector({ item }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => it.ref === item.displayName));
+  const usedInLoadouts = DATA.loadouts.filter(l => l.items.some(it => (it.ref?.guid ?? it.ref) === item.guid));
   const usedInRecipes  = Object.values(DATA.recipes).flat().filter(r =>
-    r.groups.some(g => g.ingredients.some(i => i.ref === item.displayName))
+    r.groups.some(g => g.ingredients.some(i => (i.ref?.guid ?? i.ref) === item.guid))
   );
 
   const preview = {
@@ -285,9 +345,8 @@ function ItemInspector({ item }) {
   };
 
   return (
-    <div className="space-y-5 p-4 pt-10">
+    <div className="space-y-5 p-4 pt-4">
       <div>
-        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('items.inspector')}</div>
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <Thumb size={40} tone={item._ui?.thumbTone} icon={item._ui?.icon}/>

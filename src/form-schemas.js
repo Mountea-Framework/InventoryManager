@@ -21,6 +21,8 @@
  *  readonly      →  plain text display     (non-editable, e.g. guid)
  */
 
+import { newGuid } from './utils.js';
+
 /** @typedef {'text'|'textarea'|'number'|'select'|'switch'|'flags'|'tags'|'string-list'|'file'|'chip-multi'|'range'|'item-list'|'group-list'|'slot-map'|'readonly'} FieldType */
 
 /**
@@ -31,29 +33,31 @@
 
 /**
  * @typedef {Object} FieldSchema
- * @property {string}      id          - dot-notation path into the record (e.g. "durability.max")
- * @property {string}      label       - human-readable field label
- * @property {FieldType}   type        - UI component to use
- * @property {boolean}     [required]  - validation: field must be non-empty
- * @property {boolean}     [disabled]  - non-editable (grey out, not readonly display)
- * @property {string}      [hint]      - helper text shown below the field
- * @property {SelectOption[]} [options] - static options for select/chip-multi
- * @property {string}      [source]    - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
- * @property {string}      [dependsOn] - field id; re-filter options when this field changes
- * @property {string}      [accept]    - file picker: accepted MIME types or extensions
+ * @property {string}      id             - dot-notation path into the record (e.g. "durability.max")
+ * @property {string}      label          - human-readable field label
+ * @property {FieldType}   type           - UI component to use
+ * @property {boolean}     [required]     - validation: field must be non-empty
+ * @property {boolean}     [disabled]     - non-editable (grey out, not readonly display)
+ * @property {string}      [hint]         - helper text shown below the field
+ * @property {SelectOption[]} [options]   - static options for select/chip-multi
+ * @property {string}      [source]       - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
+ * @property {string}      [dependsOn]    - field id; re-filter options when this field changes
+ * @property {string}      [accept]       - file picker: accepted MIME types or extensions
  * @property {string}      [placeholder]
  * @property {number}      [min]
  * @property {number}      [max]
  * @property {number}      [step]
- * @property {string}      [unit]      - display unit label (e.g. 'kg', 's')
+ * @property {string}      [unit]         - display unit label (e.g. 'kg', 's')
+ * @property {*}           [clearValue]   - value assigned when section editCondition becomes false (overrides type default)
  */
 
 /**
  * @typedef {Object} SectionSchema
- * @property {string}        id       - unique section identifier
- * @property {string}        title    - section heading
- * @property {string}        [icon]   - icon name from ui.jsx Icon registry
- * @property {boolean}       [compact] - render rows without borders (compact Section)
+ * @property {string}        id              - unique section identifier
+ * @property {string}        title           - section heading
+ * @property {string}        [icon]          - icon name from ui.jsx Icon registry
+ * @property {boolean}       [compact]       - render rows without borders (compact Section)
+ * @property {string}        [editCondition] - dot-path into draft; all fields except the controlling field are disabled when falsy
  * @property {FieldSchema[]} fields
  */
 
@@ -87,35 +91,35 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'displayName',
-          label: 'Display Name',
+          label: t('items.fieldDisplayName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Combat Stimulant',
+          placeholder: t('items.placeholderDisplayName'),
         },
         {
           id: 'category',
-          label: 'Category',
+          label: t('items.fieldCategory'),
           type: 'select',
           required: true,
           source: 'taxonomy.categories',
-          placeholder: 'Select category…',
+          placeholder: t('items.placeholderCategory'),
         },
         {
           id: 'subCategory',
-          label: 'Subcategory',
+          label: t('items.fieldSubCategory'),
           type: 'select',
           source: 'taxonomy.categories',
           dependsOn: 'category',
-          placeholder: 'Select subcategory…',
-          tooltip: 'Filtered to the selected category.',
+          placeholder: t('items.placeholderSubCategory'),
+          tooltip: t('items.tipSubCategory'),
         },
         {
           id: 'rarity',
-          label: 'Rarity',
+          label: t('items.fieldRarity'),
           type: 'select',
           required: true,
           source: 'taxonomy.rarities',
-          placeholder: 'Select rarity…',
+          placeholder: t('items.placeholderRarity'),
         },
       ],
     },
@@ -127,16 +131,16 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'description.short',
-          label: 'Short Description',
+          label: t('items.fieldShortDesc'),
           type: 'text',
-          placeholder: 'One-line summary shown in tooltips.',
-          tooltip: 'Keep under 80 characters.',
+          placeholder: t('items.placeholderShortDesc'),
+          tooltip: t('items.tipShortDesc'),
         },
         {
           id: 'description.long',
-          label: 'Long Description',
+          label: t('items.fieldLongDesc'),
           type: 'textarea',
-          placeholder: 'Extended flavour text shown in the item inspector…',
+          placeholder: t('items.placeholderLongDesc'),
         },
       ],
     },
@@ -148,27 +152,27 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'flags',
-          label: 'Behaviour Flags',
+          label: t('items.fieldFlags'),
           type: 'flags',
-          tooltip: 'Bitmasked. Each flag maps to EInventoryItemFlags on the C++ side.',
+          tooltip: t('items.tipFlags'),
         },
         {
           id: 'maxQuantity',
-          label: 'Max Quantity',
+          label: t('items.fieldMaxQuantity'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Maximum total copies the player can hold across all stacks.',
+          tooltip: t('items.tipMaxQuantity'),
         },
         {
           id: 'maxStackSize',
-          label: 'Max Stack Size',
+          label: t('items.fieldMaxStackSize'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Maximum units per individual stack slot.',
+          tooltip: t('items.tipMaxStackSize'),
         },
       ],
     },
@@ -180,27 +184,27 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'visuals.thumbnail.path',
-          label: 'Thumbnail',
+          label: t('items.fieldThumbnail'),
           type: 'file',
           accept: 'image/*',
-          placeholder: 'e.g. T_MyItem_Thumb.png',
-          tooltip: 'Small icon used in inventory grid and tooltips.',
+          placeholder: t('items.placeholderThumbnail'),
+          tooltip: t('items.tipThumbnail'),
         },
         {
           id: 'visuals.cover.path',
-          label: 'Cover Image',
+          label: t('items.fieldCover'),
           type: 'file',
           accept: 'image/*',
-          placeholder: 'e.g. T_MyItem_Cover.png',
-          tooltip: 'Large artwork shown in the inspector panel.',
+          placeholder: t('items.placeholderCover'),
+          tooltip: t('items.tipCover'),
         },
         {
           id: 'visuals.mesh.path',
-          label: 'Mesh Asset',
+          label: t('items.fieldMesh'),
           type: 'file',
           accept: '.fbx,.obj,.gltf,.glb,.uasset',
-          placeholder: 'e.g. SK_MyItem.fbx',
-          tooltip: 'Static or skeletal mesh used for world-drop and inspect view.',
+          placeholder: t('items.placeholderMesh'),
+          tooltip: t('items.tipMesh'),
         },
       ],
     },
@@ -213,10 +217,10 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'spawnActor.path',
-          label: 'Spawn Actor Path',
+          label: t('items.fieldSpawnActorPath'),
           type: 'text',
-          placeholder: '/Game/Blueprints/Items/BP_MyItem_C',
-          tooltip: 'Full Unreal asset path of the Blueprint Actor to spawn in the world.',
+          placeholder: t('items.placeholderSpawnActorPath'),
+          tooltip: t('items.tipSpawnActorPath'),
         },
       ],
     },
@@ -226,16 +230,17 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionDurability'),
       icon: 'history',
       compact: true,
+      editCondition: 'durability.enabled',
       fields: [
         {
           id: 'durability.enabled',
-          label: 'Enable Durability',
+          label: t('items.fieldEnableDurability'),
           type: 'switch',
-          tooltip: 'Requires the Durable flag to be set.',
+          tooltip: t('items.tipEnableDurability'),
         },
         {
           id: 'durability.max',
-          label: 'Max Durability',
+          label: t('items.fieldMaxDurability'),
           type: 'number',
           min: 1,
           max: 100000,
@@ -243,30 +248,30 @@ export const createItemSchema = (t) => ({
         },
         {
           id: 'durability.base',
-          label: 'Base (Starting) Durability',
+          label: t('items.fieldBaseDurability'),
           type: 'number',
           min: 0,
           max: 100000,
           step: 1,
-          tooltip: 'Value at spawn; must be ≤ Max.',
+          tooltip: t('items.tipBaseDurability'),
         },
         {
           id: 'durability.penalization',
-          label: 'Stat Penalization',
+          label: t('items.fieldStatPenalization'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Multiplier applied to stats at zero durability (0 = full penalty, 1 = no effect).',
+          tooltip: t('items.tipStatPenalization'),
         },
         {
           id: 'durability.priceCoefficient',
-          label: 'Price Coefficient',
+          label: t('items.fieldPriceCoefficient'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Sale price is multiplied by this when durability is at max.',
+          tooltip: t('items.tipPriceCoefficient'),
         },
       ],
     },
@@ -276,15 +281,16 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionEconomy'),
       icon: 'export',
       compact: true,
+      editCondition: 'economy.enabled',
       fields: [
         {
           id: 'economy.enabled',
-          label: 'Enable Economy',
+          label: t('items.fieldEnableEconomy'),
           type: 'switch',
         },
         {
           id: 'economy.basePrice',
-          label: 'Base Price',
+          label: t('items.fieldBasePrice'),
           type: 'number',
           min: 0,
           step: 1,
@@ -292,12 +298,12 @@ export const createItemSchema = (t) => ({
         },
         {
           id: 'economy.sellCoefficient',
-          label: 'Sell Coefficient',
+          label: t('items.fieldSellCoefficient'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Player receives Base Price × this value when selling.',
+          tooltip: t('items.tipSellCoefficient'),
         },
       ],
     },
@@ -307,15 +313,16 @@ export const createItemSchema = (t) => ({
       title: t('items.sectionWeight'),
       icon: 'layers',
       compact: true,
+      editCondition: 'weight.enabled',
       fields: [
         {
           id: 'weight.enabled',
-          label: 'Enable Weight',
+          label: t('items.fieldEnableWeight'),
           type: 'switch',
         },
         {
           id: 'weight.value',
-          label: 'Weight',
+          label: t('items.fieldWeight'),
           type: 'number',
           min: 0,
           step: 0.01,
@@ -331,10 +338,10 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'tags',
-          label: 'Gameplay Tags',
+          label: t('items.fieldGameplayTags'),
           type: 'tags',
-          placeholder: 'e.g. Item.Weapon.Energy',
-          tooltip: 'Dot-notation Unreal GameplayTags. Used for filtering, slot matching, and crafting ingredient detection.',
+          placeholder: t('items.placeholderGameplayTags'),
+          tooltip: t('items.tipGameplayTags'),
         },
       ],
     },
@@ -346,9 +353,9 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'attachmentSlots',
-          label: 'Attachment Slots',
+          label: t('items.fieldAttachmentSlots'),
           type: 'tags',
-          placeholder: 'e.g. Slot.Scope',
+          placeholder: t('items.placeholderAttachmentSlot'),
           tooltip: t('items.tipAttachmentSlots'),
         },
       ],
@@ -361,10 +368,10 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'specialAffects',
-          label: 'Special Affect Blueprints',
-          type: 'string-list',
-          placeholder: '/Game/Blueprints/Affects/BP_MyEffect_C',
-          tooltip: 'Full asset paths to Blueprint Affect classes applied when this item is active.',
+          label: t('items.fieldSpecialAffects'),
+          type: 'chip-multi',
+          source: 'taxonomy.specialAffects',
+          tooltip: t('items.tipSpecialAffects'),
         },
       ],
     },
@@ -376,10 +383,10 @@ export const createItemSchema = (t) => ({
       fields: [
         {
           id: 'itemActions',
-          label: 'Allowed Actions',
+          label: t('items.fieldItemActions'),
           type: 'chip-multi',
           source: 'taxonomy.itemActions',
-          tooltip: 'Actions available in the context menu for this item.',
+          tooltip: t('items.tipItemActions'),
         },
       ],
     },
@@ -635,8 +642,6 @@ export const createLoadoutSchema = (t) => ({
 /*  createDraft — blank starting state for each entity type            */
 /* ------------------------------------------------------------------ */
 
-const randomHex = (len) => Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-const newGuid = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
 
 /** @returns {object} blank item draft with a fresh GUID */
 export const createItemDraft = () => ({

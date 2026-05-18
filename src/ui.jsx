@@ -1,6 +1,13 @@
-import React, { useState, useRef, forwardRef } from 'react';
+import React, { useState, useRef, forwardRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import {
+  Sidebar, SidebarContent, SidebarHeader as ShadcnSidebarHeader,
+  SidebarInput, SidebarInset, SidebarProvider, SidebarRail, SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useMobileSidebar } from './contexts/mobile-sidebar-context.jsx';
 
 /* ---------- shadcn component imports ---------- */
 import { Button as ShadcnButton } from '@/components/ui/button';
@@ -21,6 +28,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton as SkeletonPrim } from '@/components/ui/skeleton';
+
+export { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 
 /* ---------- re-exports of shadcn primitives (no changes needed at call sites) ---------- */
 export { cn }                      from '@/lib/utils';
@@ -92,6 +101,7 @@ export const Icon = ({ name, size = 16, className = '' }) => {
     dup: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
     pin: <path d="M12 3v8l5 3v2H7v-2l5-3V3m-2 0h4"/>,
     target: <><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></>,
+    import: <><path d="M12 17v-14m0 0-4 4m4-4 4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
   };
   return <svg {...p}>{paths[name] || null}</svg>;
 };
@@ -99,12 +109,16 @@ export const Icon = ({ name, size = 16, className = '' }) => {
 /* ============================================================
    Tooltip — convenience wrapper: <Tooltip content="...">child</Tooltip>
    ============================================================ */
-export const Tooltip = ({ children, content, side = 'top', delayDuration = 500 }) => (
-  <TooltipRoot delayDuration={delayDuration}>
-    <TooltipTrigger asChild>{children}</TooltipTrigger>
-    <TooltipContent side={side}>{content}</TooltipContent>
-  </TooltipRoot>
-);
+export const Tooltip = ({ children, content, side = 'top', delayDuration = 500 }) => {
+  const isMobile = useIsMobile();
+  if (isMobile) return children;
+  return (
+    <TooltipRoot delayDuration={delayDuration}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{content}</TooltipContent>
+    </TooltipRoot>
+  );
+};
 
 /* ============================================================
    Button — shadcn Button extended with `icon` name prop + `full` width
@@ -173,13 +187,13 @@ export const Section = ({ title, icon, right, children, defaultOpen = true, comp
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="overflow-hidden rounded-lg border border-border/50 bg-card/40">
-      <div className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none" onClick={() => setOpen(!open)}>
+      <div className="flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-3 cursor-pointer select-none" onClick={() => setOpen(!open)}>
         <Icon name={open ? 'chevDown' : 'chevRight'} size={14} className="text-muted-foreground"/>
         {icon && <Icon name={icon} size={14} className="text-muted-foreground"/>}
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">{title}</span>
         {right && <span onClick={e => e.stopPropagation()}>{right}</span>}
       </div>
-      {open && <div className={cn(compact ? 'px-4 pb-3' : 'px-4 pb-4')}>{children}</div>}
+      {open && <div className={cn(compact ? 'px-3 pb-3 md:px-4' : 'px-3 pb-3 md:px-4 md:pb-4')}>{children}</div>}
     </section>
   );
 };
@@ -202,12 +216,12 @@ export const Row = ({ label, hint, tooltip, children, stack = false }) => {
       <div>{children}</div>
     </div>
   ) : (
-    <div className="grid grid-cols-[180px_1fr] items-center gap-3 py-1.5">
-      <div>
+    <div className="flex flex-wrap items-start gap-x-3 gap-y-1 py-1.5">
+      <div className="w-full shrink-0 pt-1.5 md:w-[180px] md:pt-0">
         {labelEl}
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 grow basis-full md:basis-[200px]">{children}</div>
     </div>
   );
 };
@@ -215,16 +229,17 @@ export const Row = ({ label, hint, tooltip, children, stack = false }) => {
 /* ============================================================
    TextField — styled text input with optional prefix/suffix
    ============================================================ */
-export const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, className = '' }) => (
+export const TextField = ({ value, onChange, placeholder, mono = false, suffix, prefix, readOnly, disabled, className = '' }) => (
   <div className={cn(
     'flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 shadow-sm',
     'focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+    disabled && 'pointer-events-none opacity-50',
     className,
   )}>
     {prefix && <span className="mr-2 flex text-muted-foreground">{prefix}</span>}
     <input
       value={value ?? ''} onChange={e => onChange?.(e.target.value)}
-      placeholder={placeholder} readOnly={readOnly}
+      placeholder={placeholder} readOnly={readOnly} disabled={disabled}
       className={cn(
         'flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground',
         mono && 'font-mono text-xs',
@@ -236,7 +251,7 @@ export const TextField = ({ value, onChange, placeholder, mono = false, suffix, 
 /* ============================================================
    FilePicker — text field + folder button file picker
    ============================================================ */
-export const FilePicker = ({ value = '', onChange, accept, placeholder, className = '' }) => {
+export const FilePicker = ({ value = '', onChange, onFilePicked, accept, placeholder, className = '' }) => {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t('ui.selectFile');
   const inputRef = useRef(null);
@@ -254,29 +269,14 @@ export const FilePicker = ({ value = '', onChange, accept, placeholder, classNam
       </div>
       <Button variant="outline" size="icon" onClick={() => inputRef.current?.click()} icon="folder"/>
       <input ref={inputRef} type="file" accept={accept} className="sr-only"
-        onChange={e => { const f = e.target.files?.[0]; if (f) onChange?.(f.name); e.target.value = ''; }}/>
+        onChange={e => {
+          const f = e.target.files?.[0];
+          if (f) { onFilePicked ? onFilePicked(f) : onChange?.(f.name); }
+          e.target.value = '';
+        }}/>
     </div>
   );
 };
-
-/* ============================================================
-   IconBtn — ghost icon button with auto Tooltip via shadcn Tooltip
-   ============================================================ */
-export const IconBtn = forwardRef(({ icon, onClick, title, tone, size = 'sm' }, ref) => {
-  const btn = (
-    <Button
-      ref={ref}
-      variant="ghost"
-      size={size === 'sm' ? 'icon-sm' : 'icon'}
-      onClick={onClick}
-      className={cn(tone === 'danger' && 'text-destructive hover:text-destructive hover:bg-destructive/10')}
-      icon={icon}
-    />
-  );
-  if (!title) return btn;
-  return <Tooltip content={title}>{btn}</Tooltip>;
-});
-IconBtn.displayName = 'IconBtn';
 
 /* ============================================================
    Thumb — item thumbnail placeholder
@@ -335,12 +335,12 @@ function SidebarSkeleton() {
    ============================================================ */
 export function ContentSkeleton() {
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <div className="p-3 md:p-6 max-w-2xl space-y-6">
       <div className="flex items-start gap-4">
         <SkeletonPrim className="h-14 w-14 shrink-0 rounded-lg"/>
-        <div className="flex-1 space-y-2 pt-1">
-          <SkeletonPrim className="h-5 w-52"/>
-          <SkeletonPrim className="h-4 w-80"/>
+        <div className="min-w-0 flex-1 overflow-hidden space-y-2 pt-1">
+          <SkeletonPrim className="h-5 w-full max-w-[208px]"/>
+          <SkeletonPrim className="h-4 w-full max-w-[320px]"/>
         </div>
       </div>
       <div className="space-y-4">
@@ -374,62 +374,143 @@ export function EmptyState({ icon = 'sparkle', title, description, children }) {
 }
 
 /* ============================================================
-   LeftPanel — sidebar container with title, search, action slots
+   EntityHeader — sticky top-of-editor header shared by all screens
    ============================================================ */
-export function LeftPanel({ title, headerActions, search, setSearch, searchPlaceholder, loading, children }) {
+/**
+ * @param {{
+ *   title: string,
+ *   guid: string,
+ *   saveStatus: 'idle'|'dirty'|'saving'|'saved',
+ *   thumb: React.ReactNode,
+ *   badges?: React.ReactNode,
+ * }} props
+ */
+export function EntityHeader({ title, guid, saveStatus, thumb, badges }) {
   const { t } = useTranslation();
-  const resolvedPlaceholder = searchPlaceholder ?? t('ui.filterPlaceholder');
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col border-r border-border bg-muted/20">
-      <div className="border-b border-border p-3 space-y-2">
-        <div className="flex items-center gap-1">
-          <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-foreground/80">{title}</span>
-          {headerActions}
-        </div>
-        <div className="relative">
-          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
-          <ShadcnInput placeholder={resolvedPlaceholder} value={search ?? ''}
-            onChange={e => setSearch?.(e.target.value)} className="h-8 pl-7 text-xs"/>
+    <div className="sticky top-0 z-10 border-b border-border bg-background px-4 py-3 md:px-6 md:py-5">
+      <div className="flex items-start gap-4">
+        {thumb}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-2.5">
+            <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
+            <div className="hidden md:contents">{badges}</div>
+          </div>
+          <div className="mt-1 flex items-center gap-3">
+            <div className="truncate font-mono text-xs text-muted-foreground">
+              <span className="hidden md:inline">guid: </span>
+              <span>{guid}</span>
+            </div>
+            {saveStatus === 'saving' && <span className="text-[10px] text-muted-foreground/60">{t('app.saving')}</span>}
+            {saveStatus === 'saved'  && <span className="text-[10px] text-emerald-500/80">{t('app.saved')}</span>}
+          </div>
         </div>
       </div>
-      <div className="flex-1 overflow-auto py-2">
-        {loading ? <SidebarSkeleton/> : children}
-      </div>
-    </aside>
+    </div>
   );
 }
 
 /* ============================================================
-   CollapsibleAside — collapsible right inspector panel
+   ScreenLayout — dual-sidebar layout (left elements + right inspector)
    ============================================================ */
-export const CollapsibleAside = ({ storageKey, width, children }) => {
-  const [collapsed, setCollapsed] = React.useState(() => {
-    try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
+
+function MobileSidebarWire() {
+  const { setToggle } = useMobileSidebar();
+  const { toggleSidebar } = useSidebar();
+  useEffect(() => { setToggle(toggleSidebar); }, [setToggle, toggleSidebar]);
+  return null;
+}
+
+export function ScreenLayout({ elementsSidebar, inspectorSidebar, children }) {
+  const isMobile = useIsMobile();
+  const [leftOpen, setLeftOpen] = useState(() => {
+    try { return localStorage.getItem('arch.sidebar.elements') !== 'false'; } catch { return true; }
   });
-  const toggle = () => {
-    setCollapsed(c => {
-      const n = !c;
-      try { localStorage.setItem(storageKey, n ? '1' : '0'); } catch {}
-      return n;
-    });
-  };
-  if (collapsed) {
-    return (
-      <aside className="flex w-8 shrink-0 justify-center border-l border-border bg-muted/30 pt-3">
-        <Button variant="ghost" size="icon-sm" onClick={toggle} icon="chevLeft"/>
-      </aside>
-    );
-  }
+  const [rightOpen, setRightOpen] = useState(() => {
+    try { return localStorage.getItem('arch.sidebar.inspector') === 'true'; } catch { return false; }
+  });
+
   return (
-    <aside className="relative shrink-0 overflow-auto border-l border-border bg-muted/20" style={{ width }}>
-      <button onClick={toggle}
-        className="absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground">
-        <Icon name="chevRight" size={12}/>
-      </button>
-      {children}
-    </aside>
+    <SidebarProvider
+      open={leftOpen}
+      onOpenChange={v => { setLeftOpen(v); try { localStorage.setItem('arch.sidebar.elements', String(v)); } catch {} }}
+      style={{ '--sidebar-width': '300px' }}
+    >
+      <MobileSidebarWire/>
+      {elementsSidebar}
+      <SidebarInset className="flex min-h-0 flex-col overflow-hidden p-0">
+        <SidebarProvider
+          open={rightOpen}
+          onOpenChange={v => { setRightOpen(v); try { localStorage.setItem('arch.sidebar.inspector', String(v)); } catch {} }}
+          style={{ '--sidebar-width': '340px' }}
+        >
+          <SidebarInset className="min-h-0 overflow-auto">
+            {children}
+          </SidebarInset>
+          {!isMobile && inspectorSidebar}
+        </SidebarProvider>
+      </SidebarInset>
+    </SidebarProvider>
   );
-};
+}
+
+/* ============================================================
+   ElementsSidebar — left entity list sidebar (shadcn Sidebar)
+   ============================================================ */
+export function ElementsSidebar({ title, headerActions, mobileHeaderActions, search, setSearch, searchPlaceholder, loading, children }) {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const actions = isMobile ? (mobileHeaderActions ?? null) : headerActions;
+  return (
+    <Sidebar collapsible="icon" side="left">
+      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-1">
+        <div className="flex items-center gap-1">
+          <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">{title}</span>
+          <div className="group-data-[state=collapsed]:hidden flex items-center gap-1">{actions}</div>
+          <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
+        </div>
+        <div className="relative group-data-[state=collapsed]:hidden">
+          <Icon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"/>
+          <SidebarInput
+            placeholder={searchPlaceholder ?? t('ui.filterPlaceholder')}
+            value={search ?? ''}
+            onChange={e => setSearch?.(e.target.value)}
+            className="pl-7 text-xs"
+          />
+        </div>
+      </ShadcnSidebarHeader>
+      <SidebarContent className="py-2 group-data-[state=collapsed]:hidden">
+        {loading ? <SidebarSkeleton/> : children}
+      </SidebarContent>
+      <SidebarRail/>
+    </Sidebar>
+  );
+}
+
+/* ============================================================
+   InspectorSidebar — right inspector sidebar (shadcn Sidebar)
+   ============================================================ */
+export function InspectorSidebar({ title, headerActions, children }) {
+  const { t } = useTranslation();
+  return (
+    <Sidebar collapsible="icon" side="right">
+      <ShadcnSidebarHeader className="border-b border-sidebar-border p-3 gap-2">
+        <div className="flex items-center gap-1">
+          <SidebarTrigger className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground"/>
+          <span className="flex-1 truncate text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/80 group-data-[state=collapsed]:hidden">
+            {title ?? t('ui.inspector')}
+          </span>
+          <div className="group-data-[state=collapsed]:hidden">{headerActions}</div>
+        </div>
+        <div className="h-8 group-data-[state=collapsed]:hidden"/>
+      </ShadcnSidebarHeader>
+      <SidebarContent className="overflow-y-auto group-data-[state=collapsed]:hidden">
+        {children}
+      </SidebarContent>
+      <SidebarRail/>
+    </Sidebar>
+  );
+}
 
 /* ============================================================
    Card family — lightweight card primitives (shadcn card not installed)
@@ -453,6 +534,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+/* ============================================================
+   EntityContextMenu — shared right-click menu for entity rows
+   ============================================================ */
+import {
+  ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
+  ContextMenuSeparator, ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+
+export function EntityContextMenu({
+  children,
+  onDuplicate, canDuplicate = true,
+  onExport,    canExport    = true,
+  onDelete,    canDelete    = true,
+}) {
+  const { t } = useTranslation();
+  const showDuplicate = canDuplicate && !!onDuplicate;
+  const showExport    = canExport    && !!onExport;
+  const showDelete    = canDelete    && !!onDelete;
+  const hasTopGroup   = showDuplicate || showExport;
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        {hasTopGroup && (
+          <ContextMenuGroup>
+            {showDuplicate && <ContextMenuItem onClick={onDuplicate}><Icon name="dup" size={14} className="mr-2"/>{t('common.duplicate')}</ContextMenuItem>}
+            {showExport    && <ContextMenuItem onClick={onExport}><Icon name="import" size={14} className="mr-2"/>{t('common.export')}</ContextMenuItem>}
+          </ContextMenuGroup>
+        )}
+        {hasTopGroup && showDelete && <ContextMenuSeparator/>}
+        {showDelete && (
+          <ContextMenuGroup>
+            <ContextMenuItem variant="destructive" onClick={onDelete}><Icon name="trash" size={14} className="mr-2"/>{t('common.delete')}</ContextMenuItem>
+          </ContextMenuGroup>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
 
 export function DeleteConfirmDialog({ open, onOpenChange, name, onConfirm }) {
   const { t } = useTranslation();

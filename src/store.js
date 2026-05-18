@@ -1,5 +1,6 @@
 import db from './db.js';
 import { createEmptyData } from './data.js';
+import { newGuid } from './utils.js';
 
 /** In-memory DATA cache — populated by loadData(), mutated by save/delete helpers. */
 export const DATA = createEmptyData();
@@ -38,8 +39,6 @@ export const deleteRecipe  = (guid)    => db.recipes.delete(guid);
 
 // ── Per-entity duplicate / export ────────────────────────────────────────────
 
-const randomHex = (n) => [...Array(n)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
-const newGuid   = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
 
 export const duplicateItem = async (item) => {
   const copy = { ...structuredClone(item), guid: newGuid(), displayName: item.displayName + ' (copy)' };
