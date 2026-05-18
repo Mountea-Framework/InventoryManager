@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileSidebar } from './contexts/mobile-sidebar-context.jsx';
+import * as LucideIcons from 'lucide-react';
 
 /* ---------- shadcn component imports ---------- */
 import { Button as ShadcnButton } from '@/components/ui/button';
@@ -47,63 +48,47 @@ export {
 } from '@/components/ui/select';
 
 /* ============================================================
-   Icon — SVG icon library (inline, no lucide-react dependency in our API layer)
+   Icon — dynamic Lucide icon lookup with module-level cache
    ============================================================ */
+const _ICON_ALIASES = {
+  chevDown:   'ChevronDown',
+  chevRight:  'ChevronRight',
+  chevLeft:   'ChevronLeft',
+  chevUp:     'ChevronUp',
+  dragHandle: 'GripVertical',
+  cube:       'Box',
+  warn:       'TriangleAlert',
+  bolt:       'Zap',
+  drop:       'Droplet',
+  export:     'Download',
+  import:     'Upload',
+  more:       'MoreHorizontal',
+  dup:        'Copy',
+  open:       'ExternalLink',
+  branch:     'GitBranch',
+  target:     'Target',
+  beaker:     'FlaskConical',
+  helmet:     'HardHat',
+  sparkle:    'Sparkles',
+  cog:        'Settings2',
+};
+
+const _iconCache = new Map();
+
+const _resolveIcon = (name) => {
+  if (_iconCache.has(name)) return _iconCache.get(name);
+  const lucideName = _ICON_ALIASES[name]
+    ?? name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+           .replace(/^[a-z]/, c => c.toUpperCase());
+  const component = LucideIcons[lucideName] ?? null;
+  _iconCache.set(name, component);
+  return component;
+};
+
 export const Icon = ({ name, size = 16, className = '' }) => {
-  const p = {
-    width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
-    stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round',
-    className,
-  };
-  const paths = {
-    search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>,
-    plus: <><path d="M12 5v14M5 12h14"/></>,
-    chevDown: <path d="m6 9 6 6 6-6"/>,
-    chevRight: <path d="m9 6 6 6-6 6"/>,
-    chevLeft: <path d="m15 6-6 6 6 6"/>,
-    chevUp: <path d="m6 15 6-6 6 6"/>,
-    trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></>,
-    cog: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
-    folder: <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/>,
-    cube: <><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"/><path d="M3 7.5 12 12m0 0 9-4.5M12 12v9"/></>,
-    link: <><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></>,
-    tag: <><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/></>,
-    flag: <path d="M5 21V4m0 0h11l-2 4 2 4H5"/>,
-    grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
-    list: <><path d="M4 6h16M4 12h16M4 18h16"/></>,
-    export: <><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
-    check: <path d="m5 12 5 5 9-12"/>,
-    x: <path d="M6 6l12 12M18 6 6 18"/>,
-    sword: <><path d="m14 4 6 6-8 8-3 1 1-3 8-8-4-4Z"/><path d="m5 19 3-3"/></>,
-    shield: <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/>,
-    helmet: <path d="M4 14a8 8 0 0 1 16 0v3H4v-3Zm2 3v2h12v-2"/>,
-    backpack: <><path d="M6 8a4 4 0 0 1 8 0v0m-4-3v3"/><rect x="4" y="8" width="16" height="13" rx="3"/><path d="M4 14h16M9 17h6"/></>,
-    beaker: <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/>,
-    hammer: <><path d="m15 5 4 4-2 2-4-4 2-2Zm-2 2-9 9 3 3 9-9"/></>,
-    sparkle: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>,
-    drop: <path d="M12 3s7 7.5 7 12a7 7 0 0 1-14 0c0-4.5 7-12 7-12Z"/>,
-    bolt: <path d="m13 3-9 12h7l-1 6 9-12h-7l1-6Z"/>,
-    history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></>,
-    warn: <><path d="M10.3 3.7 2.4 17.2A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17v.01"/></>,
-    play: <path d="M7 4v16l13-8L7 4Z"/>,
-    filter: <path d="M3 5h18l-7 9v6l-4-2v-4L3 5Z"/>,
-    more: <><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></>,
-    branch: <><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M6 14a6 6 0 0 0 6-6c0-2 3-1 5-1"/></>,
-    folderPlus: <><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/><path d="M12 11v4M10 13h4"/></>,
-    save: <><path d="M5 3h11l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M7 3v6h9V3M7 21v-7h10v7"/></>,
-    eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></>,
-    info: <><circle cx="12" cy="12" r="9"/><path d="M12 8h0M11 12h1v5h1"/></>,
-    arrowRight: <path d="M5 12h14m0 0-5-5m5 5-5 5"/>,
-    dragHandle: <><circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none"/></>,
-    layers: <><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5"/></>,
-    minus: <path d="M5 12h14"/>,
-    open: <><path d="M15 3h6v6"/><path d="M21 3 12 12"/><path d="M9 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></>,
-    dup: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
-    pin: <path d="M12 3v8l5 3v2H7v-2l5-3V3m-2 0h4"/>,
-    target: <><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></>,
-    import: <><path d="M12 17v-14m0 0-4 4m4-4 4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
-  };
-  return <svg {...p}>{paths[name] || null}</svg>;
+  const LucideIcon = _resolveIcon(name);
+  if (!LucideIcon) return null;
+  return <LucideIcon size={size} strokeWidth={1.75} className={className} />;
 };
 
 /* ============================================================
