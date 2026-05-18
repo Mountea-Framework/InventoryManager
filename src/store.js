@@ -1,5 +1,6 @@
 import db from './db.js';
 import { createEmptyData } from './data.js';
+import { newGuid } from './utils.js';
 
 /** In-memory DATA cache — populated by loadData(), mutated by save/delete helpers. */
 export const DATA = createEmptyData();
@@ -32,9 +33,43 @@ export const loadData = async () => {
 export const saveItem      = (item)    => db.items.put(item);
 export const deleteItem    = (guid)    => db.items.delete(guid);
 export const saveLoadout   = (loadout) => db.loadouts.put(loadout);
-export const deleteLoadout = (id)      => db.loadouts.delete(id);
+export const deleteLoadout = (guid)    => db.loadouts.delete(guid);
 export const saveRecipe    = (recipe)  => db.recipes.put(recipe);
-export const deleteRecipe  = (id)      => db.recipes.delete(id);
+export const deleteRecipe  = (guid)    => db.recipes.delete(guid);
+
+// ── Per-entity duplicate / export ────────────────────────────────────────────
+
+
+export const duplicateItem = async (item) => {
+  const copy = { ...structuredClone(item), guid: newGuid(), displayName: item.displayName + ' (copy)' };
+  await saveItem(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const duplicateLoadout = async (loadout) => {
+  const copy = { ...structuredClone(loadout), guid: newGuid(), name: loadout.name + ' (copy)' };
+  await saveLoadout(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const duplicateRecipe = async (recipe) => {
+  const copy = { ...structuredClone(recipe), guid: newGuid(), name: recipe.name + ' (copy)' };
+  await saveRecipe(copy);
+  await loadData();
+  return copy.guid;
+};
+
+export const exportEntityAsJson = (entity, filename) => {
+  const blob = new Blob([JSON.stringify(entity, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 // ── Bulk export / import ─────────────────────────────────────────────────────
 

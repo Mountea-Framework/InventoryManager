@@ -1,16 +1,21 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   cn, Icon, Button, Select, Tooltip,
-  Thumb, SidebarItem, LeftPanel, CollapsibleAside,
-  Section, IconBtn,
-  ContentSkeleton, EmptyState,
+  Thumb, SidebarItem, ScreenLayout, ElementsSidebar, InspectorSidebar,
+  Section,
+  ContentSkeleton, EmptyState, DeleteConfirmDialog, EntityHeader, EntityContextMenu,
 } from './ui.jsx';
 import { Dialog, DialogContent } from './command.jsx';
-import { DATA } from './store.js';
-import { useTaxonomy } from './hooks.jsx';
+import { DATA, saveRecipe, loadData, deleteRecipe, duplicateRecipe } from './store.js';
+import { exportRecipe, exportRecipesBundle } from './exporter.js';
+import { importRecipes } from './importer.js';
+import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
+import { setPath } from './utils.js';
 import { FormRenderer } from './form-renderer.jsx';
-import { RECIPE_SCHEMA } from './form-schemas.js';
+import { createRecipeSchema, createRecipeDraft } from './form-schemas.js';
+import { EntityCreateSheet } from './entity-sheet.jsx';
 
 /* ============================================================
    Type definitions
@@ -18,7 +23,7 @@ import { RECIPE_SCHEMA } from './form-schemas.js';
 /**
  * @typedef {{ ref: string, qty: number, icon: string, tone: number }} Ingredient
  * @typedef {{ id: string, title: string, required: boolean, ingredients: Ingredient[] }} RecipeGroup
- * @typedef {{ id: string, name: string, tier: string, result: object, successChance: number, qtyMin: number, qtyMax: number, reqs: { level: number, station: string, duration: string }, groups: RecipeGroup[] }} Recipe
+ * @typedef {{ guid: string, name: string, result: object, successChance: number, qtyMin: number, qtyMax: number, reqs: { level: number, station: string, duration: string }, groups: RecipeGroup[] }} Recipe
  */
 
 /* ============================================================
@@ -63,7 +68,10 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
   const [query, setQuery] = useState('');
 
   const materials = useMemo(() =>
-    DATA.allItems.filter(it => it.tags?.some(t => t.startsWith('Item.Material'))),
+    DATA.allItems.filter(it =>
+      it.category?.toLowerCase() === 'material' ||
+      it.tags?.some(tag => tag.split('.').some(seg => seg.toLowerCase() === 'material'))
+    ),
     [],
   );
 
@@ -72,7 +80,7 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
     : materials;
 
   const handleAdd = (item) => {
-    onAdd({ ref: item.displayName, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
+    onAdd({ ref: { guid: item.guid, displayName: item.displayName }, qty: 1, icon: item._ui?.icon || 'cube', tone: item._ui?.thumbTone ?? 0 });
     onOpenChange(false);
     setQuery('');
   };
@@ -137,6 +145,13 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
 function RecipeInspector({ recipe }) {
   const { t } = useTranslation();
   const ings = recipe.groups.flatMap(g => g.ingredients);
+
+  const preview = {
+    guid: recipe.guid, name: recipe.name, successChance: recipe.successChance,
+    qtyMin: recipe.qtyMin, qtyMax: recipe.qtyMax,
+    result: recipe.result, reqs: recipe.reqs, groups: recipe.groups,
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div>
@@ -163,16 +178,20 @@ function RecipeInspector({ recipe }) {
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.ingredientTally')}</div>
         <div className="space-y-1">
           {ings.map((ing, i) => {
-            const match = DATA.allItems.find(it => it.displayName === ing.ref);
+            const match = DATA.itemById[ing.ref?.guid];
             return (
               <div key={i} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
                 <Thumb size={20} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
-                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref}</span>
+                <span className="flex-1 truncate font-mono text-[11px]">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</span>
                 <span className="font-mono text-[11px] text-primary">×{ing.qty}</span>
               </div>
             );
           })}
         </div>
+      </div>
+      <div>
+        <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.jsonPreview')}</div>
+        <pre className="overflow-x-auto rounded-md border border-border bg-card p-3 font-mono text-[10.5px] leading-relaxed text-foreground/80">{JSON.stringify(preview, null, 2)}</pre>
       </div>
     </div>
   );
@@ -182,25 +201,29 @@ function RecipeInspector({ recipe }) {
    RecipeEditor — main editor with local draft state
    ============================================================ */
 /**
- * Editable recipe form. Resets when the selected recipe changes (parent uses key={recipe.id}).
+ * Editable recipe form. Resets when the selected recipe changes (parent uses key={recipe.guid}).
  * @param {{ recipe: Recipe, taxonomy: object }} props
  */
-function RecipeEditor({ recipe, taxonomy }) {
+function RecipeEditor({ recipe, taxonomy, onSaved }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(recipe);
+  const saveStatus = useAutoSave(draft, saveRecipe, 1000, onSaved);
   const [ingredientModalGroupId, setIngredientModalGroupId] = useState(null);
 
   const set = (path, val) => setDraft(d => {
     const next = structuredClone(d);
-    const keys = path.split('.');
-    let cur = next;
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
-    }
-    cur[keys[keys.length - 1]] = val;
+    setPath(next, path, val);
     return next;
   });
+
+  const addGroup = () =>
+    setDraft(d => ({
+      ...d,
+      groups: [...d.groups, { id: crypto.randomUUID(), title: `Group ${d.groups.length + 1}`, required: true, ingredients: [] }],
+    }));
+
+  const removeGroup = (groupId) =>
+    setDraft(d => ({ ...d, groups: d.groups.filter(g => g.id !== groupId) }));
 
   const addIngredient = (groupId, ing) =>
     setDraft(d => ({
@@ -252,21 +275,20 @@ function RecipeEditor({ recipe, taxonomy }) {
   return (
     <div>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background px-6 py-4">
-        <div className="flex items-start gap-4">
+      <EntityHeader
+        title={draft.name}
+        guid={draft.guid}
+        saveStatus={saveStatus}
+        thumb={
           <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
             <Icon name="hammer" size={22}/>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold tracking-tight">{draft.name}</h1>
-            <div className="mt-1 font-mono text-xs text-muted-foreground">id: {draft.id.toLowerCase()}</div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Schema-driven sections: identity, result, requirements */}
       <FormRenderer
-        schema={RECIPE_SCHEMA}
+        schema={createRecipeSchema(t)}
         draft={draft}
         set={set}
         taxonomy={taxonomy}
@@ -276,27 +298,36 @@ function RecipeEditor({ recipe, taxonomy }) {
 
       {/* Ingredient groups — rendered manually since each group is its own Section */}
       <div className="space-y-4 px-6 pb-6">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.sectionIngredients')}</span>
+          <Button icon="plus" size="sm" variant="ghost" onClick={addGroup}>{t('crafting.addGroup')}</Button>
+        </div>
+        {draft.groups.length === 0 && (
+          <div className="py-4 text-center text-xs italic text-muted-foreground">{t('crafting.noIngredients')}</div>
+        )}
         {draft.groups.map(g => (
           <Section
             key={g.id}
             title={g.title + (g.oneOf ? ' (one of)' : '')}
             icon={g.required ? 'tag' : 'sparkle'}
             right={
-              <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
-                {t('crafting.addIngredientTitle')}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button icon="plus" size="sm" variant="ghost" onClick={() => setIngredientModalGroupId(g.id)}>
+                  {t('crafting.addIngredientTitle')}
+                </Button>
+                <Tooltip content={t('crafting.removeGroup')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeGroup(g.id)}><Icon name="trash" size={14}/></Button></Tooltip>
+              </div>
             }
           >
             <div className="space-y-1.5">
               {g.ingredients.map((ing, ii) => {
-                const match = DATA.allItems.find(it => it.displayName === ing.ref);
+                const match = DATA.itemById[ing.ref?.guid];
                 return (
                   <div key={ii} className="grid grid-cols-[36px_1fr_120px_32px] items-center gap-3 rounded-lg border border-border bg-card p-2.5">
                     <Thumb size={32} tone={match?._ui?.thumbTone ?? ing.tone} icon={match?._ui?.icon || ing.icon}/>
                     <div className="min-w-0">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">REF_ID</div>
-                      {/* REF_ID is a technical label, not translated */}
-                      <div className="truncate font-mono text-xs">{ing.ref}</div>
+                      <div className="truncate text-sm font-medium">{ing.ref?.displayName || match?.displayName || ing.ref?.guid}</div>
+                      <div className="truncate font-mono text-[10px] text-muted-foreground">{ing.ref?.guid?.slice(0, 13)}{ing.ref?.guid ? '…' : ''}</div>
                     </div>
                     <div>
                       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t('crafting.amount')}</div>
@@ -306,7 +337,7 @@ function RecipeEditor({ recipe, taxonomy }) {
                         onChange={qty => updateIngredientQty(g.id, ii, qty)}
                       />
                     </div>
-                    <IconBtn icon="trash" tone="danger" title={t('crafting.removeIngredient')} onClick={() => removeIngredient(g.id, ii)}/>
+                    <Tooltip content={t('crafting.removeIngredient')}><Button variant="ghost-destructive" size="icon-sm" onClick={() => removeIngredient(g.id, ii)}><Icon name="trash" size={14}/></Button></Tooltip>
                   </div>
                 );
               })}
@@ -337,63 +368,139 @@ const RECIPE_FAMILY_ICONS = { Smithing: 'hammer', Alchemy: 'beaker' };
 
 export function CraftingScreen({ search: globalSearch, loading }) {
   const { t } = useTranslation();
+  const { guid } = useParams();
+  const navigate = useNavigate();
   const [tax] = useTaxonomy();
-  const [selected,      setSelected]      = useState(null);
   const [browserSearch, setBrowserSearch] = useState('');
-  const allRecipes    = Object.values(DATA.recipes).flat();
-  const recipe        = allRecipes.find(r => r.id === selected);
-  const search        = (browserSearch || globalSearch || '').toLowerCase();
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const { deleteTarget, setDeleteTarget, handleDeleteRequest, handleDeleteConfirm, onSaved } = useEntityActions({
+    deleteEntity: deleteRecipe,
+    afterDelete:  (deletedGuid) => { if (guid === deletedGuid) setSelected(null); },
+  });
 
+  const selected = guid ?? null;
+  const setSelected = (newGuid) => navigate(newGuid ? `/crafting/${newGuid}` : '/crafting');
+  const allRecipes = Object.values(DATA.recipes).flat();
+  const recipe     = allRecipes.find(r => r.guid === selected);
+
+  useEffect(() => {
+    if (!guid && !loading) {
+      const first = allRecipes[0]?.guid;
+      if (first) navigate(`/crafting/${first}`, { replace: true });
+    }
+  }, [guid, loading]);
+  const search     = (browserSearch || globalSearch || '').toLowerCase();
+
+  const handleCreateRecipe = async (newRecipe) => {
+    await saveRecipe(newRecipe);
+    await loadData();
+    setSelected(newRecipe.guid);
+  };
+
+  const importRef = useRef(null);
+
+  const handleDuplicate = async (entity) => {
+    const newGuid = await duplicateRecipe(entity);
+    setSelected(newGuid);
+  };
+  const handleExport = (entity) => exportRecipe(entity, tax);
+
+  const handleImport = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    try {
+      await importRecipes(files);
+    } catch (err) {
+      alert(`Import failed: ${err.message}`);
+    }
+  };
 
   return (
-    <>
-      <LeftPanel
-        title={t('crafting.title')}
-        headerActions={<IconBtn icon="plus" title={t('crafting.newTip')}/>}
-        search={browserSearch} setSearch={setBrowserSearch}
-        searchPlaceholder={t('crafting.filterPlaceholder')}
-        loading={loading}
-      >
-        {Object.entries(DATA.recipes).map(([family, recipes]) => {
-          const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
-          const filtered = search ? recipes.filter(r => (r.name + ' ' + r.id).toLowerCase().includes(search)) : recipes;
-          if (filtered.length === 0) return null;
-          return (
-            <div key={family} className="mb-1">
-              <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Icon name={icon} size={12}/>
-                <span className="flex-1">{family}</span>
-                <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
+    <ScreenLayout
+      elementsSidebar={
+        <ElementsSidebar
+          title={t('crafting.title')}
+          headerActions={<>
+            <Tooltip content={t('common.import')}><Button variant="ghost" size="icon-sm" onClick={() => importRef.current.click()}><Icon name="export" size={14}/></Button></Tooltip>
+            <Tooltip content={t('common.export')}><Button variant="ghost" size="icon-sm" onClick={() => exportRecipesBundle(allRecipes, tax)} disabled={!allRecipes.length}><Icon name="import" size={14}/></Button></Tooltip>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
+          mobileHeaderActions={<>
+            <Tooltip content={t('crafting.newTip')}><Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen(true)}><Icon name="plus" size={14}/></Button></Tooltip>
+            <input ref={importRef} type="file" accept=".mntearecipe,.mntearecipes" multiple hidden onChange={handleImport}/>
+          </>}
+          search={browserSearch}
+          setSearch={setBrowserSearch}
+          searchPlaceholder={t('crafting.filterPlaceholder')}
+          loading={loading}
+        >
+          {Object.entries(DATA.recipes).map(([family, recipes]) => {
+            const icon = RECIPE_FAMILY_ICONS[family] ?? 'hammer';
+            const filtered = search ? recipes.filter(r => (r.name + ' ' + r.guid).toLowerCase().includes(search)) : recipes;
+            if (filtered.length === 0) return null;
+            return (
+              <div key={family} className="mb-1">
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Icon name={icon} size={12}/>
+                  <span className="flex-1">{family}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground/70">{filtered.length}</span>
+                </div>
+                {filtered.map(r => (
+                  <EntityContextMenu key={r.guid}
+                    onDuplicate={() => handleDuplicate(r)}
+                    onExport={() => handleExport(r)}
+                    onDelete={() => handleDeleteRequest(r)}
+                  >
+                    <SidebarItem selected={r.guid === selected} onClick={() => setSelected(r.guid)}>
+                      <Tooltip content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{r.name}</div>
+                          <div className="truncate font-mono text-[10px] text-muted-foreground">{r.guid}</div>
+                        </div>
+                      </Tooltip>
+                    </SidebarItem>
+                  </EntityContextMenu>
+                ))}
               </div>
-              {filtered.map(r => (
-                <Tooltip key={r.id} content={`${r.reqs.station} · ${r.successChance}% success`} side="right">
-                  <SidebarItem selected={r.id === selected} onClick={() => setSelected(r.id)}>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{r.name}</div>
-                      <div className="truncate font-mono text-[10px] text-muted-foreground">{r.id}</div>
-                    </div>
-                  </SidebarItem>
-                </Tooltip>
-              ))}
-            </div>
-          );
-        })}
-      </LeftPanel>
-
-      <main className="min-w-0 flex-1 overflow-auto">
+            );
+          })}
+        </ElementsSidebar>
+      }
+      inspectorSidebar={recipe && (
+        <InspectorSidebar>
+          <RecipeInspector recipe={recipe}/>
+        </InspectorSidebar>
+      )}
+    >
+      <div className="min-w-0">
         {loading
           ? <ContentSkeleton/>
           : allRecipes.length === 0
-            ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}/>
-            : recipe && <RecipeEditor key={recipe.id} recipe={recipe} taxonomy={tax}/>
+            ? <EmptyState icon="beaker" title={t('crafting.empty')} description={t('crafting.emptyDesc')}>
+                <Button size="sm" icon="plus" onClick={() => setCreateOpen(true)}>{t('crafting.newTip')}</Button>
+              </EmptyState>
+            : recipe && <RecipeEditor key={recipe.guid} recipe={recipe} taxonomy={tax} onSaved={onSaved}/>
         }
-      </main>
+      </div>
 
-      {recipe && (
-        <CollapsibleAside storageKey="aside-inspector" width={340}>
-          <RecipeInspector recipe={recipe}/>
-        </CollapsibleAside>
-      )}
-    </>
+      <EntityCreateSheet
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        schema={createRecipeSchema(t)}
+        createDraft={createRecipeDraft}
+        taxonomy={tax}
+        onSave={handleCreateRecipe}
+        sectionIds={['identity']}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        name={deleteTarget?.name ?? ''}
+        onConfirm={handleDeleteConfirm}
+      />
+    </ScreenLayout>
   );
 }

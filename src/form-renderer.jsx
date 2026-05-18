@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   cn, Icon, Button, Input, Select, Switch, Tooltip,
   Section, Row, TextField, Textarea, FilePicker,
 } from './ui.jsx';
 import { ITEM_FLAGS, ITEM_ACTIONS, bitsToFlags, flagsToBits } from './data.js';
+import { getPath } from './utils.js';
+import { saveFile } from './store.js';
 
 /**
  * @typedef {import('./form-schemas.js').FieldSchema} FieldSchema
@@ -28,7 +30,7 @@ export function FlagsPicker({ value, onChange }) {
   const flags = bitsToFlags(value || 0);
   const toggle = (key) => onChange?.(flagsToBits({ ...flags, [key]: !flags[key] }));
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
       {ITEM_FLAGS.map(f => {
         const on = !!flags[f.key];
         return (
@@ -101,10 +103,48 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
 }
 
 /**
+ * Generic multi-select chip grid for string option lists (e.g. attachment slots).
+ * Accepts strings or option-like objects ({ value, label }).
+ * @param {{ value: string[], onChange: (v: string[]) => void, options: Array<string|{value:string,label?:string}> }} props
+ */
+function MultiChipField({ value = [], onChange, options = [] }) {
+  const normalized = options.map((opt) => {
+    if (typeof opt === 'string') return { value: opt, label: opt };
+    if (opt && typeof opt === 'object') return { value: opt.value ?? '', label: opt.label ?? String(opt.value ?? '') };
+    return { value: '', label: '' };
+  }).filter(opt => !!opt.value);
+
+  const selected = new Set(value);
+  const toggle = (optValue) => {
+    const next = selected.has(optValue) ? value.filter(v => v !== optValue) : [...value, optValue];
+    onChange?.(next);
+  };
+  if (normalized.length === 0)
+    return <span className="text-xs italic text-muted-foreground">No options defined in settings.</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {normalized.map(opt => {
+        const on = selected.has(opt.value);
+        return (
+          <button key={opt.value} type="button" onClick={() => toggle(opt.value)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-mono transition-colors',
+              on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+            )}>
+            {on && <Icon name="check" size={11} className="text-primary"/>}
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
  * Multi-select action chip grid. Reads available actions from taxonomy (falls back to ITEM_ACTIONS).
  * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
  */
-function ItemActionsPicker({ value = [], onChange, taxonomy }) {
+export function ItemActionsPicker({ value = [], onChange, taxonomy }) {
   const catalog = taxonomy?.itemActions ?? ITEM_ACTIONS;
   const enabled = new Set(value);
 
@@ -117,7 +157,7 @@ function ItemActionsPicker({ value = [], onChange, taxonomy }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {catalog.map(a => {
           const on = enabled.has(a.key);
           return (
@@ -142,6 +182,61 @@ function ItemActionsPicker({ value = [], onChange, taxonomy }) {
             {value.map(k => (
               <span key={k} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10.5px] text-primary">{k}</span>
             ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Multi-select chip grid for special affect blueprints defined in taxonomy.
+ * @param {{ value: string[], onChange: (v: string[]) => void, taxonomy: object }} props
+ */
+export function SpecialAffectsPicker({ value = [], onChange, taxonomy }) {
+  const catalog = taxonomy?.specialAffects ?? [];
+  const enabled = new Set(value);
+
+  const toggle = (tag) => {
+    const next = enabled.has(tag) ? value.filter(t => t !== tag) : [...value, tag];
+    onChange?.(next);
+  };
+
+  if (catalog.length === 0)
+    return <span className="text-xs italic text-muted-foreground">No special affects defined. Add them in Settings.</span>;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5">
+        {catalog.map(a => {
+          const on = enabled.has(a.tag);
+          return (
+            <Tooltip key={a.tag} content={a.tag}>
+              <button type="button" onClick={() => toggle(a.tag)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
+                  on ? 'border-primary/60 bg-primary/10 text-foreground' : 'border-border bg-card/40 text-muted-foreground hover:bg-accent/40 hover:text-foreground',
+                )}>
+                <Icon name="sparkle" size={12} className={on ? 'text-primary' : ''}/>
+                <span className="truncate">{a.name}</span>
+                {on && <Icon name="check" size={11} className="text-primary"/>}
+              </button>
+            </Tooltip>
+          );
+        })}
+      </div>
+      {value.length > 0 && (
+        <div className="rounded-md border border-border/60 bg-card/40 p-2.5">
+          <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Active affects</div>
+          <div className="flex flex-wrap gap-1.5">
+            {value.map(tag => {
+              const af = catalog.find(a => a.tag === tag);
+              return (
+                <span key={tag} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10.5px] text-primary">
+                  {af?.name ?? tag}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -193,8 +288,16 @@ function RangeField({ field, value, onChange }) {
    Internals
    ============================================================ */
 
-/** @param {object} obj @param {string} path @returns {*} */
-const getPath = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj);
+/** Returns the appropriate zero/empty value for a field when its section is disabled. */
+function defaultClearValue(type, field) {
+  switch (type) {
+    case 'number': return field?.min ?? 0;
+    case 'switch': return false;
+    case 'tags': case 'string-list': case 'chip-multi': return [];
+    case 'flags': return 0;
+    default: return '';
+  }
+}
 
 /** Field types that need a stacked (full-width) Row layout. */
 const STACK_TYPES = new Set(['textarea', 'flags', 'tags', 'string-list', 'chip-multi', 'file', 'item-list', 'group-list', 'slot-map']);
@@ -234,11 +337,12 @@ function resolveOptions(field, taxonomy, draft) {
 /**
  * Renders one field based on its schema type.
  * Calls renderField(field, value, onChange) first — return non-null to override.
- * @param {{ field: FieldSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
+ * @param {{ field: FieldSchema, draft: object, set: Function, taxonomy: object, renderField?: Function, disabled?: boolean }} props
  */
-function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
+function FieldRenderer({ field, draft, set, taxonomy, renderField, disabled = false }) {
   const value    = getPath(draft, field.id);
   const onChange = (v) => set(field.id, v);
+  const isDisabled = disabled || !!field.disabled;
 
   if (renderField) {
     const custom = renderField(field, value, onChange);
@@ -249,9 +353,9 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
     case 'readonly':
       return <TextField value={value ?? ''} mono readOnly/>;
     case 'text':
-      return <TextField value={value ?? ''} onChange={onChange} placeholder={field.placeholder}/>;
+      return <TextField value={value ?? ''} onChange={onChange} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'textarea':
-      return <Textarea value={value ?? ''} onChange={e => onChange(e.target.value)} rows={4} placeholder={field.placeholder}/>;
+      return <Textarea value={value ?? ''} onChange={e => onChange(e.target.value)} rows={4} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'number': {
       const suffix = field.unit ? <span className="text-xs">{field.unit}</span> : undefined;
       return (
@@ -260,29 +364,45 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
           onChange={v => onChange(field.step === 1 ? parseInt(v) || 0 : parseFloat(v) || 0)}
           mono
           suffix={suffix}
+          disabled={isDisabled}
         />
       );
     }
     case 'select': {
       const options = resolveOptions(field, taxonomy, draft);
-      return <Select value={value ?? ''} onChange={onChange} options={options} placeholder={field.placeholder}/>;
+      return <Select value={value ?? ''} onChange={onChange} options={options} placeholder={field.placeholder} disabled={isDisabled}/>;
     }
     case 'switch':
-      return <Switch checked={!!value} onCheckedChange={onChange}/>;
+      return <Switch checked={!!value} onCheckedChange={onChange} disabled={isDisabled}/>;
     case 'file':
-      return <FilePicker value={value ?? ''} onChange={onChange} accept={field.accept} placeholder={field.placeholder}/>;
+      return <FilePicker
+        value={value ?? ''}
+        onChange={onChange}
+        onFilePicked={async (file) => { await saveFile(file.name, file); onChange(file.name); }}
+        accept={field.accept}
+        placeholder={field.placeholder}
+        disabled={isDisabled}
+      />;
     case 'tags':
-      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder}/>;
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} disabled={isDisabled}/>;
     case 'string-list': {
       const suggestions = field.source ? resolveOptions(field, taxonomy, draft) : [];
-      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions}/>;
+      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions} disabled={isDisabled}/>;
     }
     case 'flags':
-      return <FlagsPicker value={value ?? 0} onChange={onChange}/>;
+      return <FlagsPicker value={value ?? 0} onChange={onChange} disabled={isDisabled}/>;
     case 'chip-multi':
-      return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy}/>;
+      if (field.source === 'taxonomy.itemActions')
+        return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
+      if (field.source === 'taxonomy.specialAffects')
+        return <SpecialAffectsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
+      if (field.source) {
+        const options = resolveOptions(field, taxonomy, draft);
+        return <MultiChipField value={value ?? []} onChange={onChange} options={options} disabled={isDisabled}/>;
+      }
+      return <ItemActionsPicker value={value ?? []} onChange={onChange} taxonomy={taxonomy} disabled={isDisabled}/>;
     case 'range':
-      return <RangeField field={field} value={value} onChange={onChange}/>;
+      return <RangeField field={field} value={value} onChange={onChange} disabled={isDisabled}/>;
     default:
       return null;
   }
@@ -290,16 +410,37 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField }) {
 
 /**
  * Renders one schema section as a collapsible <Section> with its fields as <Row>s.
+ * If section.editCondition is set, all fields except the controlling field are disabled
+ * when the condition path is falsy. On the true→false transition, dependent fields are
+ * reset to their type-appropriate clear values.
  * @param {{ section: SectionSchema, draft: object, set: Function, taxonomy: object, renderField?: Function }} props
  */
 function SectionRenderer({ section, draft, set, taxonomy, renderField }) {
+  const conditionPath = section.editCondition ?? null;
+  const conditionMet = conditionPath ? !!getPath(draft, conditionPath) : true;
+  const prevRef = useRef(conditionMet);
+
+  useEffect(() => {
+    if (prevRef.current && !conditionMet && conditionPath) {
+      section.fields.forEach(f => {
+        if (f.id === conditionPath) return;
+        const cv = f.clearValue !== undefined ? f.clearValue : defaultClearValue(f.type, f);
+        set(f.id, cv);
+      });
+    }
+    prevRef.current = conditionMet;
+  }, [conditionMet]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Section title={section.title} icon={section.icon} compact={section.compact}>
-      {section.fields.map(field => (
-        <Row key={field.id} label={field.label} hint={field.hint} tooltip={field.tooltip} stack={STACK_TYPES.has(field.type)}>
-          <FieldRenderer field={field} draft={draft} set={set} taxonomy={taxonomy} renderField={renderField}/>
-        </Row>
-      ))}
+      {section.fields.map(field => {
+        const fieldDisabled = !conditionMet && conditionPath && field.id !== conditionPath;
+        return (
+          <Row key={field.id} label={field.label} hint={field.hint} tooltip={field.tooltip} stack={STACK_TYPES.has(field.type)}>
+            <FieldRenderer field={field} draft={draft} set={set} taxonomy={taxonomy} renderField={renderField} disabled={!!fieldDisabled}/>
+          </Row>
+        );
+      })}
     </Section>
   );
 }
@@ -326,7 +467,7 @@ export function FormRenderer({ schema, draft, set, taxonomy, renderField, sectio
     : schema.sections;
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-3 md:p-6">
       {sections.map(section => (
         <SectionRenderer
           key={section.id}

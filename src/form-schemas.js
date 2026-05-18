@@ -21,6 +21,8 @@
  *  readonly      →  plain text display     (non-editable, e.g. guid)
  */
 
+import { newGuid } from './utils.js';
+
 /** @typedef {'text'|'textarea'|'number'|'select'|'switch'|'flags'|'tags'|'string-list'|'file'|'chip-multi'|'range'|'item-list'|'group-list'|'slot-map'|'readonly'} FieldType */
 
 /**
@@ -31,29 +33,31 @@
 
 /**
  * @typedef {Object} FieldSchema
- * @property {string}      id          - dot-notation path into the record (e.g. "durability.max")
- * @property {string}      label       - human-readable field label
- * @property {FieldType}   type        - UI component to use
- * @property {boolean}     [required]  - validation: field must be non-empty
- * @property {boolean}     [disabled]  - non-editable (grey out, not readonly display)
- * @property {string}      [hint]      - helper text shown below the field
- * @property {SelectOption[]} [options] - static options for select/chip-multi
- * @property {string}      [source]    - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
- * @property {string}      [dependsOn] - field id; re-filter options when this field changes
- * @property {string}      [accept]    - file picker: accepted MIME types or extensions
+ * @property {string}      id             - dot-notation path into the record (e.g. "durability.max")
+ * @property {string}      label          - human-readable field label
+ * @property {FieldType}   type           - UI component to use
+ * @property {boolean}     [required]     - validation: field must be non-empty
+ * @property {boolean}     [disabled]     - non-editable (grey out, not readonly display)
+ * @property {string}      [hint]         - helper text shown below the field
+ * @property {SelectOption[]} [options]   - static options for select/chip-multi
+ * @property {string}      [source]       - dynamic options from taxonomy key (e.g. 'taxonomy.categories')
+ * @property {string}      [dependsOn]    - field id; re-filter options when this field changes
+ * @property {string}      [accept]       - file picker: accepted MIME types or extensions
  * @property {string}      [placeholder]
  * @property {number}      [min]
  * @property {number}      [max]
  * @property {number}      [step]
- * @property {string}      [unit]      - display unit label (e.g. 'kg', 's')
+ * @property {string}      [unit]         - display unit label (e.g. 'kg', 's')
+ * @property {*}           [clearValue]   - value assigned when section editCondition becomes false (overrides type default)
  */
 
 /**
  * @typedef {Object} SectionSchema
- * @property {string}        id       - unique section identifier
- * @property {string}        title    - section heading
- * @property {string}        [icon]   - icon name from ui.jsx Icon registry
- * @property {boolean}       [compact] - render rows without borders (compact Section)
+ * @property {string}        id              - unique section identifier
+ * @property {string}        title           - section heading
+ * @property {string}        [icon]          - icon name from ui.jsx Icon registry
+ * @property {boolean}       [compact]       - render rows without borders (compact Section)
+ * @property {string}        [editCondition] - dot-path into draft; all fields except the controlling field are disabled when falsy
  * @property {FieldSchema[]} fields
  */
 
@@ -69,175 +73,174 @@
 /*  ITEM FORM SCHEMA                                                    */
 /* ------------------------------------------------------------------ */
 
-/** @type {FormSchema} */
-export const ITEM_SCHEMA = {
+/**
+ * Factory — returns a localised ItemSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createItemSchema = (t) => ({
   id: 'item',
-  title: 'Item Template',
+  title: t('items.formTitle'),
   icon: 'cube',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('items.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
-          id: 'guid',
-          label: 'GUID',
-          type: 'readonly',
-          tooltip: 'Automatically generated on creation.',
-        },
-        {
           id: 'displayName',
-          label: 'Display Name',
+          label: t('items.fieldDisplayName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Combat Stimulant',
+          placeholder: t('items.placeholderDisplayName'),
         },
         {
           id: 'category',
-          label: 'Category',
+          label: t('items.fieldCategory'),
           type: 'select',
           required: true,
           source: 'taxonomy.categories',
-          placeholder: 'Select category…',
+          placeholder: t('items.placeholderCategory'),
         },
         {
           id: 'subCategory',
-          label: 'Subcategory',
+          label: t('items.fieldSubCategory'),
           type: 'select',
           source: 'taxonomy.categories',
           dependsOn: 'category',
-          placeholder: 'Select subcategory…',
-          tooltip: 'Filtered to the selected category.',
+          placeholder: t('items.placeholderSubCategory'),
+          tooltip: t('items.tipSubCategory'),
         },
         {
           id: 'rarity',
-          label: 'Rarity',
+          label: t('items.fieldRarity'),
           type: 'select',
           required: true,
           source: 'taxonomy.rarities',
-          placeholder: 'Select rarity…',
+          placeholder: t('items.placeholderRarity'),
         },
       ],
     },
 
     {
       id: 'description',
-      title: 'Description',
+      title: t('items.sectionDescription'),
       icon: 'eye',
       fields: [
         {
           id: 'description.short',
-          label: 'Short Description',
+          label: t('items.fieldShortDesc'),
           type: 'text',
-          placeholder: 'One-line summary shown in tooltips.',
-          tooltip: 'Keep under 80 characters.',
+          placeholder: t('items.placeholderShortDesc'),
+          tooltip: t('items.tipShortDesc'),
         },
         {
           id: 'description.long',
-          label: 'Long Description',
+          label: t('items.fieldLongDesc'),
           type: 'textarea',
-          placeholder: 'Extended flavour text shown in the item inspector…',
+          placeholder: t('items.placeholderLongDesc'),
         },
       ],
     },
 
     {
       id: 'flags',
-      title: 'Flags & Limits',
+      title: t('items.sectionFlagsAndLimits'),
       icon: 'layers',
       fields: [
         {
           id: 'flags',
-          label: 'Behaviour Flags',
+          label: t('items.fieldFlags'),
           type: 'flags',
-          tooltip: 'Bitmasked. Each flag maps to EInventoryItemFlags on the C++ side.',
+          tooltip: t('items.tipFlags'),
         },
         {
           id: 'maxQuantity',
-          label: 'Max Quantity',
+          label: t('items.fieldMaxQuantity'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Maximum total copies the player can hold across all stacks.',
+          tooltip: t('items.tipMaxQuantity'),
         },
         {
           id: 'maxStackSize',
-          label: 'Max Stack Size',
+          label: t('items.fieldMaxStackSize'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Maximum units per individual stack slot.',
+          tooltip: t('items.tipMaxStackSize'),
         },
       ],
     },
 
     {
       id: 'visuals',
-      title: 'Visuals',
+      title: t('items.sectionVisuals'),
       icon: 'eye',
       fields: [
         {
           id: 'visuals.thumbnail.path',
-          label: 'Thumbnail',
+          label: t('items.fieldThumbnail'),
           type: 'file',
           accept: 'image/*',
-          placeholder: 'e.g. T_MyItem_Thumb.png',
-          tooltip: 'Small icon used in inventory grid and tooltips.',
+          placeholder: t('items.placeholderThumbnail'),
+          tooltip: t('items.tipThumbnail'),
         },
         {
           id: 'visuals.cover.path',
-          label: 'Cover Image',
+          label: t('items.fieldCover'),
           type: 'file',
           accept: 'image/*',
-          placeholder: 'e.g. T_MyItem_Cover.png',
-          tooltip: 'Large artwork shown in the inspector panel.',
+          placeholder: t('items.placeholderCover'),
+          tooltip: t('items.tipCover'),
         },
         {
           id: 'visuals.mesh.path',
-          label: 'Mesh Asset',
+          label: t('items.fieldMesh'),
           type: 'file',
           accept: '.fbx,.obj,.gltf,.glb,.uasset',
-          placeholder: 'e.g. SK_MyItem.fbx',
-          tooltip: 'Static or skeletal mesh used for world-drop and inspect view.',
+          placeholder: t('items.placeholderMesh'),
+          tooltip: t('items.tipMesh'),
         },
       ],
     },
 
     {
       id: 'spawn',
-      title: 'Spawn',
+      title: t('items.sectionSpawn'),
       icon: 'bolt',
       compact: true,
       fields: [
         {
           id: 'spawnActor.path',
-          label: 'Spawn Actor Path',
+          label: t('items.fieldSpawnActorPath'),
           type: 'text',
-          placeholder: '/Game/Blueprints/Items/BP_MyItem_C',
-          tooltip: 'Full Unreal asset path of the Blueprint Actor to spawn in the world.',
+          placeholder: t('items.placeholderSpawnActorPath'),
+          tooltip: t('items.tipSpawnActorPath'),
         },
       ],
     },
 
     {
       id: 'durability',
-      title: 'Durability',
+      title: t('items.sectionDurability'),
       icon: 'history',
       compact: true,
+      editCondition: 'durability.enabled',
       fields: [
         {
           id: 'durability.enabled',
-          label: 'Enable Durability',
+          label: t('items.fieldEnableDurability'),
           type: 'switch',
-          tooltip: 'Requires the Durable flag to be set.',
+          tooltip: t('items.tipEnableDurability'),
         },
         {
           id: 'durability.max',
-          label: 'Max Durability',
+          label: t('items.fieldMaxDurability'),
           type: 'number',
           min: 1,
           max: 100000,
@@ -245,48 +248,49 @@ export const ITEM_SCHEMA = {
         },
         {
           id: 'durability.base',
-          label: 'Base (Starting) Durability',
+          label: t('items.fieldBaseDurability'),
           type: 'number',
           min: 0,
           max: 100000,
           step: 1,
-          tooltip: 'Value at spawn; must be ≤ Max.',
+          tooltip: t('items.tipBaseDurability'),
         },
         {
           id: 'durability.penalization',
-          label: 'Stat Penalization',
+          label: t('items.fieldStatPenalization'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Multiplier applied to stats at zero durability (0 = full penalty, 1 = no effect).',
+          tooltip: t('items.tipStatPenalization'),
         },
         {
           id: 'durability.priceCoefficient',
-          label: 'Price Coefficient',
+          label: t('items.fieldPriceCoefficient'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Sale price is multiplied by this when durability is at max.',
+          tooltip: t('items.tipPriceCoefficient'),
         },
       ],
     },
 
     {
       id: 'economy',
-      title: 'Economy',
+      title: t('items.sectionEconomy'),
       icon: 'export',
       compact: true,
+      editCondition: 'economy.enabled',
       fields: [
         {
           id: 'economy.enabled',
-          label: 'Enable Economy',
+          label: t('items.fieldEnableEconomy'),
           type: 'switch',
         },
         {
           id: 'economy.basePrice',
-          label: 'Base Price',
+          label: t('items.fieldBasePrice'),
           type: 'number',
           min: 0,
           step: 1,
@@ -294,30 +298,31 @@ export const ITEM_SCHEMA = {
         },
         {
           id: 'economy.sellCoefficient',
-          label: 'Sell Coefficient',
+          label: t('items.fieldSellCoefficient'),
           type: 'number',
           min: 0,
           max: 1,
           step: 0.01,
-          tooltip: 'Player receives Base Price × this value when selling.',
+          tooltip: t('items.tipSellCoefficient'),
         },
       ],
     },
 
     {
       id: 'weight',
-      title: 'Weight',
+      title: t('items.sectionWeight'),
       icon: 'layers',
       compact: true,
+      editCondition: 'weight.enabled',
       fields: [
         {
           id: 'weight.enabled',
-          label: 'Enable Weight',
+          label: t('items.fieldEnableWeight'),
           type: 'switch',
         },
         {
           id: 'weight.value',
-          label: 'Weight',
+          label: t('items.fieldWeight'),
           type: 'number',
           min: 0,
           step: 0.01,
@@ -328,131 +333,121 @@ export const ITEM_SCHEMA = {
 
     {
       id: 'tags',
-      title: 'Tags',
+      title: t('items.sectionTags'),
       icon: 'tag',
       fields: [
         {
           id: 'tags',
-          label: 'Gameplay Tags',
+          label: t('items.fieldGameplayTags'),
           type: 'tags',
-          placeholder: 'e.g. Item.Weapon.Energy',
-          tooltip: 'Dot-notation Unreal GameplayTags. Used for filtering, slot matching, and crafting ingredient detection.',
+          placeholder: t('items.placeholderGameplayTags'),
+          tooltip: t('items.tipGameplayTags'),
         },
       ],
     },
 
     {
       id: 'attachment',
-      title: 'Attachment Slots',
+      title: t('items.sectionAttachmentSlots'),
       icon: 'link',
       fields: [
         {
           id: 'attachmentSlots',
-          label: 'Attachment Slots',
-          type: 'string-list',
-          source: 'taxonomy.attachmentSlots',
-          placeholder: 'e.g. Slot.Optic',
-          tooltip: 'Slots available on this item for attaching other items.',
+          label: t('items.fieldAttachmentSlots'),
+          type: 'tags',
+          placeholder: t('items.placeholderAttachmentSlot'),
+          tooltip: t('items.tipAttachmentSlots'),
         },
       ],
     },
 
     {
       id: 'specialAffects',
-      title: 'Special Affects',
+      title: t('items.sectionSpecialAffects'),
       icon: 'sparkle',
       fields: [
         {
           id: 'specialAffects',
-          label: 'Special Affect Blueprints',
-          type: 'string-list',
-          placeholder: '/Game/Blueprints/Affects/BP_MyEffect_C',
-          tooltip: 'Full asset paths to Blueprint Affect classes applied when this item is active.',
+          label: t('items.fieldSpecialAffects'),
+          type: 'chip-multi',
+          source: 'taxonomy.specialAffects',
+          tooltip: t('items.tipSpecialAffects'),
         },
       ],
     },
 
     {
       id: 'itemActions',
-      title: 'Item Actions',
+      title: t('items.sectionItemActions'),
       icon: 'play',
       fields: [
         {
           id: 'itemActions',
-          label: 'Allowed Actions',
+          label: t('items.fieldItemActions'),
           type: 'chip-multi',
           source: 'taxonomy.itemActions',
-          tooltip: 'Actions available in the context menu for this item.',
+          tooltip: t('items.tipItemActions'),
         },
       ],
     },
 
   ],
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  CRAFTING RECIPE FORM SCHEMA                                         */
 /* ------------------------------------------------------------------ */
 
-/** @type {FormSchema} */
-export const RECIPE_SCHEMA = {
+/**
+ * Factory — returns a localised RecipeSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createRecipeSchema = (t) => ({
   id: 'recipe',
-  title: 'Crafting Recipe',
+  title: t('crafting.formTitle'),
   icon: 'hammer',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('crafting.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
-          id: 'id',
-          label: 'Recipe ID',
-          type: 'readonly',
-          tooltip: 'Auto-generated. e.g. RECIPE_SMITH_042',
-        },
-        {
           id: 'name',
-          label: 'Recipe Name',
+          label: t('crafting.fieldName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Greatsword of Ash',
-        },
-        {
-          id: 'tier',
-          label: 'Tier / Grade',
-          type: 'text',
-          placeholder: 'e.g. Tier 4',
-          tooltip: 'Display label for the recipe quality bracket.',
+          placeholder: t('crafting.placeholderName'),
         },
       ],
     },
 
     {
       id: 'result',
-      title: 'Result',
+      title: t('crafting.sectionResult'),
       icon: 'sparkle',
       fields: [
         {
           id: 'result.itemRef',
-          label: 'Output Item',
+          label: t('crafting.fieldResultItem'),
           type: 'select',
           required: true,
           source: 'data.craftableItems',
-          placeholder: 'Select craftable item…',
-          tooltip: 'Only items with the Craftable flag are shown.',
+          placeholder: t('crafting.placeholderResultItem'),
+          tooltip: t('crafting.tipResultItem'),
         },
         {
           id: 'result.display',
-          label: 'Quality Label',
+          label: t('crafting.fieldQualityLabel'),
           type: 'text',
-          placeholder: 'e.g. Masterwork Grade',
-          tooltip: 'Short grade descriptor shown next to the result name.',
+          placeholder: t('crafting.placeholderQualityLabel'),
+          tooltip: t('crafting.tipQualityLabel'),
         },
         {
           id: 'qtyMin',
-          label: 'Min Output Qty',
+          label: t('crafting.fieldQtyMin'),
           type: 'number',
           min: 1,
           max: 9999,
@@ -460,16 +455,16 @@ export const RECIPE_SCHEMA = {
         },
         {
           id: 'qtyMax',
-          label: 'Max Output Qty',
+          label: t('crafting.fieldQtyMax'),
           type: 'number',
           min: 1,
           max: 9999,
           step: 1,
-          tooltip: 'Random roll between Min and Max on craft success.',
+          tooltip: t('crafting.tipQtyMax'),
         },
         {
           id: 'successChance',
-          label: 'Success Chance',
+          label: t('crafting.successChance'),
           type: 'number',
           min: 1,
           max: 100,
@@ -481,13 +476,13 @@ export const RECIPE_SCHEMA = {
 
     {
       id: 'requirements',
-      title: 'Requirements',
+      title: t('crafting.sectionRequirements'),
       icon: 'shield',
       compact: true,
       fields: [
         {
           id: 'reqs.level',
-          label: 'Required Level',
+          label: t('crafting.fieldLevel'),
           type: 'number',
           min: 0,
           max: 999,
@@ -495,182 +490,158 @@ export const RECIPE_SCHEMA = {
         },
         {
           id: 'reqs.station',
-          label: 'Crafting Station',
+          label: t('crafting.station'),
           type: 'select',
           options: [{ value: 'None', label: 'None' }],
           source: 'taxonomy.craftingStations',
-          tooltip: 'Station the player must be at to craft this recipe.',
+          tooltip: t('crafting.tipStation'),
         },
         {
           id: 'reqs.duration',
-          label: 'Craft Duration',
+          label: t('crafting.duration'),
           type: 'range',
           min: 1,
           max: 600,
           step: 1,
           unit: 's',
-          tooltip: 'Time in seconds the crafting animation takes.',
+          tooltip: t('crafting.tipDuration'),
         },
       ],
     },
 
     {
       id: 'ingredients',
-      title: 'Ingredient Groups',
+      title: t('crafting.sectionIngredients'),
       icon: 'list',
       fields: [
         {
           id: 'groups',
-          label: 'Groups',
+          label: t('crafting.fieldGroups'),
           type: 'group-list',
-          tooltip: 'Each group can be marked Required or Optional. Add groups to represent alternative material sets.',
+          tooltip: t('crafting.tipGroups'),
         },
       ],
     },
 
   ],
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  LOADOUT FORM SCHEMA                                                 */
 /* ------------------------------------------------------------------ */
 
-const DROP_ON_DEATH_OPTIONS = [
-  { value: 'None',          label: 'None' },
-  { value: 'Equipped only', label: 'Equipped only' },
-  { value: 'All items',     label: 'All items' },
-];
-
-/** @type {FormSchema} */
-export const LOADOUT_SCHEMA = {
+/**
+ * Factory — returns a localised LoadoutSchema. Pass the `t` function from useTranslation().
+ * @param {Function} t
+ * @returns {FormSchema}
+ */
+export const createLoadoutSchema = (t) => ({
   id: 'loadout',
-  title: 'Loadout Template',
+  title: t('loadouts.formTitle'),
   icon: 'layers',
   sections: [
 
     {
       id: 'identity',
-      title: 'Identity',
+      title: t('loadouts.sectionIdentity'),
       icon: 'tag',
       fields: [
         {
-          id: 'id',
-          label: 'Loadout ID',
-          type: 'readonly',
-          tooltip: 'Auto-generated. e.g. LDT_001',
-        },
-        {
           id: 'name',
-          label: 'Loadout Name',
+          label: t('loadouts.fieldName'),
           type: 'text',
           required: true,
-          placeholder: 'e.g. Endgame Warrior',
-        },
-        {
-          id: 'version',
-          label: 'Version',
-          type: 'text',
-          placeholder: 'e.g. v2.4',
+          placeholder: t('loadouts.placeholderName'),
         },
         {
           id: 'tagline',
-          label: 'Tagline',
+          label: t('loadouts.fieldTagline'),
           type: 'text',
-          placeholder: 'e.g. High-tier raid kit',
-          tooltip: 'One-line description shown in list previews.',
+          placeholder: t('loadouts.placeholderTagline'),
+          tooltip: t('loadouts.tipTagline'),
         },
         {
           id: 'desc',
-          label: 'Description',
+          label: t('loadouts.fieldDesc'),
           type: 'textarea',
-          placeholder: 'Detailed notes about this loadout intended use…',
+          placeholder: t('loadouts.placeholderDesc'),
         },
       ],
     },
 
     {
       id: 'spawnBehaviour',
-      title: 'Spawn Behaviour',
+      title: t('loadouts.sectionSpawnBehaviour'),
       icon: 'bolt',
       compact: true,
       fields: [
         {
           id: 'behaviour.applyOnSpawn',
-          label: 'Apply on Spawn',
+          label: t('loadouts.fieldApplyOnSpawn'),
           type: 'switch',
-          tooltip: 'Equip and add items immediately when the NPC/player spawns.',
+          tooltip: t('loadouts.tipApplyOnSpawn'),
         },
         {
           id: 'behaviour.randomiseQty',
-          label: 'Randomise Quantity',
+          label: t('loadouts.fieldRandomiseQty'),
           type: 'switch',
-          tooltip: 'Roll item quantities within their min/max range at spawn time.',
+          tooltip: t('loadouts.tipRandomiseQty'),
         },
         {
           id: 'behaviour.autoEquipPass',
-          label: 'Auto-Equip Pass',
+          label: t('loadouts.fieldAutoEquipPass'),
           type: 'switch',
-          tooltip: 'Run an auto-equip pass after all items are added.',
+          tooltip: t('loadouts.tipAutoEquipPass'),
         },
         {
           id: 'behaviour.dropOnDeath',
-          label: 'Drop on Death',
+          label: t('loadouts.fieldDropOnDeath'),
           type: 'select',
-          options: DROP_ON_DEATH_OPTIONS,
+          options: [
+            { value: 'None',          label: t('loadouts.dropOnDeathNone') },
+            { value: 'Equipped only', label: t('loadouts.dropOnDeathEquipped') },
+            { value: 'All items',     label: t('loadouts.dropOnDeathAll') },
+          ],
         },
       ],
     },
 
     {
       id: 'composition',
-      title: 'Composition',
+      title: t('loadouts.sectionComposition'),
       icon: 'list',
       fields: [
         {
           id: 'items',
-          label: 'Items',
+          label: t('loadouts.fieldItems'),
           type: 'item-list',
-          tooltip: 'Each entry defines which item to add, its quantity, starting durability, whether to auto-equip, and an optional preferred slot.',
+          tooltip: t('loadouts.tipItems'),
         },
       ],
     },
 
     {
       id: 'slotMapping',
-      title: 'Slot Mapping',
+      title: t('loadouts.slotMapping'),
       icon: 'link',
       fields: [
         {
           id: 'slots',
-          label: 'Slot Assignments',
+          label: t('loadouts.fieldSlotAssignments'),
           type: 'slot-map',
           source: 'taxonomy.attachmentSlots',
-          tooltip: 'Maps each attachment slot to a specific item in the Composition list.',
+          tooltip: t('loadouts.tipSlotAssignments'),
         },
       ],
     },
 
   ],
-};
-
-/* ------------------------------------------------------------------ */
-/*  Registry — look up schema by form id                               */
-/* ------------------------------------------------------------------ */
-
-/** @type {Record<string, FormSchema>} */
-export const FORM_SCHEMAS = {
-  item:    ITEM_SCHEMA,
-  recipe:  RECIPE_SCHEMA,
-  loadout: LOADOUT_SCHEMA,
-};
+});
 
 /* ------------------------------------------------------------------ */
 /*  createDraft — blank starting state for each entity type            */
 /* ------------------------------------------------------------------ */
 
-const randomHex = (len) => Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-const newGuid = () => `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-${(8 | (Math.random() * 4 | 0)).toString(16)}${randomHex(3)}-${randomHex(12)}`;
-const newId   = (prefix) => `${prefix}_${randomHex(6).toUpperCase()}`;
 
 /** @returns {object} blank item draft with a fresh GUID */
 export const createItemDraft = () => ({
@@ -699,11 +670,11 @@ export const createItemDraft = () => ({
   _ui: { icon: 'cube', thumbTone: 0, slot: null },
 });
 
-/** @returns {object} blank recipe draft with a fresh ID */
+/** @returns {object} blank recipe draft with a fresh GUID */
 export const createRecipeDraft = () => ({
-  id:            newId('RECIPE'),
+  guid:          newGuid(),
   name:          '',
-  tier:          '',
+  family:        'General',
   result:        { itemRef: '', display: '' },
   qtyMin:        1,
   qtyMax:        1,
@@ -712,11 +683,10 @@ export const createRecipeDraft = () => ({
   groups:        [],
 });
 
-/** @returns {object} blank loadout draft with a fresh ID */
+/** @returns {object} blank loadout draft with a fresh GUID */
 export const createLoadoutDraft = () => ({
-  id:      newId('LDT'),
+  guid:    newGuid(),
   name:    '',
-  version: 'v1.0',
   tagline: '',
   desc:    '',
   items:   [],
