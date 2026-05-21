@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n.js';
+import { useNavigate } from 'react-router-dom';
 import { cn, Icon, Button, Input, Select, Tag, Section, Row } from './ui.jsx';
 import { FlagsPicker, ItemActionsPicker } from './form-renderer.jsx';
 import {
@@ -11,7 +12,7 @@ import {
   Drawer, DrawerContent,
 } from '@/components/ui/drawer';
 import JSZip from 'jszip';
-import { useTaxonomy, TAX_KEY } from './hooks.jsx';
+import { useTaxonomy } from './hooks.jsx';
 import { bulkImport, saveFile } from './store.js';
 import { exportWorkspace } from './exporter.js';
 import { useIsMobile } from './hooks/use-mobile.jsx';
@@ -231,6 +232,7 @@ function TaxEditPage({ trail, onBack, onClose, onNavigate, onDelete, onSave, isD
 export function SettingsCommand({ open, onOpenChange }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [stack, setStack] = useState([{ type: 'root' }]);
   const page  = stack[stack.length - 1];
   const push  = (p) => setStack(s => [...s, p]);
@@ -264,10 +266,14 @@ export function SettingsCommand({ open, onOpenChange }) {
 
   const navigateTo = (i) => setStack(s => s.slice(0, i + 1));
   const shared = { trail, onBack: pop, onClose: close, onNavigate: navigateTo, tax, setTax, push };
+  const handleImportComplete = () => {
+    close();
+    navigate('/inventory', { replace: true });
+  };
 
   const content = (
     <>
-      {page.type === 'root'              && <RootPage push={push} close={close}/>}
+      {page.type === 'root'              && <RootPage push={push} close={close} setTax={setTax} onImportComplete={handleImportComplete}/>}
       {page.type === 'categories'        && <CategoriesPage      {...shared}/>}
       {page.type === 'category'          && <CategoryEditPage    {...shared} categoryId={page.id} initialData={page.defaults}/>}
       {page.type === 'subcategory'       && <SubcategoryEditPage {...shared} categoryId={page.catId} subcategoryId={page.id}/>}
@@ -310,7 +316,7 @@ export function SettingsCommand({ open, onOpenChange }) {
    ============================================================ */
 const LANG_CODES = { 'English': 'en', 'Čeština': 'cs' };
 
-function RootPage({ push, close }) {
+function RootPage({ push, close, setTax, onImportComplete }) {
   const { t } = useTranslation();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -339,7 +345,7 @@ function RootPage({ push, close }) {
             const zf = zip.file(path); return zf ? JSON.parse(await zf.async('text')) : null;
           };
           const taxonomy = await readJson('taxonomy.json');
-          if (taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(taxonomy));
+          if (taxonomy) setTax(taxonomy);
           const items    = await Promise.all(Object.values(zip.folder('items').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
           const loadouts = await Promise.all(Object.values(zip.folder('loadouts').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
           const recipes  = await Promise.all(Object.values(zip.folder('crafting').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
@@ -358,10 +364,10 @@ function RootPage({ push, close }) {
           await bulkImport({ items, loadouts, recipes });
         } else {
           const data = JSON.parse(await f.text());
-          if (data.taxonomy) localStorage.setItem(TAX_KEY, JSON.stringify(data.taxonomy));
+          if (data.taxonomy) setTax(data.taxonomy);
           await bulkImport({ items: data.items ?? [], loadouts: data.loadouts ?? [], recipes: data.recipes ?? [] });
         }
-        location.reload();
+        onImportComplete?.();
       } catch (e) { alert(t('settings.importFailed') + ' ' + e.message); }
     };
     input.click();
