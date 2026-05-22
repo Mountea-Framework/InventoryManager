@@ -6,6 +6,7 @@ import {
 import { ITEM_FLAGS, ITEM_ACTIONS, bitsToFlags, flagsToBits } from './data.js';
 import { getPath } from './utils.js';
 import { saveFile } from './store.js';
+import { toDisplayTag, toStoredTag } from './tags.js';
 
 /**
  * @typedef {import('./form-schemas.js').FieldSchema} FieldSchema
@@ -54,16 +55,45 @@ export function FlagsPicker({ value, onChange }) {
 
 /**
  * Editable chip list with optional datalist autocomplete.
- * @param {{ values: string[], onChange: (v: string[]) => void, placeholder?: string, mono?: boolean, suggestions?: string[] }} props
+ * @param {{
+ *   values: string[],
+ *   onChange: (v: string[]) => void,
+ *   placeholder?: string,
+ *   mono?: boolean,
+ *   suggestions?: string[],
+ *   disabled?: boolean,
+ *   dedupe?: boolean,
+ *   toDisplay?: (v: string) => string,
+ *   toStored?: (v: string) => string
+ * }} props
  */
-export function StringListField({ values = [], onChange, placeholder = 'add entry', mono = true, suggestions = [] }) {
+export function StringListField({
+  values = [],
+  onChange,
+  placeholder = 'add entry',
+  mono = true,
+  suggestions = [],
+  disabled = false,
+  dedupe = false,
+  toDisplay,
+  toStored,
+}) {
   const [draft, setDraft] = useState('');
   const listId = useMemo(() => `sl-${Math.random().toString(36).slice(2, 6)}`, []);
+  const format = (v) => (toDisplay ? toDisplay(v) : v);
+  const parse = (v) => (toStored ? toStored(v) : v);
 
   const remove = (i) => onChange?.(values.filter((_, j) => j !== i));
   const add = () => {
-    const v = draft.trim();
+    const v = parse(draft.trim());
     if (!v) return;
+    if (dedupe) {
+      const existing = new Set(values.map((tag) => parse(tag).toLowerCase()));
+      if (existing.has(v.toLowerCase())) {
+        setDraft('');
+        return;
+      }
+    }
     onChange?.([...values, v]);
     setDraft('');
   };
@@ -76,8 +106,14 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
             'inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5',
             mono ? 'font-mono text-[10.5px]' : 'text-xs',
           )}>
-            {v}
-            <button onClick={() => remove(i)} className="opacity-60 hover:opacity-100"><Icon name="x" size={10}/></button>
+            {format(v)}
+            <button
+              disabled={disabled}
+              onClick={() => remove(i)}
+              className="opacity-60 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Icon name="x" size={10}/>
+            </button>
           </span>
         ))}
         {values.length === 0 && <span className="text-xs italic text-muted-foreground">empty</span>}
@@ -88,6 +124,7 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
           onChange={e => setDraft(e.target.value)}
           placeholder={placeholder}
           list={suggestions.length ? listId : undefined}
+          disabled={disabled}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
           className={cn('h-8 text-xs', mono && 'font-mono')}
         />
@@ -96,7 +133,7 @@ export function StringListField({ values = [], onChange, placeholder = 'add entr
             {suggestions.map(s => <option key={s} value={s}/>)}
           </datalist>
         )}
-        <Button size="sm" variant="outline" onClick={add} icon="plus"/>
+        <Button size="sm" variant="outline" onClick={add} icon="plus" disabled={disabled}/>
       </div>
     </div>
   );
@@ -384,7 +421,17 @@ function FieldRenderer({ field, draft, set, taxonomy, renderField, disabled = fa
         disabled={isDisabled}
       />;
     case 'tags':
-      return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} disabled={isDisabled}/>;
+      return (
+        <StringListField
+          values={value ?? []}
+          onChange={onChange}
+          placeholder={field.placeholder}
+          disabled={isDisabled}
+          dedupe
+          toDisplay={toDisplayTag}
+          toStored={toStoredTag}
+        />
+      );
     case 'string-list': {
       const suggestions = field.source ? resolveOptions(field, taxonomy, draft) : [];
       return <StringListField values={value ?? []} onChange={onChange} placeholder={field.placeholder} suggestions={suggestions} disabled={isDisabled}/>;

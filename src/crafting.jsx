@@ -70,7 +70,8 @@ function IngredientPickerModal({ open, onOpenChange, onAdd }) {
   const materials = useMemo(() =>
     DATA.allItems.filter(it =>
       it.category?.toLowerCase() === 'material' ||
-      it.tags?.some(tag => tag.split('.').some(seg => seg.toLowerCase() === 'material'))
+      it.category?.toLowerCase() === 'materials' ||
+      it.tags?.some(tag => tag.split('.').some(seg => seg.toLowerCase().startsWith('material')))
     ),
     [],
   );

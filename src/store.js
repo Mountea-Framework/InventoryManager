@@ -1,6 +1,7 @@
 import db from './db.js';
 import { createEmptyData } from './data.js';
 import { newGuid } from './utils.js';
+import { normalizeItemTags } from './tags.js';
 
 /** In-memory DATA cache — populated by loadData(), mutated by save/delete helpers. */
 export const DATA = createEmptyData();
@@ -21,7 +22,10 @@ export const loadData = async () => {
     db.recipes.toArray(),
   ]);
   DATA.items = {};
-  items.forEach(item => { (DATA.items[item.category] ??= []).push(item); });
+  items.forEach(item => {
+    const normalized = normalizeItemTags(item);
+    (DATA.items[normalized.category] ??= []).push(normalized);
+  });
   DATA.loadouts = loadouts;
   DATA.recipes  = {};
   recipes.forEach(r => { (DATA.recipes[r.family] ??= []).push(r); });
@@ -30,7 +34,7 @@ export const loadData = async () => {
 
 // ── Per-entity persistence ───────────────────────────────────────────────────
 
-export const saveItem      = (item)    => db.items.put(item);
+export const saveItem      = (item)    => db.items.put(normalizeItemTags(item));
 export const deleteItem    = (guid)    => db.items.delete(guid);
 export const saveLoadout   = (loadout) => db.loadouts.put(loadout);
 export const deleteLoadout = (guid)    => db.loadouts.delete(guid);
@@ -80,7 +84,7 @@ export const exportAllData = async () => {
     db.loadouts.toArray(),
     db.recipes.toArray(),
   ]);
-  return { items, loadouts, recipes };
+  return { items: items.map(normalizeItemTags), loadouts, recipes };
 };
 
 /**
@@ -88,11 +92,12 @@ export const exportAllData = async () => {
  * @param {{ items?: object[], loadouts?: object[], recipes?: object[] }} payload
  */
 export const bulkImport = async ({ items = [], loadouts = [], recipes = [] }) => {
+  const normalizedItems = items.map(normalizeItemTags);
   await db.transaction('rw', db.items, db.loadouts, db.recipes, async () => {
     await db.items.clear();
     await db.loadouts.clear();
     await db.recipes.clear();
-    if (items.length)    await db.items.bulkPut(items);
+    if (normalizedItems.length) await db.items.bulkPut(normalizedItems);
     if (loadouts.length) await db.loadouts.bulkPut(loadouts);
     if (recipes.length)  await db.recipes.bulkPut(recipes);
   });

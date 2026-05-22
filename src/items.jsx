@@ -12,6 +12,7 @@ import { exportItem, exportItemsBundle } from './exporter.js';
 import { importItems } from './importer.js';
 import { useTaxonomy, useAutoSave, useEntityActions } from './hooks.jsx';
 import { setPath } from './utils.js';
+import { normalizeItemTags, normalizeTagList } from './tags.js';
 import { FormRenderer } from './form-renderer.jsx';
 import { createItemSchema, createItemDraft } from './form-schemas.js';
 import { EntityCreateSheet } from './entity-sheet.jsx';
@@ -27,11 +28,12 @@ import { EntityCreateSheet } from './entity-sheet.jsx';
 const shortGuid = (g) => g ? g.slice(0, 8) + '…' : '';
 
 /**
- * When `category` or `subCategory` changes, merge that taxonomy entry's tags,
+ * When `category`, `subCategory`, or `rarity` changes, merge that taxonomy entry's tags,
  * defaultFlags, and defaultItemActions into the draft (true-wins, additive only).
  * Item-action flags are resolved inline to avoid a second setState cycle.
  */
 function applyCategoryDefaults(draft, path, val, taxonomy) {
+  let result = normalizeItemTags(draft);
   let newTags = [];
   let catFlags = 0;
   let catActions = [];
@@ -47,13 +49,16 @@ function applyCategoryDefaults(draft, path, val, taxonomy) {
     newTags    = sub?.tags               ?? [];
     catFlags   = sub?.defaultFlags       ?? 0;
     catActions = sub?.defaultItemActions ?? [];
+  } else if (path === 'rarity') {
+    const rarity = taxonomy.rarities?.find(r => r.title === val);
+    newTags = rarity?.tags ?? [];
   }
 
-  let result = draft;
+  newTags = normalizeTagList(newTags);
 
   if (newTags.length) {
-    const existing = new Set(result.tags ?? []);
-    const unique = newTags.filter(t => !existing.has(t));
+    const existing = new Set((result.tags ?? []).map(tag => tag.toLowerCase()));
+    const unique = newTags.filter(t => !existing.has(t.toLowerCase()));
     if (unique.length) result = { ...result, tags: [...(result.tags ?? []), ...unique] };
   }
 
