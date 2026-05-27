@@ -13,6 +13,7 @@ import { exportWorkspace } from './exporter.js';
 import { SCHEMA_VERSION } from './db.js';
 import { MobileSidebarProvider, useMobileSidebar } from './contexts/mobile-sidebar-context.jsx';
 import { useIsMobile } from './hooks/use-mobile.jsx';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 const TAB_ICONS = { items: 'cube', loadouts: 'backpack', crafting: 'hammer' };
 
@@ -115,18 +116,9 @@ function TopBar({ globalSearch, setGlobalSearch, openSettings, onExportWorkspace
   );
 }
 
-function StatusBar({ counts }) {
-  const { t } = useTranslation();
+function StatusBar() {
   return (
     <footer className="flex h-7 items-center gap-4 border-t border-border bg-muted/30 px-3 font-mono text-[11px] text-muted-foreground">
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"/>
-        {t('app.statusSynced')}
-      </span>
-      <span>{t('app.statusBranch')} <span className="text-foreground/80">{t('app.statusMain')}</span></span>
-      <span>{t('app.statusRefs')} <span className="text-foreground/80">{counts.items} {t('app.statusItems')} · {counts.loadouts} {t('app.statusLoadouts')} · {counts.recipes} {t('app.statusRecipes')}</span></span>
-      <div className="flex-1"/>
-      <span>{t('app.statusSchema')} <span className="text-foreground/80">{SCHEMA_VERSION}</span></span>
     </footer>
   );
 }
@@ -134,6 +126,8 @@ function StatusBar({ counts }) {
 function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const location = useLocation();
@@ -145,7 +139,18 @@ function App() {
     return 'inventory';
   };
 
-  useEffect(() => { loadData().then(() => setReady(true)); }, []);
+  useEffect(() => {
+    const startTime = Date.now();
+    loadData()
+      .then(() => {
+        const elapsed = Date.now() - startTime;
+        return new Promise((res) => setTimeout(res, Math.max(0, 1500 - elapsed)));
+      })
+      .then(() => {
+        setReady(true);
+        setIsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (localStorage.getItem('arch.aside-migrated-v1')) return;
@@ -189,25 +194,28 @@ function App() {
 
   return (
     <TooltipProvider>
-      <MobileSidebarProvider>
-        <div className="flex h-screen flex-col bg-background text-foreground">
-          <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onExportWorkspace={() => exportWorkspace().catch(console.error)}/>
-          <div className="flex min-h-0 flex-1">
-            <div className={cn('flex min-h-0 flex-1 min-w-0 overflow-hidden', screenClass)}>
-              <Routes location={displayLocation}>
-                <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
-                <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>
-                <Route path="/loadouts"        element={<LoadoutsScreen {...screenProps}/>}/>
-                <Route path="/loadouts/:guid"  element={<LoadoutsScreen {...screenProps}/>}/>
-                <Route path="/crafting"        element={<CraftingScreen {...screenProps}/>}/>
-                <Route path="/crafting/:guid"  element={<CraftingScreen {...screenProps}/>}/>
-                <Route path="*"               element={<Navigate to="/inventory" replace/>}/>
-              </Routes>
+      <LoadingScreen isLoading={isLoading} onLoadingComplete={() => setShowContent(true)} />
+      {showContent && (
+        <MobileSidebarProvider>
+          <div className="flex h-screen flex-col bg-background text-foreground">
+            <TopBar globalSearch={globalSearch} setGlobalSearch={setGlobalSearch} openSettings={() => setSettingsOpen(true)} onExportWorkspace={() => exportWorkspace().catch(console.error)}/>
+            <div className="flex min-h-0 flex-1">
+              <div className={cn('flex min-h-0 flex-1 min-w-0 overflow-hidden', screenClass)}>
+                <Routes location={displayLocation}>
+                  <Route path="/inventory"      element={<ItemsScreen   {...screenProps}/>}/>
+                  <Route path="/inventory/:guid" element={<ItemsScreen   {...screenProps}/>}/>
+                  <Route path="/loadouts"        element={<LoadoutsScreen {...screenProps}/>}/>
+                  <Route path="/loadouts/:guid"  element={<LoadoutsScreen {...screenProps}/>}/>
+                  <Route path="/crafting"        element={<CraftingScreen {...screenProps}/>}/>
+                  <Route path="/crafting/:guid"  element={<CraftingScreen {...screenProps}/>}/>
+                  <Route path="*"               element={<Navigate to="/inventory" replace/>}/>
+                </Routes>
+              </div>
             </div>
+            <SettingsCommand open={settingsOpen} onOpenChange={setSettingsOpen}/>
           </div>
-          <SettingsCommand open={settingsOpen} onOpenChange={setSettingsOpen}/>
-        </div>
-      </MobileSidebarProvider>
+        </MobileSidebarProvider>
+      )}
     </TooltipProvider>
   );
 }

@@ -3,27 +3,31 @@ import db from './db.js';
 import { SCHEMA_VERSION } from './db.js';
 import { DATA } from './store.js';
 import { TAX_KEY } from './hooks.jsx';
+import { areSameTag, normalizeItemTags, normalizeTaxonomy } from './tags.js';
 
 // ── Taxonomy helpers ─────────────────────────────────────────────────────────
 
 function extractItemTaxonomy(item, tax) {
-  const catObj = tax.categories?.find(c => c.title === item.category);
+  const normalizedItem = normalizeItemTags(item);
+  const normalizedTax = normalizeTaxonomy(tax);
+
+  const catObj = normalizedTax.categories?.find(c => c.title === normalizedItem.category);
   const categories = catObj ? [{
     ...catObj,
-    subcategories: catObj.subcategories?.filter(s => s.title === item.subCategory) ?? [],
+    subcategories: catObj.subcategories?.filter(s => s.title === normalizedItem.subCategory) ?? [],
   }] : [];
 
-  const rarObj = tax.rarities?.find(r => r.title === item.rarity);
+  const rarObj = normalizedTax.rarities?.find(r => r.title === normalizedItem.rarity);
   const rarities = rarObj ? [rarObj] : [];
 
-  const actionVals = item.itemActions ?? [];
-  const itemActions = (tax.itemActions ?? []).filter(a =>
+  const actionVals = normalizedItem.itemActions ?? [];
+  const itemActions = (normalizedTax.itemActions ?? []).filter(a =>
     actionVals.includes(a.key) || actionVals.includes(a.id)
   );
 
-  const slotTags = item.attachmentSlots ?? [];
-  const attachmentSlots = (tax.attachmentSlots ?? []).filter(s =>
-    slotTags.some(tag => s.tags?.includes(tag))
+  const slotTags = normalizedItem.attachmentSlots ?? [];
+  const attachmentSlots = (normalizedTax.attachmentSlots ?? []).filter(s =>
+    slotTags.some(tag => (s.tags ?? []).some(slotTag => areSameTag(slotTag, tag)))
   );
 
   return { categories, rarities, itemActions, attachmentSlots, craftingStations: [] };
@@ -31,7 +35,7 @@ function extractItemTaxonomy(item, tax) {
 
 function mergeTaxonomies(taxList) {
   if (!taxList.length) {
-    return { categories: [], rarities: [], itemActions: [], attachmentSlots: [], craftingStations: [] };
+    return normalizeTaxonomy({ categories: [], rarities: [], itemActions: [], attachmentSlots: [], craftingStations: [] });
   }
 
   const dedup = (arr) => {
@@ -50,13 +54,13 @@ function mergeTaxonomies(taxList) {
     }
   }));
 
-  return {
+  return normalizeTaxonomy({
     categories:       [...catMap.values()],
     rarities:         dedup(taxList.flatMap(t => t.rarities)),
     itemActions:      dedup(taxList.flatMap(t => t.itemActions)),
     attachmentSlots:  dedup(taxList.flatMap(t => t.attachmentSlots)),
     craftingStations: dedup(taxList.flatMap(t => t.craftingStations)),
-  };
+  });
 }
 
 // ── File collection ──────────────────────────────────────────────────────────
@@ -81,12 +85,13 @@ async function collectItemFiles(item) {
 // ── Zip helpers ──────────────────────────────────────────────────────────────
 
 function addTaxonomyToFolder(folder, taxonomy) {
+  const normalized = normalizeTaxonomy(taxonomy);
   const write = (name, arr) => { if (arr?.length) folder.file(name, JSON.stringify(arr, null, 2)); };
-  write('categories.json',       taxonomy.categories);
-  write('rarities.json',         taxonomy.rarities);
-  write('item-actions.json',     taxonomy.itemActions);
-  write('attachment-slots.json', taxonomy.attachmentSlots);
-  write('crafting-stations.json', taxonomy.craftingStations);
+  write('categories.json',       normalized.categories);
+  write('rarities.json',         normalized.rarities);
+  write('item-actions.json',     normalized.itemActions);
+  write('attachment-slots.json', normalized.attachmentSlots);
+  write('crafting-stations.json', normalized.craftingStations);
 }
 
 async function downloadZip(zip, filename) {
@@ -103,13 +108,14 @@ async function downloadZip(zip, filename) {
 
 async function buildItemZip(item, tax) {
   const zip = new JSZip();
-  zip.file('item.json', JSON.stringify(item, null, 2));
+  const normalizedItem = normalizeItemTags(item);
+  zip.file('item.json', JSON.stringify(normalizedItem, null, 2));
 
-  const files = await collectItemFiles(item);
+  const files = await collectItemFiles(normalizedItem);
   const assets = zip.folder('assets');
   files.forEach(({ path, blob }) => assets.file(path, blob));
 
-  addTaxonomyToFolder(zip.folder('taxonomy'), extractItemTaxonomy(item, tax));
+  addTaxonomyToFolder(zip.folder('taxonomy'), extractItemTaxonomy(normalizedItem, tax));
   return zip;
 }
 
@@ -127,10 +133,11 @@ async function buildLoadoutZip(loadout, tax) {
 
   const taxSubsets = [];
   for (const it of items) {
-    itemsFolder.file(`${it.displayName}.json`, JSON.stringify(it, null, 2));
-    const files = await collectItemFiles(it);
+    const normalizedItem = normalizeItemTags(it);
+    itemsFolder.file(`${normalizedItem.displayName}.json`, JSON.stringify(normalizedItem, null, 2));
+    const files = await collectItemFiles(normalizedItem);
     files.forEach(({ path, blob }) => assetsFolder.file(path, blob));
-    taxSubsets.push(extractItemTaxonomy(it, tax));
+    taxSubsets.push(extractItemTaxonomy(normalizedItem, tax));
   }
 
   addTaxonomyToFolder(zip.folder('taxonomy'), mergeTaxonomies(taxSubsets));
@@ -152,10 +159,11 @@ async function buildRecipeZip(recipe, tax) {
 
   const taxSubsets = [];
   for (const it of items) {
-    itemsFolder.file(`${it.displayName}.json`, JSON.stringify(it, null, 2));
-    const files = await collectItemFiles(it);
+    const normalizedItem = normalizeItemTags(it);
+    itemsFolder.file(`${normalizedItem.displayName}.json`, JSON.stringify(normalizedItem, null, 2));
+    const files = await collectItemFiles(normalizedItem);
     files.forEach(({ path, blob }) => assetsFolder.file(path, blob));
-    taxSubsets.push(extractItemTaxonomy(it, tax));
+    taxSubsets.push(extractItemTaxonomy(normalizedItem, tax));
   }
 
   const merged = mergeTaxonomies(taxSubsets);
@@ -230,7 +238,7 @@ export async function exportWorkspace() {
   const craftingFolder = zip.folder('crafting');
   const assetsFolder   = zip.folder('assets');
 
-  items.forEach(item      => itemsFolder.file(`${item.guid}.json`,     JSON.stringify(item,    null, 2)));
+  items.forEach(item      => itemsFolder.file(`${item.guid}.json`,     JSON.stringify(normalizeItemTags(item), null, 2)));
   loadouts.forEach(loadout => loadoutsFolder.file(`${loadout.guid}.json`, JSON.stringify(loadout, null, 2)));
   recipes.forEach(recipe   => craftingFolder.file(`${recipe.guid}.json`,  JSON.stringify(recipe,  null, 2)));
 
@@ -239,7 +247,7 @@ export async function exportWorkspace() {
   }
 
   const taxonomy = JSON.parse(localStorage.getItem(TAX_KEY) || 'null');
-  if (taxonomy) zip.file('taxonomy.json', JSON.stringify(taxonomy, null, 2));
+  if (taxonomy) zip.file('taxonomy.json', JSON.stringify(normalizeTaxonomy(taxonomy), null, 2));
 
   zip.file('manifest.json', JSON.stringify({
     schemaVersion: SCHEMA_VERSION,

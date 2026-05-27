@@ -1,27 +1,31 @@
 import JSZip from 'jszip';
 import { DATA, saveItem, saveLoadout, saveRecipe, saveFile, loadData } from './store.js';
 import { TAX_KEY } from './hooks.jsx';
+import { normalizeItemTags, normalizeTaxonomy } from './tags.js';
 
 // ── Taxonomy helpers ─────────────────────────────────────────────────────────
 
 function getCurrentTaxonomy() {
   try {
     const raw = localStorage.getItem(TAX_KEY);
-    return raw ? JSON.parse(raw) : {};
+    return normalizeTaxonomy(raw ? JSON.parse(raw) : {});
   } catch {
-    return {};
+    return normalizeTaxonomy({});
   }
 }
 
 function mergeTaxonomyInto(existing, incoming) {
+  const baseExisting = normalizeTaxonomy(existing);
+  const baseIncoming = normalizeTaxonomy(incoming);
+
   const dedup = (existingArr, incomingArr) => {
     if (!incomingArr?.length) return existingArr ?? [];
     const existingIds = new Set((existingArr ?? []).map(x => x.id));
     return [...(existingArr ?? []), ...incomingArr.filter(x => !existingIds.has(x.id))];
   };
 
-  const mergedCategories = [...(existing.categories ?? [])];
-  for (const inCat of (incoming.categories ?? [])) {
+  const mergedCategories = [...(baseExisting.categories ?? [])];
+  for (const inCat of (baseIncoming.categories ?? [])) {
     const idx = mergedCategories.findIndex(c => c.id === inCat.id);
     if (idx === -1) {
       mergedCategories.push(inCat);
@@ -36,13 +40,13 @@ function mergeTaxonomyInto(existing, incoming) {
   }
 
   return {
-    ...existing,
+    ...baseExisting,
     categories:       mergedCategories,
-    rarities:         dedup(existing.rarities,         incoming.rarities),
-    itemActions:      dedup(existing.itemActions,      incoming.itemActions),
-    attachmentSlots:  dedup(existing.attachmentSlots,  incoming.attachmentSlots),
-    craftingStations: dedup(existing.craftingStations, incoming.craftingStations),
-    specialAffects:   existing.specialAffects ?? [],
+    rarities:         dedup(baseExisting.rarities,         baseIncoming.rarities),
+    itemActions:      dedup(baseExisting.itemActions,      baseIncoming.itemActions),
+    attachmentSlots:  dedup(baseExisting.attachmentSlots,  baseIncoming.attachmentSlots),
+    craftingStations: dedup(baseExisting.craftingStations, baseIncoming.craftingStations),
+    specialAffects:   dedup(baseExisting.specialAffects,   baseIncoming.specialAffects),
   };
 }
 
@@ -60,13 +64,13 @@ async function readTaxonomyFromZip(zip) {
     if (!f) return [];
     try { return JSON.parse(await f.async('string')); } catch { return []; }
   };
-  return {
+  return normalizeTaxonomy({
     categories:       await read('categories.json'),
     rarities:         await read('rarities.json'),
     itemActions:      await read('item-actions.json'),
     attachmentSlots:  await read('attachment-slots.json'),
     craftingStations: await read('crafting-stations.json'),
-  };
+  });
 }
 
 async function readItemsFromZip(zip) {
@@ -161,11 +165,11 @@ export async function importItems(files) {
   }
 
   // Phase 3: persist taxonomy
-  localStorage.setItem(TAX_KEY, JSON.stringify(mergedTax));
+  localStorage.setItem(TAX_KEY, JSON.stringify(normalizeTaxonomy(mergedTax)));
 
   // Phase 4: persist entities + assets
   for (const { entity, assetEntries } of parsed) {
-    await saveItem(entity);
+    await saveItem(normalizeItemTags(entity));
     await saveAssets(assetEntries);
   }
 
@@ -228,10 +232,10 @@ export async function importLoadouts(files) {
     }
   }
 
-  localStorage.setItem(TAX_KEY, JSON.stringify(mergedTax));
+  localStorage.setItem(TAX_KEY, JSON.stringify(normalizeTaxonomy(mergedTax)));
 
   for (const { entity, items, assetEntries } of parsed) {
-    for (const item of items) await saveItem(item);
+    for (const item of items) await saveItem(normalizeItemTags(item));
     await saveLoadout(entity);
     await saveAssets(assetEntries);
   }
@@ -294,10 +298,10 @@ export async function importRecipes(files) {
     }
   }
 
-  localStorage.setItem(TAX_KEY, JSON.stringify(mergedTax));
+  localStorage.setItem(TAX_KEY, JSON.stringify(normalizeTaxonomy(mergedTax)));
 
   for (const { entity, items, assetEntries } of parsed) {
-    for (const item of items) await saveItem(item);
+    for (const item of items) await saveItem(normalizeItemTags(item));
     await saveRecipe(entity);
     await saveAssets(assetEntries);
   }

@@ -16,6 +16,7 @@ import { useTaxonomy } from './hooks.jsx';
 import { bulkImport, saveFile } from './store.js';
 import { exportWorkspace } from './exporter.js';
 import { useIsMobile } from './hooks/use-mobile.jsx';
+import { normalizeItemTags, normalizeTagList, normalizeTaxonomy, toDisplayTag, toStoredTag } from './tags.js';
 
 /* ============================================================
    Type definitions
@@ -131,15 +132,20 @@ const TagsField = ({ value = [], onChange, placeholder }) => {
   const [draft, setDraft] = useState('');
   const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
   const commit = () => {
-    const v = draft.trim().replace(/,$/, '');
-    if (!v || value.includes(v)) return;
-    onChange([...value, v]);
+    const v = toStoredTag(draft.trim().replace(/,$/, ''));
+    if (!v) return;
+    const existing = new Set((value ?? []).map(tag => toStoredTag(tag).toLowerCase()));
+    if (existing.has(v.toLowerCase())) {
+      setDraft('');
+      return;
+    }
+    onChange(normalizeTagList([...(value ?? []), v]));
     setDraft('');
   };
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 shadow-sm focus-within:ring-1 focus-within:ring-ring">
       {value.map((t, i) => (
-        <Tag key={i} onRemove={() => remove(i)}>{t}</Tag>
+        <Tag key={i} onRemove={() => remove(i)}>{toDisplayTag(t)}</Tag>
       ))}
       <input
         value={draft}
@@ -345,7 +351,7 @@ function RootPage({ push, close, setTax, onImportComplete }) {
             const zf = zip.file(path); return zf ? JSON.parse(await zf.async('text')) : null;
           };
           const taxonomy = await readJson('taxonomy.json');
-          if (taxonomy) setTax(taxonomy);
+          if (taxonomy) setTax(normalizeTaxonomy(taxonomy));
           const items    = await Promise.all(Object.values(zip.folder('items').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
           const loadouts = await Promise.all(Object.values(zip.folder('loadouts').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
           const recipes  = await Promise.all(Object.values(zip.folder('crafting').files).filter(zf => !zf.dir).map(zf => zf.async('text').then(JSON.parse)));
@@ -361,11 +367,15 @@ function RootPage({ push, close, setTax, onImportComplete }) {
                 })
             );
           }
-          await bulkImport({ items, loadouts, recipes });
+          await bulkImport({ items: items.map(normalizeItemTags), loadouts, recipes });
         } else {
           const data = JSON.parse(await f.text());
-          if (data.taxonomy) setTax(data.taxonomy);
-          await bulkImport({ items: data.items ?? [], loadouts: data.loadouts ?? [], recipes: data.recipes ?? [] });
+          if (data.taxonomy) setTax(normalizeTaxonomy(data.taxonomy));
+          await bulkImport({
+            items: (data.items ?? []).map(normalizeItemTags),
+            loadouts: data.loadouts ?? [],
+            recipes: data.recipes ?? [],
+          });
         }
         onImportComplete?.();
       } catch (e) { alert(t('settings.importFailed') + ' ' + e.message); }
@@ -455,7 +465,7 @@ function CategoriesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
       {tax.categories.map(c => (
         <CommandItem
           key={c.id}
-          value={`${c.title} ${c.tags.join(' ')} ${c.subcategories.map(s => s.title).join(' ')}`}
+          value={`${c.title} ${c.tags.map(toDisplayTag).join(' ')} ${c.subcategories.map(s => s.title).join(' ')}`}
           icon={c.icon || 'folder'}
           shortcut={`${c.subcategories.length} sub`}
           onSelect={() => push({ type: 'category', id: c.id })}
@@ -651,7 +661,7 @@ function SubcategoryEditPage({ trail, onBack, onClose, categoryId, subcategoryId
         <Row label={t('settings.title')}>
           <Input value={draft.title} onChange={e => update({ title: e.target.value })} autoFocus/>
         </Row>
-        <Row label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${cat.tags.join(', ') || '—'}`} stack>
+        <Row label={t('settings.tags')} hint={`${t('settings.inheritedFrom')} ${cat.title} → ${(cat.tags ?? []).map(toDisplayTag).join(', ') || '—'}`} stack>
           <TagsField value={draft.tags} onChange={tags => update({ tags })}/>
         </Row>
       </Section>
@@ -686,7 +696,7 @@ function RaritiesPage({ trail, onBack, onClose, onNavigate, tax, push }) {
       {tax.rarities.map(r => (
         <CommandItem
           key={r.id}
-          value={`${r.title} ${r.tags.join(' ')}`}
+          value={`${r.title} ${r.tags.map(toDisplayTag).join(' ')}`}
           shortcut={r.color}
           onSelect={() => push({ type: 'rarity', id: r.id })}
         >
@@ -766,7 +776,7 @@ function RarityEditPage({ trail, onBack, onClose, rarityId, onNavigate, tax, set
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: draft.color }}/>
                 {draft.title || 'Rarity'}
               </span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{draft.tags[0] || 'no.tag'}</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{toDisplayTag(draft.tags[0]) || 'no.tag'}</span>
             </div>
           </div>
         </Row>
@@ -877,7 +887,7 @@ function AttachmentSlotsPage({ trail, onBack, onClose, onNavigate, tax, push }) 
       {tax.attachmentSlots.map(s => (
         <CommandItem
           key={s.id}
-          value={`${s.name} ${s.tags.join(' ')}`}
+          value={`${s.name} ${s.tags.map(toDisplayTag).join(' ')}`}
           icon="link"
           shortcut={`${s.tags.length} tag${s.tags.length === 1 ? '' : 's'}`}
           onSelect={() => push({ type: 'attachmentSlot', id: s.id })}
@@ -935,7 +945,7 @@ function CraftingStationsPage({ trail, onBack, onClose, onNavigate, tax, push })
   const { t } = useTranslation();
   const addStation = () => {
     const id = newId('cs');
-    push({ type: 'craftingStation', id, defaults: { id, name: 'New Station', icon: 'cog', tag: 'Station.New' } });
+    push({ type: 'craftingStation', id, defaults: { id, name: 'New Station', icon: 'cog', tag: toStoredTag('Crafting.New') } });
   };
   return (
     <TaxListPage
@@ -947,9 +957,9 @@ function CraftingStationsPage({ trail, onBack, onClose, onNavigate, tax, push })
       {tax.craftingStations.map(s => (
         <CommandItem
           key={s.id}
-          value={`${s.name} ${s.tag}`}
+          value={`${s.name} ${toDisplayTag(s.tag)}`}
           icon={s.icon || 'hammer'}
-          shortcut={s.tag}
+          shortcut={toDisplayTag(s.tag)}
           onSelect={() => push({ type: 'craftingStation', id: s.id })}
         >{s.name}</CommandItem>
       ))}
@@ -999,8 +1009,8 @@ function CraftingStationEditPage({ trail, onBack, onClose, stationId, onNavigate
         </Row>
         <Row label={t('settings.tags')} hint={t('settings.stationTagDesc')}>
           <Input
-            value={draft.tag}
-            onChange={e => update({ tag: e.target.value })}
+            value={toDisplayTag(draft.tag)}
+            onChange={e => update({ tag: toStoredTag(e.target.value) })}
             className={cn('font-mono text-xs', errors.tag ? 'border-destructive' : '')}
           />
           {errors.tag && <p className="mt-1 text-xs text-destructive">{errors.tag}</p>}
@@ -1018,7 +1028,7 @@ function SpecialAffectsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
   const affects = tax.specialAffects ?? [];
   const addAffect = () => {
     const id = newId('sa');
-    push({ type: 'specialAffect', id, defaults: { id, name: 'New Affect', tag: 'Effect.New' } });
+    push({ type: 'specialAffect', id, defaults: { id, name: 'New Affect', tag: toStoredTag('Effect.New') } });
   };
   return (
     <TaxListPage
@@ -1030,9 +1040,9 @@ function SpecialAffectsPage({ trail, onBack, onClose, onNavigate, tax, push }) {
       {affects.map(a => (
         <CommandItem
           key={a.id}
-          value={`${a.name} ${a.tag}`}
+          value={`${a.name} ${toDisplayTag(a.tag)}`}
           icon="sparkle"
-          shortcut={a.tag}
+          shortcut={toDisplayTag(a.tag)}
           onSelect={() => push({ type: 'specialAffect', id: a.id })}
         >{a.name}</CommandItem>
       ))}
@@ -1074,8 +1084,8 @@ function SpecialAffectEditPage({ trail, onBack, onClose, affectId, onNavigate, t
         </Row>
         <Row label={t('settings.affectTag')} hint={t('settings.affectTagDesc')}>
           <Input
-            value={draft.tag}
-            onChange={e => update({ tag: e.target.value })}
+            value={toDisplayTag(draft.tag)}
+            onChange={e => update({ tag: toStoredTag(e.target.value) })}
             className={cn('font-mono text-xs', errors.tag ? 'border-destructive' : '')}
           />
           {errors.tag && <p className="mt-1 text-xs text-destructive">{errors.tag}</p>}
