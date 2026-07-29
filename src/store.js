@@ -2,6 +2,7 @@ import db from './db.js';
 import { createEmptyData } from './data.js';
 import { newGuid } from './utils.js';
 import { normalizeItemTags } from './tags.js';
+import sampleWorkspace from './sample-data/witcher-skyrim.json';
 
 /** In-memory DATA cache — populated by loadData(), mutated by save/delete helpers. */
 export const DATA = createEmptyData();
@@ -100,6 +101,20 @@ export const bulkImport = async ({ items = [], loadouts = [], recipes = [] }) =>
     if (normalizedItems.length) await db.items.bulkPut(normalizedItems);
     if (loadouts.length) await db.loadouts.bulkPut(loadouts);
     if (recipes.length)  await db.recipes.bulkPut(recipes);
+  });
+  await loadData();
+};
+
+/**
+ * Upsert the bundled sample workspace (fixed GUIDs) into Dexie: existing rows
+ * are overwritten, missing rows are created, unrelated rows are left alone.
+ */
+export const upsertSampleData = async () => {
+  const items = sampleWorkspace.items.map(normalizeItemTags);
+  await db.transaction('rw', db.items, db.loadouts, db.recipes, async () => {
+    if (items.length)                    await db.items.bulkPut(items);
+    if (sampleWorkspace.loadouts.length) await db.loadouts.bulkPut(sampleWorkspace.loadouts);
+    if (sampleWorkspace.recipes.length)  await db.recipes.bulkPut(sampleWorkspace.recipes);
   });
   await loadData();
 };

@@ -14,7 +14,7 @@ function getCurrentTaxonomy() {
   }
 }
 
-function mergeTaxonomyInto(existing, incoming) {
+export function mergeTaxonomyInto(existing, incoming) {
   const baseExisting = normalizeTaxonomy(existing);
   const baseIncoming = normalizeTaxonomy(incoming);
 

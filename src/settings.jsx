@@ -13,8 +13,10 @@ import {
 } from '@/components/ui/drawer';
 import JSZip from 'jszip';
 import { useTaxonomy } from './hooks.jsx';
-import { bulkImport, saveFile } from './store.js';
+import { bulkImport, saveFile, upsertSampleData } from './store.js';
 import { exportWorkspace } from './exporter.js';
+import { mergeTaxonomyInto } from './importer.js';
+import sampleWorkspace from './sample-data/witcher-skyrim.json';
 import { useIsMobile } from './hooks/use-mobile.jsx';
 import { normalizeItemTags, normalizeTagList, normalizeTaxonomy, toDisplayTag, toStoredTag } from './tags.js';
 
@@ -325,6 +327,7 @@ const LANG_CODES = { 'English': 'en', 'Čeština': 'cs' };
 function RootPage({ push, close, setTax, onImportComplete }) {
   const { t } = useTranslation();
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [sampleStatus, setSampleStatus] = useState('idle'); // 'idle' | 'loading' | 'done'
 
   const setTheme = (mode) => {
     if (mode === 'dark') document.documentElement.classList.add('dark');
@@ -383,10 +386,30 @@ function RootPage({ push, close, setTax, onImportComplete }) {
     input.click();
   };
 
+  const generateSampleData = async () => {
+    if (sampleStatus === 'loading') return;
+    setSampleStatus('loading');
+    const started = Date.now();
+    try {
+      // Taxonomy merged first (same order as workspace import) so category/
+      // subcategory/station selects resolve correctly once entities land.
+      if (sampleWorkspace.taxonomy) setTax(prev => mergeTaxonomyInto(prev, sampleWorkspace.taxonomy));
+      await upsertSampleData();
+    } catch (e) {
+      console.error(e);
+    }
+    // Floor the perceived duration so the action reads as real work, capped well under 3s.
+    const minVisibleMs = 1200;
+    const elapsed = Date.now() - started;
+    if (elapsed < minVisibleMs) await new Promise(r => setTimeout(r, minVisibleMs - elapsed));
+    setSampleStatus('done');
+    setTimeout(() => setSampleStatus('idle'), 2500);
+  };
+
   const currentLang = Object.keys(LANG_CODES).find(k => LANG_CODES[k] === (localStorage.getItem('arch.lang') || 'en')) ?? 'English';
 
   return (
-    <Command>
+    <Command className="relative">
       <CommandInput placeholder={t('settings.searchPlaceholder')}/>
       <CommandList className="flex-1 max-h-none">
         <CommandEmpty>{t('settings.noMatch')}</CommandEmpty>
@@ -425,6 +448,14 @@ function RootPage({ push, close, setTax, onImportComplete }) {
 
         <CommandSeparator/>
 
+        <CommandGroup heading={t('settings.sampleData')}>
+          <CommandItem value="generate sample data seed demo fixture" icon="sparkle" onSelect={generateSampleData}>
+            {t('settings.generateSampleData')}
+          </CommandItem>
+        </CommandGroup>
+
+        <CommandSeparator/>
+
         <CommandGroup heading={t('settings.config')}>
           <CommandItem value="categories taxonomy subcategories" icon="folder"  shortcut="→" onSelect={() => push({ type: 'categories' })}>{t('settings.categories')}</CommandItem>
           <CommandItem value="rarities tiers colours"            icon="sparkle" shortcut="→" onSelect={() => push({ type: 'rarities' })}>{t('settings.rarities')}</CommandItem>
@@ -441,7 +472,22 @@ function RootPage({ push, close, setTax, onImportComplete }) {
           <CommandItem value="support us donate sponsor" icon="sparkle" shortcut="↗" onSelect={() => window.open('https://mountea.tools/support', '_blank')}>{t('settings.supportUs')}</CommandItem>
         </CommandGroup>
       </CommandList>
+
+      {sampleStatus === 'done' && (
+        <div className="flex items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 text-xs text-foreground">
+          <Icon name="check" size={13} className="shrink-0 text-emerald-500"/>
+          <span>{t('settings.sampleDataComplete')}</span>
+        </div>
+      )}
+
       <Footer/>
+
+      {sampleStatus === 'loading' && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-md bg-popover/90 backdrop-blur-sm">
+          <div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin"/>
+          <p className="text-sm font-medium text-foreground">{t('settings.generatingSampleData')}</p>
+        </div>
+      )}
     </Command>
   );
 }
